@@ -1,0 +1,27 @@
+{
+  "name": "SmartLiving Home — Inventory & Sales",
+  "short_name": "SmartLiving",
+  "description": "Inventory management and point-of-sale app for SmartLiving Home appliance retail",
+  "start_url": "/inventory-app.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#13120E",
+  "theme_color": "#13120E",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "en"
+}
