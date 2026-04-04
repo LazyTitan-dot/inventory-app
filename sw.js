@@ -1,6 +1,5 @@
-const CACHE_NAME = 'smartliving-v1';
+const CACHE_NAME = 'smartliving-v2';
 const ASSETS = [
-  '/inventory-app.html',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -10,7 +9,7 @@ const ASSETS = [
   'https://unpkg.com/@babel/standalone/babel.min.js'
 ];
 
-// Install — cache all core assets
+// Install — cache static assets only
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME)
@@ -28,24 +27,30 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch — serve from cache first, fall back to network
+// Fetch — network-first for HTML pages, cache-first for static assets
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(response => {
-        // Cache successful GET responses for future offline use
-        if (response.ok && e.request.method === 'GET') {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        }
+  if (e.request.mode === 'navigate' || e.request.destination === 'document') {
+    // HTML pages: try network first, fall back to cache for offline
+    e.respondWith(
+      fetch(e.request).then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         return response;
-      });
-    }).catch(() => {
-      // If both cache and network fail, return a basic offline page
-      if (e.request.mode === 'navigate') {
-        return caches.match('/inventory-app.html');
-      }
-    })
-  );
+      }).catch(() => caches.match(e.request) || caches.match('/index.html'))
+    );
+  } else {
+    // Static assets: cache-first
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(response => {
+          if (response.ok && e.request.method === 'GET') {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          }
+          return response;
+        });
+      })
+    );
+  }
 });
