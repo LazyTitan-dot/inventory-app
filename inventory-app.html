@@ -920,19 +920,48 @@ body.dark .mob-hamburger:hover{color:#EAE8E1}
   /* Receipt overlay */
   .receipt-ov{padding:0}
   .receipt-card{max-width:100%;border-radius:0;max-height:100%;height:100dvh}
-  /* Sale overlay */
-  .sale-overlay .sale-hdr{padding:0 12px;height:50px;gap:8px}
+  /* Sale overlay — stack vertically, scroll as one page */
+  .sale-overlay .sale-hdr{padding:0 12px;height:auto;min-height:50px;gap:8px;flex-wrap:wrap;justify-content:space-between}
   .sale-hdr-num{font-size:14px}
-  .sale-body{flex-direction:column}
-  .sale-left{padding:14px}
-  .sale-right{width:100%;border-left:none;border-top:1.5px solid #E8E6E0}
+  .sale-hdr-sep{display:none}
+  .sale-hdr-cust{flex-basis:100%;order:10;font-size:12px;padding-bottom:6px}
+  .btn-complete{padding:8px 14px;font-size:12px}
+  .sale-body{flex-direction:column!important;overflow:auto!important}
+  .sale-left{padding:14px;overflow:visible!important;flex:none!important;min-height:0}
+  .sale-right{width:100%!important;border-left:none;border-top:1.5px solid #E8E6E0;overflow:visible!important;flex-shrink:1!important;flex:none!important}
   .sale-sec-body{padding:12px 14px}
   .sale-sec-head{padding:10px 14px}
-  /* Dashboard */
+  /* Product picker rows — card-like on mobile */
+  .pp-row{flex-wrap:wrap;padding:10px 12px;gap:8px}
+  .pp-info{flex:1;min-width:120px}
+  .pp-name{font-size:13px}
+  .pp-meta{font-size:10px}
+  .pp-ctl{width:100%;gap:6px;flex-wrap:wrap;justify-content:flex-start}
+  .pp-sel{flex:1;min-width:0;font-size:12px}
+  .pp-price{font-size:13px;font-weight:600}
+  .pp-avail{font-size:10px}
+  .stepper{flex-shrink:0}
+  .stepper input{width:36px}
+  .btn-add-cart{padding:6px 12px;font-size:12px}
+  .cat-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;scrollbar-width:none}
+  .cat-tabs::-webkit-scrollbar{display:none}
+  .cat-tab{white-space:nowrap;flex-shrink:0;font-size:11px;padding:5px 10px}
+  /* Cart section on mobile */
+  .cart-hd{padding:12px 14px 10px}
+  .cart-hd-title{font-size:13px}
+  .ot-wrap{padding:12px 14px}
+  /* Customer form compact */
+  .cust-form-grid{grid-template-columns:1fr!important}
+  .cg.span2{grid-column:1}
+  /* Dashboard — fix class names and single-column layout */
   .db-content{padding:14px 12px}
-  .kpi-grid{grid-template-columns:1fr 1fr!important}
+  .db-kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}
   .kpi-card{padding:12px 14px!important}
-  .chart-grid{grid-template-columns:1fr!important}
+  .db-grid-2,.db-grid-3,.db-grid-bottom{grid-template-columns:1fr!important;gap:10px!important}
+  .db-card-hd{padding:11px 14px 9px;font-size:12px;flex-wrap:wrap;gap:6px}
+  .db-card-body{padding:12px 14px}
+  .seg-legend{gap:4px}
+  .seg-item{font-size:11px}
   /* Entity cards (customers, suppliers, etc) */
   .entity-card{padding:12px 14px}
   /* Dark mode toggle accessible */
@@ -949,7 +978,7 @@ body.dark .mob-hamburger:hover{color:#EAE8E1}
   .content{padding:10px 8px}
   .p-header{padding:8px 10px;gap:8px}
   .p-img-wrap{width:36px;height:36px}
-  .kpi-grid{grid-template-columns:1fr!important}
+  .db-kpis{grid-template-columns:1fr!important}
 }
 
 /* ── Print Styles ── */
