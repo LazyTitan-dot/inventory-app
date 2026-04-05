@@ -1219,10 +1219,12 @@ function loadData(){
   return null;
 }
 function saveData(data){
-  // Always save to localStorage (works offline)
+  // Always save to localStorage (works offline, never skipped)
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
   catch(e){console.warn('Failed to save to localStorage',e);}
-  // Also save to Firestore if authenticated
+}
+function saveToCloud(data){
+  // Save to Firestore if authenticated (called separately, can be skipped)
   if(fbDb&&_currentUid){
     const ref=getDocRef(_currentUid);
     if(ref)ref.set(data).catch(e=>console.warn('Firestore write failed:',e));
@@ -4094,11 +4096,12 @@ function App(){
         }
         setSyncStatus('synced');
       }else{
-        // First login — push local data to cloud
+        // First login — push local data to cloud (keep existing timestamp)
         const local=loadData();
         if(local){
-          const payload={...local,lastModified:new Date().toISOString()};
-          ref.set(payload).catch(e=>console.warn('Migration write failed:',e));
+          if(!local.lastModified)local.lastModified=new Date().toISOString();
+          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(local));}catch(e){}
+          ref.set(local).catch(e=>console.warn('Migration write failed:',e));
         }
         setSyncStatus('synced');
       }
@@ -4106,15 +4109,17 @@ function App(){
     return unsub;
   },[fbUser]);
 
-  // Persist data on every change (localStorage + Firestore)
+  // Persist data on every change (localStorage always, Firestore when not receiving cloud data)
   const [saveState,setSaveState]=useState('idle');
   useEffect(()=>{
-    if(skipCloudSync.current)return;
     const timer=setTimeout(()=>{
       const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,lastModified:new Date().toISOString()};
-      saveData(payload);
+      saveData(payload); // Always save to localStorage
+      if(!skipCloudSync.current){
+        saveToCloud(payload); // Only write to Firestore if change was local
+      }
       setSaveState('saved');
-      if(fbUser)setSyncStatus('synced');
+      if(fbUser&&!skipCloudSync.current)setSyncStatus('synced');
       setTimeout(()=>setSaveState('idle'),1500);
     },300);
     return()=>clearTimeout(timer);
