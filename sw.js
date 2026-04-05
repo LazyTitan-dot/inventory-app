@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartliving-v2';
+const CACHE_NAME = 'smartliving-v3';
 const ASSETS = [
   '/manifest.json',
   '/icons/icon-192.png',
@@ -6,7 +6,10 @@ const ASSETS = [
   'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap',
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
-  'https://unpkg.com/@babel/standalone/babel.min.js'
+  'https://unpkg.com/@babel/standalone/babel.min.js',
+  'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js'
 ];
 
 // Install — cache static assets only
