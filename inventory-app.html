@@ -1191,6 +1191,7 @@ function ToastProvider({children}){
 /* ─── localStorage + Supabase Persistence ──────────────────── */
 const STORAGE_KEY='electrastock_v4';
 let _currentUid=null; // set by App auth listener
+let _cloudReady=false; // true only after initial cloud fetch completes
 
 function loadData(){
   try{
@@ -1205,12 +1206,11 @@ function saveData(data){
   catch(e){console.warn('Failed to save to localStorage',e);}
 }
 function saveToCloud(data){
-  // Upsert to Supabase if authenticated (called separately, can be skipped)
-  if(_currentUid){
-    sbClient.from('stores').upsert({user_id:_currentUid,data:data},{onConflict:'user_id'}).then(({error})=>{
-      if(error)console.warn('Supabase write failed:',error.message);
-    });
-  }
+  // Upsert to Supabase — only if authenticated AND initial sync is done
+  if(!_currentUid||!_cloudReady)return;
+  sbClient.from('stores').upsert({user_id:_currentUid,data:data},{onConflict:'user_id'}).then(({error})=>{
+    if(error)console.warn('Supabase write failed:',error.message);
+  });
 }
 function usePersist(key,initial){
   const saved=useRef(loadData());
@@ -4042,14 +4042,14 @@ function App(){
   const [syncStatus,setSyncStatus]=useState('offline'); // synced|syncing|offline|error
   const [loginOpen,setLoginOpen]=useState(false);
   const skipCloudSync=useRef(false);
-  const initialSyncDone=useRef(false); // NEVER allow cloud writes until initial fetch completes
 
   // Auth observer
   useEffect(()=>{
     const {data:{subscription}}=sbClient.auth.onAuthStateChange((_event,session)=>{
       const u=session?.user||null;
       setFbUser(u);_currentUid=u?.id||null;setAuthLoading(false);
-      setSyncStatus(u?'syncing':'offline');
+      if(!u){_cloudReady=false;setSyncStatus('offline');}
+      else setSyncStatus('syncing');
     });
     return()=>subscription.unsubscribe();
   },[]);
@@ -4058,12 +4058,12 @@ function App(){
   useEffect(()=>{
     if(!fbUser)return;
     // Block cloud writes until initial sync is resolved
-    initialSyncDone.current=false;
+    _cloudReady=false;
     // Initial fetch
     (async()=>{
       try{
         const {data,error}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
-        if(error){console.warn('Supabase read error:',error.message);setSyncStatus('error');initialSyncDone.current=true;return;}
+        if(error){console.warn('Supabase read error:',error.message);setSyncStatus('error');_cloudReady=true;return;}
         if(data&&data.data&&data.data.products){
           // Cloud data exists — apply it if newer than local
           const d=data.data;
@@ -4079,9 +4079,16 @@ function App(){
             if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
             if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
             try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
-            setTimeout(()=>{skipCloudSync.current=false;initialSyncDone.current=true;},600);
+            setTimeout(()=>{
+              skipCloudSync.current=false;
+              _cloudReady=true;
+              // Catch-up: push current state to cloud (covers any changes made during sync window)
+              const cur=loadData();if(cur)saveToCloud(cur);
+            },600);
           }else{
-            initialSyncDone.current=true; // local is newer, allow cloud writes
+            // Local is newer than cloud — push local data to cloud immediately
+            _cloudReady=true;
+            const cur=loadData();if(cur)saveToCloud(cur);
           }
           setSyncStatus('synced');
         }else{
@@ -4090,13 +4097,15 @@ function App(){
           if(local){
             if(!local.lastModified)local.lastModified=new Date().toISOString();
             try{localStorage.setItem(STORAGE_KEY,JSON.stringify(local));}catch(e){}
+            _cloudReady=true;
             const {error:e}=await sbClient.from('stores').upsert({user_id:fbUser.id,data:local},{onConflict:'user_id'});
             if(e)console.warn('Migration write failed:',e.message);
+          }else{
+            _cloudReady=true;
           }
-          initialSyncDone.current=true;
           setSyncStatus('synced');
         }
-      }catch(err){console.warn('Initial sync failed:',err);initialSyncDone.current=true;}
+      }catch(err){console.warn('Initial sync failed:',err);_cloudReady=true;}
     })();
 
     // Realtime subscription for cross-device sync
@@ -4134,8 +4143,8 @@ function App(){
     const timer=setTimeout(()=>{
       const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,lastModified:new Date().toISOString()};
       saveData(payload); // Always save to localStorage
-      if(!skipCloudSync.current&&initialSyncDone.current){
-        saveToCloud(payload); // Only write to cloud after initial sync is done
+      if(!skipCloudSync.current){
+        saveToCloud(payload); // saveToCloud checks _cloudReady internally
       }
       setSaveState('saved');
       if(fbUser&&!skipCloudSync.current)setSyncStatus('synced');
@@ -4425,7 +4434,7 @@ function App(){
             <div className="auth-user">
               <div className={`sync-dot ${syncStatus}`} title={syncStatus==='synced'?'Synced to cloud':syncStatus==='syncing'?'Syncing…':syncStatus==='error'?'Sync error':'Offline'}/>
               <span className="auth-user-email">{fbUser.email}</span>
-              <button className="auth-btn-sm" onClick={()=>{sbClient.auth.signOut();_currentUid=null;setSyncStatus('offline');}}>Sign out</button>
+              <button className="auth-btn-sm" onClick={()=>{sbClient.auth.signOut();_currentUid=null;_cloudReady=false;setSyncStatus('offline');}}>Sign out</button>
             </div>
           ):(
             <button className="auth-btn" onClick={()=>setLoginOpen(true)}>☁️ Sign In to Sync</button>
