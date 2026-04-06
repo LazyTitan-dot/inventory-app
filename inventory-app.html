@@ -1204,9 +1204,11 @@ function saveData(data){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
   catch(e){console.warn('Failed to save to localStorage',e);}
 }
+let _skipRealtimeUntil=0; // timestamp to ignore Realtime echoes from our own writes
 function saveToCloud(data){
   // Upsert to Supabase if authenticated (called separately, can be skipped)
   if(_currentUid){
+    _skipRealtimeUntil=Date.now()+2000; // ignore Realtime events for 2s after our write
     sbClient.from('stores').upsert({user_id:_currentUid,data:data},{onConflict:'user_id'}).then(({error})=>{
       if(error)console.warn('Supabase write failed:',error.message);
     });
@@ -4090,8 +4092,13 @@ function App(){
     })();
 
     // Realtime subscription for cross-device sync
-    const channel=sbClient.channel('stores-sync').on('postgres_changes',{event:'*',schema:'public',table:'stores',filter:`user_id=eq.${fbUser.id}`},(payload)=>{
-      const d=payload.new?.data;
+    // Note: payload.new.data may be truncated for large JSONB blobs (>1MB),
+    // so we fetch the full row via REST API when notified of a change.
+    const channel=sbClient.channel('stores-sync').on('postgres_changes',{event:'*',schema:'public',table:'stores',filter:`user_id=eq.${fbUser.id}`},async()=>{
+      if(skipCloudSync.current||Date.now()<_skipRealtimeUntil)return; // ignore echoes from our own writes
+      const {data:row,error:fetchErr}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
+      if(fetchErr||!row||!row.data)return;
+      const d=row.data;
       if(d&&d.products){
         const cloudTime=d.lastModified||'';
         const localRaw=localStorage.getItem(STORAGE_KEY);
