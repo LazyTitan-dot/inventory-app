@@ -16,9 +16,7 @@
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:#F5F4F0;color:#1C1B18;height:100vh;overflow:hidden}
@@ -836,7 +834,7 @@ body.dark .export-item:hover{background:#22201A;color:#F59E0B}
 .save-indicator.saving{color:#F59E0B}
 .save-indicator.saved{color:#10B981}
 .save-dot{width:6px;height:6px;border-radius:50%;background:currentColor;transition:all .3s}
-/* ── Firebase Auth UI ── */
+/* ── Cloud Auth UI ── */
 .auth-section{padding:10px 20px 6px;border-top:1px solid rgba(255,255,255,.07)}
 .auth-user{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.5)}
 .auth-user-email{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,.6)}
@@ -1103,28 +1101,11 @@ const {useState,useMemo,useRef,useEffect,useContext,createContext}=React;
 const DarkCtx=createContext(false);
 const useDark=()=>useContext(DarkCtx);
 
-/* ─── Firebase Cloud Sync ──────────────────────────────────── */
-// ⚠️ PASTE YOUR FIREBASE CONFIG HERE — get it from https://console.firebase.google.com
-const FIREBASE_CONFIG={
-  apiKey:"AIzaSyA20yNuY29EiQ-UAvxllhYp98KzQGbpkTU",
-  authDomain:"smartliving-home.firebaseapp.com",
-  projectId:"smartliving-home",
-  storageBucket:"smartliving-home.firebasestorage.app",
-  messagingSenderId:"94963184864",
-  appId:"1:94963184864:web:a7b2a8a9c91593484c0c85"
-};
+/* ─── Supabase Cloud Sync ──────────────────────────────────── */
+const SUPABASE_URL='https://twkpgzxkzdtgkkuahntr.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3a3BnenhremR0Z2trdWFobnRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MzY2ODksImV4cCI6MjA5MTAxMjY4OX0.MSy2VKVrIXNGWGSd_GcuSyIY0tBNlKaPV1L2rhRO3wk';
 
-let fbApp=null,fbDb=null,fbAuth=null;
-try{
-  if(typeof firebase!=='undefined'&&FIREBASE_CONFIG.apiKey!=='YOUR_API_KEY'){
-    fbApp=firebase.initializeApp(FIREBASE_CONFIG);
-    fbDb=firebase.firestore();
-    fbAuth=firebase.auth();
-    fbDb.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore persistence failed:',e.code));
-  }
-}catch(e){console.warn('Firebase init skipped:',e);}
-
-function getDocRef(uid){return fbDb?fbDb.collection('stores').doc(uid):null;}
+const sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 /* ─── Constants ─────────────────────────────────────────────── */
 const CATS=[
@@ -1207,7 +1188,7 @@ function ToastProvider({children}){
   );
 }
 
-/* ─── localStorage + Firestore Persistence ─────────────────── */
+/* ─── localStorage + Supabase Persistence ──────────────────── */
 const STORAGE_KEY='electrastock_v4';
 let _currentUid=null; // set by App auth listener
 
@@ -1224,10 +1205,11 @@ function saveData(data){
   catch(e){console.warn('Failed to save to localStorage',e);}
 }
 function saveToCloud(data){
-  // Save to Firestore if authenticated (called separately, can be skipped)
-  if(fbDb&&_currentUid){
-    const ref=getDocRef(_currentUid);
-    if(ref)ref.set(data).catch(e=>console.warn('Firestore write failed:',e));
+  // Upsert to Supabase if authenticated (called separately, can be skipped)
+  if(_currentUid){
+    sbClient.from('stores').upsert({user_id:_currentUid,data:data},{onConflict:'user_id'}).then(({error})=>{
+      if(error)console.warn('Supabase write failed:',error.message);
+    });
   }
 }
 function usePersist(key,initial){
@@ -4054,59 +4036,81 @@ function App(){
   const [exchangeRate,setExchangeRate]=useState(()=>savedData.current?.exchangeRate||58.5);
   const [ncfSeq,setNcfSeq]=useState(()=>savedData.current?.ncfSeq||0);
 
-  // ─── Firebase Auth + Cloud Sync ───
+  // ─── Supabase Auth + Cloud Sync ───
   const [fbUser,setFbUser]=useState(null);
-  const [authLoading,setAuthLoading]=useState(!!fbAuth);
+  const [authLoading,setAuthLoading]=useState(true);
   const [syncStatus,setSyncStatus]=useState('offline'); // synced|syncing|offline|error
   const [loginOpen,setLoginOpen]=useState(false);
   const skipCloudSync=useRef(false);
 
   // Auth observer
   useEffect(()=>{
-    if(!fbAuth)return;
-    const unsub=fbAuth.onAuthStateChanged(u=>{
-      setFbUser(u);_currentUid=u?.uid||null;setAuthLoading(false);
+    const {data:{subscription}}=sbClient.auth.onAuthStateChange((_event,session)=>{
+      const u=session?.user||null;
+      setFbUser(u);_currentUid=u?.id||null;setAuthLoading(false);
       setSyncStatus(u?'syncing':'offline');
     });
-    return unsub;
+    return()=>subscription.unsubscribe();
   },[]);
 
-  // Firestore real-time listener — sync cloud → local
+  // Supabase Realtime listener — sync cloud → local
   useEffect(()=>{
-    if(!fbDb||!fbUser)return;
-    const ref=getDocRef(fbUser.uid);if(!ref)return;
-    const unsub=ref.onSnapshot(snap=>{
-      if(snap.exists){
-        const d=snap.data();
-        if(d&&d.products){
-          const cloudTime=d.lastModified||'';
-          const localRaw=localStorage.getItem(STORAGE_KEY);
-          const localTime=localRaw?JSON.parse(localRaw).lastModified||'':'';
-          if(cloudTime>localTime){
-            skipCloudSync.current=true;
-            setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
-            setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
-            setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
-            setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
-            if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
-            if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
-            try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
-            setTimeout(()=>{skipCloudSync.current=false;},500);
-          }
+    if(!fbUser)return;
+    // Initial fetch
+    (async()=>{
+      const {data,error}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
+      if(error){console.warn('Supabase read error:',error.message);setSyncStatus('error');return;}
+      if(data&&data.data&&data.data.products){
+        const d=data.data;
+        const cloudTime=d.lastModified||'';
+        const localRaw=localStorage.getItem(STORAGE_KEY);
+        const localTime=localRaw?JSON.parse(localRaw).lastModified||'':'';
+        if(cloudTime>localTime){
+          skipCloudSync.current=true;
+          setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
+          setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
+          setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
+          setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
+          if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
+          if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
+          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
+          setTimeout(()=>{skipCloudSync.current=false;},500);
         }
         setSyncStatus('synced');
       }else{
-        // First login — push local data to cloud (keep existing timestamp)
+        // First login — push local data to cloud
         const local=loadData();
         if(local){
           if(!local.lastModified)local.lastModified=new Date().toISOString();
           try{localStorage.setItem(STORAGE_KEY,JSON.stringify(local));}catch(e){}
-          ref.set(local).catch(e=>console.warn('Migration write failed:',e));
+          sbClient.from('stores').upsert({user_id:fbUser.id,data:local},{onConflict:'user_id'}).then(({error:e})=>{if(e)console.warn('Migration write failed:',e.message);});
         }
         setSyncStatus('synced');
       }
-    },err=>{console.warn('Firestore listen error:',err);setSyncStatus('error');});
-    return unsub;
+    })();
+
+    // Realtime subscription for cross-device sync
+    const channel=sbClient.channel('stores-sync').on('postgres_changes',{event:'*',schema:'public',table:'stores',filter:`user_id=eq.${fbUser.id}`},(payload)=>{
+      const d=payload.new?.data;
+      if(d&&d.products){
+        const cloudTime=d.lastModified||'';
+        const localRaw=localStorage.getItem(STORAGE_KEY);
+        const localTime=localRaw?JSON.parse(localRaw).lastModified||'':'';
+        if(cloudTime>localTime){
+          skipCloudSync.current=true;
+          setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
+          setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
+          setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
+          setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
+          if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
+          if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
+          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
+          setTimeout(()=>{skipCloudSync.current=false;},500);
+        }
+        setSyncStatus('synced');
+      }
+    }).subscribe();
+    return()=>{sbClient.removeChannel(channel);};
   },[fbUser]);
 
   // Persist data on every change (localStorage always, Firestore when not receiving cloud data)
@@ -4400,18 +4404,18 @@ function App(){
           </div>
         </div>
         {/* ── Cloud Sync Auth ── */}
-        {fbAuth&&<div className="auth-section">
+        <div className="auth-section">
           {authLoading?<div style={{fontSize:11,color:'rgba(255,255,255,.35)',padding:'4px 0'}}>Connecting…</div>
           :fbUser?(
             <div className="auth-user">
               <div className={`sync-dot ${syncStatus}`} title={syncStatus==='synced'?'Synced to cloud':syncStatus==='syncing'?'Syncing…':syncStatus==='error'?'Sync error':'Offline'}/>
               <span className="auth-user-email">{fbUser.email}</span>
-              <button className="auth-btn-sm" onClick={()=>{fbAuth.signOut();_currentUid=null;setSyncStatus('offline');}}>Sign out</button>
+              <button className="auth-btn-sm" onClick={()=>{sbClient.auth.signOut();_currentUid=null;setSyncStatus('offline');}}>Sign out</button>
             </div>
           ):(
             <button className="auth-btn" onClick={()=>setLoginOpen(true)}>☁️ Sign In to Sync</button>
           )}
-        </div>}
+        </div>
         <div className="sb-foot-row">
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             <span>SmartLiving v4.0</span>
@@ -4493,12 +4497,14 @@ function LoginModal({onClose,onSuccess}){
     if(!email.trim()||!pass.trim()){setErr('Email and password required');return;}
     setLoading(true);setErr('');
     try{
-      if(isCreate)await fbAuth.createUserWithEmailAndPassword(email,pass);
-      else await fbAuth.signInWithEmailAndPassword(email,pass);
+      const {error}=isCreate
+        ?await sbClient.auth.signUp({email,password:pass})
+        :await sbClient.auth.signInWithPassword({email,password:pass});
+      if(error)throw error;
       onSuccess&&onSuccess();onClose();
     }catch(e){
-      const msgs={'auth/invalid-email':'Invalid email address','auth/wrong-password':'Wrong password','auth/user-not-found':'No account found with this email','auth/email-already-in-use':'Email already in use','auth/weak-password':'Password must be at least 6 characters','auth/invalid-credential':'Invalid email or password'};
-      setErr(msgs[e.code]||e.message);
+      const msg=e.message||'Authentication failed';
+      setErr(msg);
     }finally{setLoading(false);}
   };
 
