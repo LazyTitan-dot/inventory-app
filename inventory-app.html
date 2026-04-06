@@ -4044,6 +4044,7 @@ function App(){
   const [syncStatus,setSyncStatus]=useState('offline'); // synced|syncing|offline|error
   const [loginOpen,setLoginOpen]=useState(false);
   const skipCloudSync=useRef(false);
+  const initialSyncDone=useRef(!loadData()); // true if no local data (nothing to protect)
 
   // Auth observer
   useEffect(()=>{
@@ -4058,37 +4059,46 @@ function App(){
   // Supabase Realtime listener — sync cloud → local
   useEffect(()=>{
     if(!fbUser)return;
+    // Block cloud writes until initial sync is resolved
+    initialSyncDone.current=false;
     // Initial fetch
     (async()=>{
-      const {data,error}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
-      if(error){console.warn('Supabase read error:',error.message);setSyncStatus('error');return;}
-      if(data&&data.data&&data.data.products){
-        const d=data.data;
-        const cloudTime=d.lastModified||'';
-        const localRaw=localStorage.getItem(STORAGE_KEY);
-        const localTime=localRaw?JSON.parse(localRaw).lastModified||'':'';
-        if(cloudTime>localTime){
-          skipCloudSync.current=true;
-          setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
-          setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
-          setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
-          setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
-          if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
-          if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
-          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
-          setTimeout(()=>{skipCloudSync.current=false;},500);
+      try{
+        const {data,error}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
+        if(error){console.warn('Supabase read error:',error.message);setSyncStatus('error');initialSyncDone.current=true;return;}
+        if(data&&data.data&&data.data.products){
+          // Cloud data exists — apply it if newer than local
+          const d=data.data;
+          const cloudTime=d.lastModified||'';
+          const localRaw=localStorage.getItem(STORAGE_KEY);
+          const localTime=localRaw?JSON.parse(localRaw).lastModified||'':'';
+          if(cloudTime>=localTime){
+            skipCloudSync.current=true;
+            setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
+            setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
+            setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
+            setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
+            if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
+            if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
+            try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
+            setTimeout(()=>{skipCloudSync.current=false;initialSyncDone.current=true;},600);
+          }else{
+            initialSyncDone.current=true; // local is newer, allow cloud writes
+          }
+          setSyncStatus('synced');
+        }else{
+          // No cloud data — push local data to cloud
+          const local=loadData();
+          if(local){
+            if(!local.lastModified)local.lastModified=new Date().toISOString();
+            try{localStorage.setItem(STORAGE_KEY,JSON.stringify(local));}catch(e){}
+            const {error:e}=await sbClient.from('stores').upsert({user_id:fbUser.id,data:local},{onConflict:'user_id'});
+            if(e)console.warn('Migration write failed:',e.message);
+          }
+          initialSyncDone.current=true;
+          setSyncStatus('synced');
         }
-        setSyncStatus('synced');
-      }else{
-        // First login — push local data to cloud
-        const local=loadData();
-        if(local){
-          if(!local.lastModified)local.lastModified=new Date().toISOString();
-          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(local));}catch(e){}
-          sbClient.from('stores').upsert({user_id:fbUser.id,data:local},{onConflict:'user_id'}).then(({error:e})=>{if(e)console.warn('Migration write failed:',e.message);});
-        }
-        setSyncStatus('synced');
-      }
+      }catch(err){console.warn('Initial sync failed:',err);initialSyncDone.current=true;}
     })();
 
     // Realtime subscription for cross-device sync
@@ -4120,14 +4130,14 @@ function App(){
     return()=>{sbClient.removeChannel(channel);};
   },[fbUser]);
 
-  // Persist data on every change (localStorage always, Firestore when not receiving cloud data)
+  // Persist data on every change (localStorage always, Supabase when safe)
   const [saveState,setSaveState]=useState('idle');
   useEffect(()=>{
     const timer=setTimeout(()=>{
       const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,lastModified:new Date().toISOString()};
       saveData(payload); // Always save to localStorage
-      if(!skipCloudSync.current){
-        saveToCloud(payload); // Only write to Firestore if change was local
+      if(!skipCloudSync.current&&initialSyncDone.current){
+        saveToCloud(payload); // Only write to cloud after initial sync is done
       }
       setSaveState('saved');
       if(fbUser&&!skipCloudSync.current)setSyncStatus('synced');
