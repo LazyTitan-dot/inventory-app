@@ -4141,11 +4141,12 @@ function App(){
   // Persist data on every change (localStorage + Supabase, after initial sync)
   const [saveState,setSaveState]=useState('idle');
   useEffect(()=>{
-    // CRITICAL: While signed in, do NOT persist anything until initial cloud
-    // sync completes. Otherwise the persist effect would stamp localStorage
-    // with a fresh `lastModified` and the cloud→local comparison would
-    // wrongly conclude that local is newer than cloud, causing seed data to
-    // overwrite real cloud data.
+    // CRITICAL: Don't persist during auth loading window. Otherwise the
+    // persist effect would stamp localStorage with a fresh `lastModified`
+    // before we know if the user is signed in, and the subsequent cloud
+    // sync would wrongly conclude that local is newer than cloud.
+    if(authLoading)return;
+    // While signed in, also wait for initial cloud sync to complete.
     if(fbUser&&!cloudReady)return;
     const timer=setTimeout(()=>{
       const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,lastModified:new Date().toISOString()};
@@ -4158,7 +4159,7 @@ function App(){
       setTimeout(()=>setSaveState('idle'),1500);
     },300);
     return()=>clearTimeout(timer);
-  },[products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,fbUser,cloudReady]);
+  },[products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,fbUser,cloudReady,authLoading]);
 
   const [view,setView]=useState('dashboard');
   const [cat,setCat]=useState('all');
