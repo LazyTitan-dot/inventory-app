@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartliving-v8';
+const CACHE_NAME = 'smartliving-v9';
 const ASSETS = [
   '/manifest.json',
   '/icons/icon-192.png',

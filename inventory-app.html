@@ -1188,10 +1188,24 @@ function ToastProvider({children}){
   );
 }
 
-/* ─── localStorage + Supabase Persistence ──────────────────── */
+/* ─── localStorage + Supabase Persistence (per-entity) ─────── */
 const STORAGE_KEY='electrastock_v4';
 let _currentUid=null; // set by App auth listener
-let _cloudReady=false; // true only after initial cloud fetch completes
+
+// Cloud entity tables. Each row is (user_id, id, data jsonb, updated_at).
+// `stateKey` is the React state field name on the App component.
+const ENTITY_TABLES=[
+  {table:'products',       stateKey:'products'},
+  {table:'sales',          stateKey:'sales'},
+  {table:'customers',      stateKey:'customers'},
+  {table:'suppliers',      stateKey:'suppliers'},
+  {table:'purchase_orders',stateKey:'purchaseOrders'},
+  {table:'quotes',         stateKey:'quotes'},
+  {table:'returns',        stateKey:'returns'},
+  {table:'deliveries',     stateKey:'deliveries'},
+  {table:'promotions',     stateKey:'promotions'},
+  {table:'activity_log',   stateKey:'activityLog'},
+];
 
 function loadData(){
   try{
@@ -1201,21 +1215,51 @@ function loadData(){
   return null;
 }
 function saveData(data){
-  // Always save to localStorage (works offline, never skipped)
+  // Always save to localStorage (works offline)
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
   catch(e){console.warn('Failed to save to localStorage',e);}
 }
-function saveToCloud(data){
-  // Upsert to Supabase — only if authenticated AND initial sync is done
-  if(!_currentUid||!_cloudReady)return;
-  sbClient.from('stores').upsert({user_id:_currentUid,data:data},{onConflict:'user_id'}).then(({error})=>{
-    if(error)console.warn('Supabase write failed:',error.message);
-  });
+
+// Diff a current array against a snapshot Map<id, JSON>; returns {ups, dels}
+// and mutates the snapshot to match the current state.
+function diffEntity(current,snapshot){
+  const cur=new Map();
+  for(const row of current){
+    if(!row||!row.id)continue;
+    cur.set(row.id,JSON.stringify(row));
+  }
+  const ups=[],dels=[];
+  for(const [id,json] of cur){
+    if(snapshot.get(id)!==json){
+      ups.push(JSON.parse(json));
+      snapshot.set(id,json);
+    }
+  }
+  for(const id of [...snapshot.keys()]){
+    if(!cur.has(id)){dels.push(id);snapshot.delete(id);}
+  }
+  return {ups,dels};
 }
-function usePersist(key,initial){
-  const saved=useRef(loadData());
-  const [val,setVal]=useState(()=>saved.current?.[key]??initial);
-  return [val,setVal];
+async function pushEntity(table,current,snapshot){
+  if(!_currentUid)return;
+  const {ups,dels}=diffEntity(current,snapshot);
+  if(ups.length){
+    const rows=ups.map(r=>({user_id:_currentUid,id:String(r.id),data:r}));
+    const {error}=await sbClient.from(table).upsert(rows,{onConflict:'user_id,id'});
+    if(error)console.warn('upsert',table,error.message);
+  }
+  if(dels.length){
+    const {error}=await sbClient.from(table).delete().eq('user_id',_currentUid).in('id',dels);
+    if(error)console.warn('delete',table,error.message);
+  }
+}
+async function pushSettings(settings,snapshotRef){
+  if(!_currentUid)return;
+  const json=JSON.stringify(settings);
+  if(snapshotRef.current===json)return;
+  snapshotRef.current=json;
+  const {error}=await sbClient.from('settings').upsert({user_id:_currentUid,...settings},{onConflict:'user_id'});
+  if(error)console.warn('upsert settings',error.message);
 }
 
 /* ─── Activity Log ──────────────────────────────────────────── */
@@ -4036,139 +4080,201 @@ function App(){
   const [exchangeRate,setExchangeRate]=useState(()=>savedData.current?.exchangeRate||58.5);
   const [ncfSeq,setNcfSeq]=useState(()=>savedData.current?.ncfSeq||0);
 
-  // ─── Supabase Auth + Cloud Sync ───
+  // ─── Supabase Auth + Per-Entity Cloud Sync ───
   const [fbUser,setFbUser]=useState(null);
   const [authLoading,setAuthLoading]=useState(true);
   const [syncStatus,setSyncStatus]=useState('offline'); // synced|syncing|offline|error
   const [loginOpen,setLoginOpen]=useState(false);
-  const [cloudReady,setCloudReady]=useState(false); // gates persist effect after initial cloud fetch
-  const skipCloudSync=useRef(false);
-  const lastWrittenStamp=useRef(''); // fingerprint of our last cloud write, for echo detection
+  const [cloudReady,setCloudReady]=useState(false);
+
+  // Snapshots track what's currently in cloud per entity, so the persist
+  // effect can compute precise diffs (UPSERT only changed rows, DELETE only
+  // removed rows). Realtime echoes are suppressed by checking the snapshot
+  // before applying inbound rows.
+  const snapshots=useRef({
+    products:new Map(),sales:new Map(),customers:new Map(),
+    suppliers:new Map(),purchase_orders:new Map(),quotes:new Map(),
+    returns:new Map(),deliveries:new Map(),promotions:new Map(),
+    activity_log:new Map(),
+  });
+  const settingsSnapshot=useRef('');
+
+  // Latest state ref so cloud-sync effect (which only re-runs on fbUser
+  // change) can read the freshest values when seeding snapshots from local.
+  const stateRef=useRef();
+  stateRef.current={products,sales,customers,suppliers,purchaseOrders,quotes,returns,deliveries,promotions,activityLog,currency,exchangeRate,ncfSeq};
 
   // Auth observer
   useEffect(()=>{
     const {data:{subscription}}=sbClient.auth.onAuthStateChange((_event,session)=>{
       const u=session?.user||null;
-      // CRITICAL: Only update fbUser if the user identity actually changed.
+      // Only update fbUser if the user identity actually changed.
       // onAuthStateChange fires periodically (TOKEN_REFRESHED, USER_UPDATED,
-      // INITIAL_SESSION) with a fresh session object reference. If we naively
-      // setFbUser every time, the cloud sync effect re-runs, sets
-      // cloudReady=false, cancels any pending persist timers, and re-fetches
-      // cloud — wiping out any unsaved local changes the user just made.
+      // INITIAL_SESSION) with a fresh session object — re-running the
+      // sync effect would cancel pending writes and revert in-flight edits.
       setFbUser(prev=>(prev?.id===u?.id&&prev)?prev:u);
-      _currentUid=u?.id||null;setAuthLoading(false);
-      if(!u){_cloudReady=false;setCloudReady(false);setSyncStatus('offline');}
-      else setSyncStatus(s=>s==='offline'?'syncing':s);
+      _currentUid=u?.id||null;
+      setAuthLoading(false);
+      if(!u){
+        setCloudReady(false);
+        setSyncStatus('offline');
+        Object.values(snapshots.current).forEach(m=>m.clear());
+        settingsSnapshot.current='';
+      }
     });
     return()=>subscription.unsubscribe();
   },[]);
 
-  // Supabase Realtime listener — sync cloud → local
+  // Initial cloud fetch + per-table realtime subscriptions
   useEffect(()=>{
     if(!fbUser)return;
-    // Block cloud writes AND persist effect until initial sync is resolved
-    _cloudReady=false;setCloudReady(false);
-    // Initial fetch
+    setCloudReady(false);
+    setSyncStatus('syncing');
+    const uid=fbUser.id;
+    let cancelled=false;
+
+    const SETTERS={
+      products:setProducts,sales:setSales,customers:setCustomers,
+      suppliers:setSuppliers,purchase_orders:setPurchaseOrders,
+      quotes:setQuotes,returns:setReturns,deliveries:setDeliveries,
+      promotions:setPromotions,activity_log:setActivityLog,
+    };
+    const sortKey={sales:'date',activity_log:'time'};
+
     (async()=>{
       try{
-        const {data,error}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
-        if(error){console.warn('Supabase read error:',error.message);setSyncStatus('error');_cloudReady=true;setCloudReady(true);return;}
-        if(data&&data.data&&data.data.products){
-          // Cloud data exists — always apply on initial sign-in.
-          // We deliberately do NOT compare timestamps here: the persist
-          // effect stamps `lastModified` on every save (even no-op saves
-          // triggered by re-renders), so a device sitting idle accumulates
-          // fresh timestamps and would wrongly appear "newer" than cloud.
-          // Trust the cloud as the source of truth on login.
-          const d=data.data;
-          skipCloudSync.current=true;
-          lastWrittenStamp.current=d.lastModified||''; // seed fingerprint
-          setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
-          setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
-          setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
-          setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
-          if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
-          if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
-          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
-          setTimeout(()=>{
-            skipCloudSync.current=false;
-            _cloudReady=true;setCloudReady(true);
-          },600);
-          setSyncStatus('synced');
-        }else{
-          // No cloud data — push local data to cloud
-          const local=loadData();
-          if(local){
-            if(!local.lastModified)local.lastModified=new Date().toISOString();
-            try{localStorage.setItem(STORAGE_KEY,JSON.stringify(local));}catch(e){}
-            _cloudReady=true;setCloudReady(true);
-            const {error:e}=await sbClient.from('stores').upsert({user_id:fbUser.id,data:local},{onConflict:'user_id'});
-            if(e)console.warn('Migration write failed:',e.message);
-          }else{
-            _cloudReady=true;setCloudReady(true);
+        const fetches=ENTITY_TABLES.map(({table})=>sbClient.from(table).select('id,data').eq('user_id',uid));
+        const settingsFetch=sbClient.from('settings').select('*').eq('user_id',uid).maybeSingle();
+        const results=await Promise.all([...fetches,settingsFetch]);
+        if(cancelled)return;
+        const settingsRes=results.pop();
+
+        ENTITY_TABLES.forEach(({table,stateKey},i)=>{
+          const {data,error}=results[i];
+          const snap=snapshots.current[table];snap.clear();
+          if(error){
+            console.warn('fetch',table,error.message);
+            // Seed snapshot from current state so we don't blindly push.
+            for(const r of (stateRef.current[stateKey]||[])){
+              if(r&&r.id)snap.set(String(r.id),JSON.stringify(r));
+            }
+            return;
           }
-          setSyncStatus('synced');
+          const cloudRows=(data||[]).map(r=>r.data).filter(Boolean);
+          if(cloudRows.length===0){
+            // Empty cloud for this entity → keep current state, seed snapshot
+            // from it so the seed data doesn't get auto-pushed. Only real
+            // user edits will diff and sync.
+            for(const r of (stateRef.current[stateKey]||[])){
+              if(r&&r.id)snap.set(String(r.id),JSON.stringify(r));
+            }
+          }else{
+            // Apply cloud → state, snapshot from cloud
+            for(const r of cloudRows)snap.set(String(r.id),JSON.stringify(r));
+            const k=sortKey[table];
+            const ordered=k?cloudRows.slice().sort((a,b)=>String(b[k]||'').localeCompare(String(a[k]||''))):cloudRows;
+            SETTERS[table](ordered);
+          }
+        });
+
+        if(settingsRes&&!settingsRes.error&&settingsRes.data){
+          const s=settingsRes.data;
+          if(s.currency)setCurrency(s.currency);
+          if(s.exchange_rate!=null)setExchangeRate(s.exchange_rate);
+          if(s.ncf_seq!=null)setNcfSeq(s.ncf_seq);
+          settingsSnapshot.current=JSON.stringify({currency:s.currency,exchange_rate:s.exchange_rate,ncf_seq:s.ncf_seq});
+        }else{
+          // No cloud settings — seed snapshot from current state
+          settingsSnapshot.current=JSON.stringify({
+            currency:stateRef.current.currency,
+            exchange_rate:stateRef.current.exchangeRate,
+            ncf_seq:stateRef.current.ncfSeq,
+          });
         }
-      }catch(err){console.warn('Initial sync failed:',err);_cloudReady=true;setCloudReady(true);}
+
+        setCloudReady(true);
+        setSyncStatus('synced');
+      }catch(err){
+        console.warn('Initial sync failed:',err);
+        if(!cancelled){setCloudReady(true);setSyncStatus('error');}
+      }
     })();
 
-    // Realtime subscription for cross-device sync
-    // Note: payload.new.data may be truncated for large JSONB blobs (>1MB),
-    // so we fetch the full row via REST API when notified of a change.
-    const channel=sbClient.channel('stores-sync').on('postgres_changes',{event:'*',schema:'public',table:'stores',filter:`user_id=eq.${fbUser.id}`},async()=>{
-      if(skipCloudSync.current)return; // ignore echoes while applying cloud data
-      const {data:row,error:fetchErr}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
-      if(fetchErr||!row||!row.data)return;
-      const d=row.data;
-      if(!d||!d.products)return;
-      // Fingerprint check: if the cloud row's lastModified exactly matches
-      // the lastModified WE most recently wrote, this realtime event is the
-      // echo of our own write. Skip it. This is more reliable than comparing
-      // cloudTime > localTime, which breaks under races where local state
-      // has diverged from localStorage between persist runs.
-      if(d.lastModified&&d.lastModified===lastWrittenStamp.current){
-        setSyncStatus('synced');
-        return;
+    // Per-table realtime subscriptions
+    const channels=ENTITY_TABLES.map(({table})=>{
+      return sbClient.channel(`${table}-sync-${uid}`).on('postgres_changes',
+        {event:'*',schema:'public',table,filter:`user_id=eq.${uid}`},
+        payload=>{
+          const snap=snapshots.current[table];
+          const setter=SETTERS[table];
+          if(payload.eventType==='DELETE'){
+            const id=payload.old&&payload.old.id;
+            if(!id||!snap.has(String(id)))return; // echo or unknown
+            snap.delete(String(id));
+            setter(prev=>prev.filter(r=>String(r.id)!==String(id)));
+            return;
+          }
+          const row=payload.new&&payload.new.data;
+          const id=payload.new&&payload.new.id;
+          if(!row||!id)return;
+          const json=JSON.stringify(row);
+          if(snap.get(String(id))===json)return; // echo of our own write
+          snap.set(String(id),json);
+          setter(prev=>{
+            const idx=prev.findIndex(r=>String(r.id)===String(id));
+            if(idx===-1)return [row,...prev];
+            const next=prev.slice();next[idx]=row;return next;
+          });
+        }
+      ).subscribe();
+    });
+
+    const settingsChannel=sbClient.channel(`settings-sync-${uid}`).on('postgres_changes',
+      {event:'*',schema:'public',table:'settings',filter:`user_id=eq.${uid}`},
+      payload=>{
+        if(payload.eventType==='DELETE')return;
+        const r=payload.new;if(!r)return;
+        const json=JSON.stringify({currency:r.currency,exchange_rate:r.exchange_rate,ncf_seq:r.ncf_seq});
+        if(settingsSnapshot.current===json)return;
+        settingsSnapshot.current=json;
+        if(r.currency)setCurrency(r.currency);
+        if(r.exchange_rate!=null)setExchangeRate(r.exchange_rate);
+        if(r.ncf_seq!=null)setNcfSeq(r.ncf_seq);
       }
-      // Otherwise, this is a remote write from another device — apply it.
-      skipCloudSync.current=true;
-      setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
-      setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
-      setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
-      setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
-      if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
-      if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
-      try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
-      // Treat this remote-applied state as our last-written stamp so the
-      // subsequent persist-effect re-save (which uses a fresh timestamp)
-      // doesn't trigger a needless re-fetch loop.
-      lastWrittenStamp.current=d.lastModified||'';
-      setTimeout(()=>{skipCloudSync.current=false;},500);
-      setSyncStatus('synced');
-    }).subscribe();
-    return()=>{sbClient.removeChannel(channel);};
+    ).subscribe();
+
+    return()=>{
+      cancelled=true;
+      channels.forEach(ch=>sbClient.removeChannel(ch));
+      sbClient.removeChannel(settingsChannel);
+    };
   },[fbUser]);
 
-  // Persist data on every change (localStorage + Supabase, after initial sync)
+  // Persist effect — saves to localStorage always, and pushes per-entity
+  // diffs to cloud once the initial fetch has resolved.
   const [saveState,setSaveState]=useState('idle');
   useEffect(()=>{
-    // CRITICAL: Don't persist during auth loading window. Otherwise the
-    // persist effect would stamp localStorage with a fresh `lastModified`
-    // before we know if the user is signed in, and the subsequent cloud
-    // sync would wrongly conclude that local is newer than cloud.
     if(authLoading)return;
-    // While signed in, also wait for initial cloud sync to complete.
-    if(fbUser&&!cloudReady)return;
+    const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq};
+    // Always save to localStorage (offline support)
+    saveData(payload);
+    // Cloud writes only after initial sync resolved
+    if(!fbUser||!cloudReady)return;
     const timer=setTimeout(()=>{
-      const stamp=new Date().toISOString();
-      const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,lastModified:stamp};
-      saveData(payload); // Always save to localStorage
-      if(!skipCloudSync.current){
-        lastWrittenStamp.current=stamp; // remember fingerprint for echo detection
-        saveToCloud(payload); // saveToCloud checks _cloudReady internally
-      }
+      const snaps=snapshots.current;
+      pushEntity('products',products,snaps.products);
+      pushEntity('sales',sales,snaps.sales);
+      pushEntity('customers',customers,snaps.customers);
+      pushEntity('suppliers',suppliers,snaps.suppliers);
+      pushEntity('purchase_orders',purchaseOrders,snaps.purchase_orders);
+      pushEntity('quotes',quotes,snaps.quotes);
+      pushEntity('returns',returns,snaps.returns);
+      pushEntity('deliveries',deliveries,snaps.deliveries);
+      pushEntity('promotions',promotions,snaps.promotions);
+      pushEntity('activity_log',activityLog,snaps.activity_log);
+      pushSettings({currency,exchange_rate:exchangeRate,ncf_seq:ncfSeq},settingsSnapshot);
       setSaveState('saved');
-      if(fbUser&&!skipCloudSync.current)setSyncStatus('synced');
+      setSyncStatus('synced');
       setTimeout(()=>setSaveState('idle'),1500);
     },300);
     return()=>clearTimeout(timer);
@@ -4455,7 +4561,7 @@ function App(){
             <div className="auth-user">
               <div className={`sync-dot ${syncStatus}`} title={syncStatus==='synced'?'Synced to cloud':syncStatus==='syncing'?'Syncing…':syncStatus==='error'?'Sync error':'Offline'}/>
               <span className="auth-user-email">{fbUser.email}</span>
-              <button className="auth-btn-sm" onClick={()=>{sbClient.auth.signOut();_currentUid=null;_cloudReady=false;setSyncStatus('offline');}}>Sign out</button>
+              <button className="auth-btn-sm" onClick={()=>{sbClient.auth.signOut();_currentUid=null;setSyncStatus('offline');}}>Sign out</button>
             </div>
           ):(
             <button className="auth-btn" onClick={()=>setLoginOpen(true)}>☁️ Sign In to Sync</button>
