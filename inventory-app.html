@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SmartLiving Home — Inventory & Sales</title>
 <link rel="manifest" href="manifest.json">
@@ -4699,12 +4702,18 @@ function WrappedApp(){return <ToastProvider><App/></ToastProvider>;}
 ReactDOM.createRoot(document.getElementById('root')).render(<WrappedApp/>);
 </script>
 <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('SW registered:', reg.scope))
-      .catch(err => console.log('SW registration failed:', err));
-  });
+// CRITICAL: do NOT register a service worker. The previous SW caused
+// stale-state bugs where old HTML/JS was served from cache indefinitely
+// and only "clearing site data" would unstick the app. On boot, also
+// proactively unregister any previously installed SW and clear its
+// caches so devices that ran older versions self-heal on next reload.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(r=>r.unregister().catch(()=>{}));
+  }).catch(()=>{});
+  if(window.caches&&caches.keys){
+    caches.keys().then(keys=>keys.forEach(k=>caches.delete(k).catch(()=>{}))).catch(()=>{});
+  }
 }
 </script>
 </body>
