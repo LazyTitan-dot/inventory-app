@@ -1105,7 +1105,25 @@ const useDark=()=>useContext(DarkCtx);
 const SUPABASE_URL='https://twkpgzxkzdtgkkuahntr.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3a3BnenhremR0Z2trdWFobnRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MzY2ODksImV4cCI6MjA5MTAxMjY4OX0.MSy2VKVrIXNGWGSd_GcuSyIY0tBNlKaPV1L2rhRO3wk';
 
-const sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+// Cloud-only mode: auth lives in sessionStorage so closing the tab logs
+// the user out, and the next page load forces a fresh login → fresh
+// fetch from cloud. No localStorage persistence anywhere in the app.
+const sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
+  auth:{
+    storage:window.sessionStorage,
+    persistSession:true,
+    autoRefreshToken:true,
+    detectSessionInUrl:false,
+  },
+});
+// Best-effort: wipe any leftover persisted auth from earlier versions
+// of the app that wrote to localStorage.
+try{
+  for(let i=localStorage.length-1;i>=0;i--){
+    const k=localStorage.key(i);
+    if(k&&(k.startsWith('sb-')||k==='electrastock_v4'))localStorage.removeItem(k);
+  }
+}catch(e){}
 
 /* ─── Constants ─────────────────────────────────────────────── */
 const CATS=[
@@ -1188,8 +1206,7 @@ function ToastProvider({children}){
   );
 }
 
-/* ─── localStorage + Supabase Persistence (per-entity) ─────── */
-const STORAGE_KEY='electrastock_v4';
+/* ─── Supabase Per-Entity Persistence (cloud-only) ─────────── */
 let _currentUid=null; // set by App auth listener
 
 // Cloud entity tables. Each row is (user_id, id, data jsonb, updated_at).
@@ -1207,18 +1224,10 @@ const ENTITY_TABLES=[
   {table:'activity_log',   stateKey:'activityLog'},
 ];
 
-function loadData(){
-  try{
-    const raw=localStorage.getItem(STORAGE_KEY);
-    if(raw){const d=JSON.parse(raw);if(d&&d.products)return d;}
-  }catch(e){console.warn('Failed to load saved data',e);}
-  return null;
-}
-function saveData(data){
-  // Always save to localStorage (works offline)
-  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
-  catch(e){console.warn('Failed to save to localStorage',e);}
-}
+// Cloud-only mode: no localStorage reads/writes. State starts empty
+// and is populated by the per-entity cloud fetch on sign-in.
+function loadData(){return null;}
+function saveData(_data){/* no-op: cloud is the only source of truth */}
 
 // Diff a current array against a snapshot Map<id, JSON>; returns {ups, dels}
 // and mutates the snapshot to match the current state.
@@ -4064,21 +4073,21 @@ function App(){
     return()=>{window.removeEventListener('beforeprint',before);window.removeEventListener('afterprint',after);};
   },[dark]);
 
-  // Load persisted data or fall back to seeds
-  const savedData=useRef(loadData());
-  const [products,setProducts]=useState(()=>savedData.current?.products||PRODS);
-  const [sales,setSales]=useState(()=>savedData.current?.sales||[...INIT_SALES,...HIST_SALES]);
-  const [customers,setCustomers]=useState(()=>savedData.current?.customers||INIT_CUSTS);
-  const [suppliers,setSuppliers]=useState(()=>savedData.current?.suppliers||INIT_SUPPLIERS);
-  const [purchaseOrders,setPurchaseOrders]=useState(()=>savedData.current?.purchaseOrders||INIT_POS);
-  const [activityLog,setActivityLog,logActivity]=useActivityLog(savedData.current?.activityLog||[]);
-  const [quotes,setQuotes]=useState(()=>savedData.current?.quotes||[]);
-  const [returns,setReturns]=useState(()=>savedData.current?.returns||[]);
-  const [deliveries,setDeliveries]=useState(()=>savedData.current?.deliveries||[]);
-  const [promotions,setPromotions]=useState(()=>savedData.current?.promotions||[]);
-  const [currency,setCurrency]=useState(()=>savedData.current?.currency||'USD');
-  const [exchangeRate,setExchangeRate]=useState(()=>savedData.current?.exchangeRate||58.5);
-  const [ncfSeq,setNcfSeq]=useState(()=>savedData.current?.ncfSeq||0);
+  // Cloud-only mode: state always starts empty. The cloud-sync effect
+  // populates it after the user signs in. No localStorage anywhere.
+  const [products,setProducts]=useState([]);
+  const [sales,setSales]=useState([]);
+  const [customers,setCustomers]=useState([]);
+  const [suppliers,setSuppliers]=useState([]);
+  const [purchaseOrders,setPurchaseOrders]=useState([]);
+  const [activityLog,setActivityLog,logActivity]=useActivityLog([]);
+  const [quotes,setQuotes]=useState([]);
+  const [returns,setReturns]=useState([]);
+  const [deliveries,setDeliveries]=useState([]);
+  const [promotions,setPromotions]=useState([]);
+  const [currency,setCurrency]=useState('USD');
+  const [exchangeRate,setExchangeRate]=useState(58.5);
+  const [ncfSeq,setNcfSeq]=useState(0);
 
   // ─── Supabase Auth + Per-Entity Cloud Sync ───
   const [fbUser,setFbUser]=useState(null);
@@ -4149,43 +4158,16 @@ function App(){
         if(cancelled)return;
         const settingsRes=results.pop();
 
-        // Detect brand-new user: zero rows across every entity AND no settings.
-        // Only in that case do we keep the local seed (PRODS / INIT_SALES /
-        // INIT_CUSTS) so the persist effect can push it to cloud once.
-        // For any existing user, cloud is the absolute source of truth — even
-        // for entities that happen to be empty (so deletes propagate across
-        // devices and stale localStorage doesn't survive forever).
-        const totalCloudRows=ENTITY_TABLES.reduce((n,_,i)=>n+((results[i].data||[]).length),0);
-        const isBrandNewUser=totalCloudRows===0&&!(settingsRes&&settingsRes.data);
-
-        ENTITY_TABLES.forEach(({table,stateKey},i)=>{
+        // Cloud is the absolute source of truth.
+        ENTITY_TABLES.forEach(({table},i)=>{
           const {data,error}=results[i];
           const snap=snapshots.current[table];snap.clear();
-          if(error){
-            console.warn('fetch',table,error.message);
-            // Seed snapshot from current state so we don't blindly push.
-            for(const r of (stateRef.current[stateKey]||[])){
-              if(r&&r.id)snap.set(String(r.id),JSON.stringify(r));
-            }
-            return;
-          }
+          if(error){console.warn('fetch',table,error.message);SETTERS[table]([]);return;}
           const cloudRows=(data||[]).map(r=>r.data).filter(Boolean);
-          if(cloudRows.length===0){
-            if(isBrandNewUser){
-              // Brand-new user: keep local seed in state, leave snapshot
-              // empty so the persist effect uploads it once.
-            }else{
-              // Existing user with no rows in this entity → clear local
-              // state. Without this, stale localStorage survives forever.
-              SETTERS[table]([]);
-            }
-          }else{
-            // Apply cloud → state, snapshot from cloud
-            for(const r of cloudRows)snap.set(String(r.id),JSON.stringify(r));
-            const k=sortKey[table];
-            const ordered=k?cloudRows.slice().sort((a,b)=>String(b[k]||'').localeCompare(String(a[k]||''))):cloudRows;
-            SETTERS[table](ordered);
-          }
+          for(const r of cloudRows)snap.set(String(r.id),JSON.stringify(r));
+          const k=sortKey[table];
+          const ordered=k?cloudRows.slice().sort((a,b)=>String(b[k]||'').localeCompare(String(a[k]||''))):cloudRows;
+          SETTERS[table](ordered);
         });
 
         if(settingsRes&&!settingsRes.error&&settingsRes.data){
@@ -4501,6 +4483,23 @@ function App(){
     {id:'purchase_orders',icon:'📋',label:'Purchase Orders',count:purchaseOrders.length},
     {id:'activity',icon:'📜',label:'Activity Log',count:activityLog.length>0?activityLog.length:null},
   ];
+
+  // Cloud-only: gate the app behind login. No local state ever shown
+  // before the user authenticates and the cloud fetch resolves.
+  if(authLoading){
+    return(<DarkCtx.Provider value={dark}><div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}><div style={{color:'rgba(255,255,255,.6)'}}>Connecting…</div></div></DarkCtx.Provider>);
+  }
+  if(!fbUser){
+    return(<DarkCtx.Provider value={dark}><div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',flexDirection:'column',gap:16}}>
+      <div style={{fontSize:24,fontWeight:600}}>SmartLiving Home</div>
+      <div style={{color:'rgba(255,255,255,.6)',fontSize:13}}>Sign in to access your inventory</div>
+      <button className="auth-btn" onClick={()=>setLoginOpen(true)}>☁️ Sign In</button>
+      {loginOpen&&<LoginModal onClose={()=>setLoginOpen(false)} onSuccess={()=>setLoginOpen(false)}/>}
+    </div></DarkCtx.Provider>);
+  }
+  if(!cloudReady){
+    return(<DarkCtx.Provider value={dark}><div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}><div style={{color:'rgba(255,255,255,.6)'}}>Loading your data…</div></div></DarkCtx.Provider>);
+  }
 
   return(
     <DarkCtx.Provider value={dark}>
