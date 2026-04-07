@@ -4048,9 +4048,16 @@ function App(){
   useEffect(()=>{
     const {data:{subscription}}=sbClient.auth.onAuthStateChange((_event,session)=>{
       const u=session?.user||null;
-      setFbUser(u);_currentUid=u?.id||null;setAuthLoading(false);
+      // CRITICAL: Only update fbUser if the user identity actually changed.
+      // onAuthStateChange fires periodically (TOKEN_REFRESHED, USER_UPDATED,
+      // INITIAL_SESSION) with a fresh session object reference. If we naively
+      // setFbUser every time, the cloud sync effect re-runs, sets
+      // cloudReady=false, cancels any pending persist timers, and re-fetches
+      // cloud — wiping out any unsaved local changes the user just made.
+      setFbUser(prev=>(prev?.id===u?.id&&prev)?prev:u);
+      _currentUid=u?.id||null;setAuthLoading(false);
       if(!u){_cloudReady=false;setCloudReady(false);setSyncStatus('offline');}
-      else setSyncStatus('syncing');
+      else setSyncStatus(s=>s==='offline'?'syncing':s);
     });
     return()=>subscription.unsubscribe();
   },[]);
