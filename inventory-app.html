@@ -4041,6 +4041,7 @@ function App(){
   const [authLoading,setAuthLoading]=useState(true);
   const [syncStatus,setSyncStatus]=useState('offline'); // synced|syncing|offline|error
   const [loginOpen,setLoginOpen]=useState(false);
+  const [cloudReady,setCloudReady]=useState(false); // gates persist effect after initial cloud fetch
   const skipCloudSync=useRef(false);
 
   // Auth observer
@@ -4048,7 +4049,7 @@ function App(){
     const {data:{subscription}}=sbClient.auth.onAuthStateChange((_event,session)=>{
       const u=session?.user||null;
       setFbUser(u);_currentUid=u?.id||null;setAuthLoading(false);
-      if(!u){_cloudReady=false;setSyncStatus('offline');}
+      if(!u){_cloudReady=false;setCloudReady(false);setSyncStatus('offline');}
       else setSyncStatus('syncing');
     });
     return()=>subscription.unsubscribe();
@@ -4057,13 +4058,13 @@ function App(){
   // Supabase Realtime listener — sync cloud → local
   useEffect(()=>{
     if(!fbUser)return;
-    // Block cloud writes until initial sync is resolved
-    _cloudReady=false;
+    // Block cloud writes AND persist effect until initial sync is resolved
+    _cloudReady=false;setCloudReady(false);
     // Initial fetch
     (async()=>{
       try{
         const {data,error}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
-        if(error){console.warn('Supabase read error:',error.message);setSyncStatus('error');_cloudReady=true;return;}
+        if(error){console.warn('Supabase read error:',error.message);setSyncStatus('error');_cloudReady=true;setCloudReady(true);return;}
         if(data&&data.data&&data.data.products){
           // Cloud data exists — apply it if newer than local
           const d=data.data;
@@ -4081,13 +4082,13 @@ function App(){
             try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
             setTimeout(()=>{
               skipCloudSync.current=false;
-              _cloudReady=true;
+              _cloudReady=true;setCloudReady(true);
               // Catch-up: push current state to cloud (covers any changes made during sync window)
               const cur=loadData();if(cur)saveToCloud(cur);
             },600);
           }else{
             // Local is newer than cloud — push local data to cloud immediately
-            _cloudReady=true;
+            _cloudReady=true;setCloudReady(true);
             const cur=loadData();if(cur)saveToCloud(cur);
           }
           setSyncStatus('synced');
@@ -4097,15 +4098,15 @@ function App(){
           if(local){
             if(!local.lastModified)local.lastModified=new Date().toISOString();
             try{localStorage.setItem(STORAGE_KEY,JSON.stringify(local));}catch(e){}
-            _cloudReady=true;
+            _cloudReady=true;setCloudReady(true);
             const {error:e}=await sbClient.from('stores').upsert({user_id:fbUser.id,data:local},{onConflict:'user_id'});
             if(e)console.warn('Migration write failed:',e.message);
           }else{
-            _cloudReady=true;
+            _cloudReady=true;setCloudReady(true);
           }
           setSyncStatus('synced');
         }
-      }catch(err){console.warn('Initial sync failed:',err);_cloudReady=true;}
+      }catch(err){console.warn('Initial sync failed:',err);_cloudReady=true;setCloudReady(true);}
     })();
 
     // Realtime subscription for cross-device sync
@@ -4137,9 +4138,15 @@ function App(){
     return()=>{sbClient.removeChannel(channel);};
   },[fbUser]);
 
-  // Persist data on every change (localStorage always, Supabase when safe)
+  // Persist data on every change (localStorage + Supabase, after initial sync)
   const [saveState,setSaveState]=useState('idle');
   useEffect(()=>{
+    // CRITICAL: While signed in, do NOT persist anything until initial cloud
+    // sync completes. Otherwise the persist effect would stamp localStorage
+    // with a fresh `lastModified` and the cloud→local comparison would
+    // wrongly conclude that local is newer than cloud, causing seed data to
+    // overwrite real cloud data.
+    if(fbUser&&!cloudReady)return;
     const timer=setTimeout(()=>{
       const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,lastModified:new Date().toISOString()};
       saveData(payload); // Always save to localStorage
@@ -4151,7 +4158,7 @@ function App(){
       setTimeout(()=>setSaveState('idle'),1500);
     },300);
     return()=>clearTimeout(timer);
-  },[products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq]);
+  },[products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,fbUser,cloudReady]);
 
   const [view,setView]=useState('dashboard');
   const [cat,setCat]=useState('all');
