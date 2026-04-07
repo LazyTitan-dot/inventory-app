@@ -4066,31 +4066,25 @@ function App(){
         const {data,error}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
         if(error){console.warn('Supabase read error:',error.message);setSyncStatus('error');_cloudReady=true;setCloudReady(true);return;}
         if(data&&data.data&&data.data.products){
-          // Cloud data exists — apply it if newer than local
+          // Cloud data exists — always apply on initial sign-in.
+          // We deliberately do NOT compare timestamps here: the persist
+          // effect stamps `lastModified` on every save (even no-op saves
+          // triggered by re-renders), so a device sitting idle accumulates
+          // fresh timestamps and would wrongly appear "newer" than cloud.
+          // Trust the cloud as the source of truth on login.
           const d=data.data;
-          const cloudTime=d.lastModified||'';
-          const localRaw=localStorage.getItem(STORAGE_KEY);
-          const localTime=localRaw?JSON.parse(localRaw).lastModified||'':'';
-          if(cloudTime>=localTime){
-            skipCloudSync.current=true;
-            setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
-            setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
-            setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
-            setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
-            if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
-            if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
-            try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
-            setTimeout(()=>{
-              skipCloudSync.current=false;
-              _cloudReady=true;setCloudReady(true);
-              // Catch-up: push current state to cloud (covers any changes made during sync window)
-              const cur=loadData();if(cur)saveToCloud(cur);
-            },600);
-          }else{
-            // Local is newer than cloud — push local data to cloud immediately
+          skipCloudSync.current=true;
+          setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
+          setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
+          setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
+          setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
+          if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
+          if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
+          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
+          setTimeout(()=>{
+            skipCloudSync.current=false;
             _cloudReady=true;setCloudReady(true);
-            const cur=loadData();if(cur)saveToCloud(cur);
-          }
+          },600);
           setSyncStatus('synced');
         }else{
           // No cloud data — push local data to cloud
