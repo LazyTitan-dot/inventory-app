@@ -4149,6 +4149,15 @@ function App(){
         if(cancelled)return;
         const settingsRes=results.pop();
 
+        // Detect brand-new user: zero rows across every entity AND no settings.
+        // Only in that case do we keep the local seed (PRODS / INIT_SALES /
+        // INIT_CUSTS) so the persist effect can push it to cloud once.
+        // For any existing user, cloud is the absolute source of truth — even
+        // for entities that happen to be empty (so deletes propagate across
+        // devices and stale localStorage doesn't survive forever).
+        const totalCloudRows=ENTITY_TABLES.reduce((n,_,i)=>n+((results[i].data||[]).length),0);
+        const isBrandNewUser=totalCloudRows===0&&!(settingsRes&&settingsRes.data);
+
         ENTITY_TABLES.forEach(({table,stateKey},i)=>{
           const {data,error}=results[i];
           const snap=snapshots.current[table];snap.clear();
@@ -4162,11 +4171,13 @@ function App(){
           }
           const cloudRows=(data||[]).map(r=>r.data).filter(Boolean);
           if(cloudRows.length===0){
-            // Empty cloud for this entity → keep current state, seed snapshot
-            // from it so the seed data doesn't get auto-pushed. Only real
-            // user edits will diff and sync.
-            for(const r of (stateRef.current[stateKey]||[])){
-              if(r&&r.id)snap.set(String(r.id),JSON.stringify(r));
+            if(isBrandNewUser){
+              // Brand-new user: keep local seed in state, leave snapshot
+              // empty so the persist effect uploads it once.
+            }else{
+              // Existing user with no rows in this entity → clear local
+              // state. Without this, stale localStorage survives forever.
+              SETTERS[table]([]);
             }
           }else{
             // Apply cloud → state, snapshot from cloud
