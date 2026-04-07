@@ -4043,6 +4043,7 @@ function App(){
   const [loginOpen,setLoginOpen]=useState(false);
   const [cloudReady,setCloudReady]=useState(false); // gates persist effect after initial cloud fetch
   const skipCloudSync=useRef(false);
+  const lastWrittenStamp=useRef(''); // fingerprint of our last cloud write, for echo detection
 
   // Auth observer
   useEffect(()=>{
@@ -4081,6 +4082,7 @@ function App(){
           // Trust the cloud as the source of truth on login.
           const d=data.data;
           skipCloudSync.current=true;
+          lastWrittenStamp.current=d.lastModified||''; // seed fingerprint
           setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
           setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
           setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
@@ -4118,23 +4120,31 @@ function App(){
       const {data:row,error:fetchErr}=await sbClient.from('stores').select('data').eq('user_id',fbUser.id).maybeSingle();
       if(fetchErr||!row||!row.data)return;
       const d=row.data;
-      if(d&&d.products){
-        const cloudTime=d.lastModified||'';
-        const localRaw=localStorage.getItem(STORAGE_KEY);
-        const localTime=localRaw?JSON.parse(localRaw).lastModified||'':'';
-        if(cloudTime>localTime){
-          skipCloudSync.current=true;
-          setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
-          setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
-          setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
-          setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
-          if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
-          if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
-          try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
-          setTimeout(()=>{skipCloudSync.current=false;},500);
-        }
+      if(!d||!d.products)return;
+      // Fingerprint check: if the cloud row's lastModified exactly matches
+      // the lastModified WE most recently wrote, this realtime event is the
+      // echo of our own write. Skip it. This is more reliable than comparing
+      // cloudTime > localTime, which breaks under races where local state
+      // has diverged from localStorage between persist runs.
+      if(d.lastModified&&d.lastModified===lastWrittenStamp.current){
         setSyncStatus('synced');
+        return;
       }
+      // Otherwise, this is a remote write from another device — apply it.
+      skipCloudSync.current=true;
+      setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);
+      setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);
+      setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);
+      setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);
+      if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);
+      if(d.ncfSeq!==undefined)setNcfSeq(d.ncfSeq);
+      try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}
+      // Treat this remote-applied state as our last-written stamp so the
+      // subsequent persist-effect re-save (which uses a fresh timestamp)
+      // doesn't trigger a needless re-fetch loop.
+      lastWrittenStamp.current=d.lastModified||'';
+      setTimeout(()=>{skipCloudSync.current=false;},500);
+      setSyncStatus('synced');
     }).subscribe();
     return()=>{sbClient.removeChannel(channel);};
   },[fbUser]);
@@ -4150,9 +4160,11 @@ function App(){
     // While signed in, also wait for initial cloud sync to complete.
     if(fbUser&&!cloudReady)return;
     const timer=setTimeout(()=>{
-      const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,lastModified:new Date().toISOString()};
+      const stamp=new Date().toISOString();
+      const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,lastModified:stamp};
       saveData(payload); // Always save to localStorage
       if(!skipCloudSync.current){
+        lastWrittenStamp.current=stamp; // remember fingerprint for echo detection
         saveToCloud(payload); // saveToCloud checks _cloudReady internally
       }
       setSaveState('saved');
