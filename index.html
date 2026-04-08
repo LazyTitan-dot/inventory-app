@@ -22,7 +22,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:#F5F4F0;color:#1C1B18;height:100vh;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:#F5F4F0;color:#1C1B18;height:100vh;overflow:hidden;--txt:#111;--txt-soft:#666}
+body.dark{--txt:#EAE8E1;--txt-soft:#A8A59C}
 .app{display:flex;height:100vh}
 .sidebar{width:248px;background:#13120E;color:#fff;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
 .sb-head{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.07)}
@@ -1662,7 +1663,7 @@ function ProductCard({product,onEdit,onDelete,onToggle,onAdjustStock}){
                 <span className="v-name">{v.name}</span>
                 <span style={{fontSize:11,fontFamily:"'IBM Plex Mono',monospace",color:'#999',letterSpacing:'.3px'}}>{v.barcode||'—'}</span>
                 <span style={{fontSize:12,fontFamily:"'IBM Plex Mono',monospace",color:'#888'}}>{v.cost>0?fmtShort(v.cost):'—'}</span>
-                <span style={{fontSize:12.5,fontWeight:600,fontFamily:"'IBM Plex Mono',monospace",color:'#111'}}>{v.price>0?fmtShort(v.price):'—'}</span>
+                <span style={{fontSize:12.5,fontWeight:600,fontFamily:"'IBM Plex Mono',monospace",color:'var(--txt)'}}>{v.price>0?fmtShort(v.price):'—'}</span>
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
                   <span className={`qty-num ${qc}`}>{v.quantity}</span>
                   {onAdjustStock&&<div className="qs-wrap">
@@ -2258,7 +2259,7 @@ function SaleDetailModal({sale,onClose,onVoid,onCreateReturn}){
           <div className="sd-section" style={{background:'#F8F7F4',borderRadius:10,padding:'14px 16px',marginBottom:16,display:'flex',gap:14,alignItems:'flex-start'}}>
             <div style={{width:40,height:40,borderRadius:'50%',background:'#E8E6E0',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#777',fontSize:15,flexShrink:0}}>{initials(c.name||'?')}</div>
             <div style={{flex:1,minWidth:0}}>
-              <div className="sd-name" style={{fontSize:15,fontWeight:600,color:'#111',marginBottom:6}}>{c.name||'Walk-in Customer'}</div>
+              <div className="sd-name" style={{fontSize:15,fontWeight:600,color:'var(--txt)',marginBottom:6}}>{c.name||'Walk-in Customer'}</div>
               <div className="sd-detail" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 16px',fontSize:12,color:'#666'}}>
                 {c.phone&&<div><span style={{color:'#B0ADA4'}}>Phone </span>{c.phone}</div>}
                 {c.email&&<div><span style={{color:'#B0ADA4'}}>Email </span>{c.email}</div>}
@@ -2277,7 +2278,7 @@ function SaleDetailModal({sale,onClose,onVoid,onCreateReturn}){
             {sale.items.map((item,i)=>(
               <div key={item.key} className="sd-divider" style={{display:'grid',gridTemplateColumns:'1fr auto auto auto',gap:'0 12px',padding:'10px 14px',borderTop:i>0?'1px solid #F8F7F4':'none',alignItems:'center'}}>
                 <div>
-                  <div className="sd-product" style={{fontSize:13,fontWeight:500,color:'#111'}}>{item.productBrand} {item.productModel}</div>
+                  <div className="sd-product" style={{fontSize:13,fontWeight:500,color:'var(--txt)'}}>{item.productBrand} {item.productModel}</div>
                   <div style={{fontSize:11,color:'#B0ADA4',marginTop:1}}>{item.variantName}</div>
                   <div style={{display:'flex',gap:6,marginTop:3,alignItems:'center'}}>
                     {item.category&&<span className={`cat-pill ${catClass(item.category)}`} style={{fontSize:9,padding:'1px 6px'}}>{CAT_LABELS[item.category]||item.category}</span>}
@@ -2285,8 +2286,8 @@ function SaleDetailModal({sale,onClose,onVoid,onCreateReturn}){
                   </div>
                 </div>
                 <span className="sd-unit" style={{fontSize:12,fontFamily:"'IBM Plex Mono',monospace",color:'#555',textAlign:'right'}}>{fmtM(item.price)}</span>
-                <span className="sd-qty" style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'#111',textAlign:'center'}}>×{item.quantity}</span>
-                <span className="sd-total-val" style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'#111',textAlign:'right'}}>{fmtM(item.price*item.quantity)}</span>
+                <span className="sd-qty" style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'var(--txt)',textAlign:'center'}}>×{item.quantity}</span>
+                <span className="sd-total-val" style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'var(--txt)',textAlign:'right'}}>{fmtM(item.price*item.quantity)}</span>
               </div>
             ))}
           </div>
@@ -2295,7 +2296,7 @@ function SaleDetailModal({sale,onClose,onVoid,onCreateReturn}){
             <div className="sd-sub" style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#777',marginBottom:6}}><span>Subtotal</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(sale.subtotal)}</span></div>
             {sale.discountAmount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#059669',marginBottom:6}}><span>Discount{sale.discountType==='percent'?` (${sale.discountValue}%)`:''}</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>−{fmtM(sale.discountAmount)}</span></div>}
             {sale.taxAmount>0&&<div className="sd-sub" style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#777',marginBottom:6}}><span>ITBIS ({sale.taxRate}%)</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(sale.taxAmount)}</span></div>}
-            <div className="sd-grand" style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:700,color:'#111',paddingTop:8,borderTop:'1px solid #E8E6E0'}}><span>Total</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(sale.total)}</span></div>
+            <div className="sd-grand" style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:700,color:'var(--txt)',paddingTop:8,borderTop:'1px solid #E8E6E0'}}><span>Total</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(sale.total)}</span></div>
             <div style={{marginTop:10}}><span className="sd-pay" style={{background:'#fff',border:'1px solid #E8E6E0',borderRadius:20,fontSize:12,padding:'3px 11px',color:'#555'}}>{payLabel[sale.paymentMethod]}</span></div>
           </div>
           {sale.ncfNumber&&<div style={{background:'#EFF6FF',borderRadius:8,padding:'10px 14px',marginTop:12,display:'flex',alignItems:'center',gap:10}}><span className="ncf-badge">NCF: {sale.ncfNumber}</span><span style={{fontSize:11,color:'#1E40AF'}}>{NCF_TYPES[sale.ncfType]||''}</span></div>}
@@ -2549,7 +2550,7 @@ function SuppliersPage({suppliers,setSuppliers,purchaseOrders,toast,logActivity}
               <div className="dp-sec-lbl">Purchase Orders ({supplierPOs(detail.id).length})</div>
               {supplierPOs(detail.id).length?supplierPOs(detail.id).map(po=>(
                 <div key={po.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid #F8F7F4',fontSize:13}}>
-                  <div><div style={{fontWeight:600,color:'#111',fontFamily:"'IBM Plex Mono',monospace"}}>{poNum(po.poNumber)}</div><div style={{fontSize:11,color:'#B0ADA4',marginTop:1}}>{fmtDate(po.date)}</div></div>
+                  <div><div style={{fontWeight:600,color:'var(--txt)',fontFamily:"'IBM Plex Mono',monospace"}}>{poNum(po.poNumber)}</div><div style={{fontSize:11,color:'#B0ADA4',marginTop:1}}>{fmtDate(po.date)}</div></div>
                   <div style={{textAlign:'right'}}><div style={{fontWeight:700,fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(po.grandTotal)}</div><span className={`status-badge sb-${po.status}`}>{po.status.charAt(0).toUpperCase()+po.status.slice(1)}</span></div>
                 </div>
               )):<div style={{fontSize:13,color:'#B0ADA4'}}>No purchase orders yet</div>}
@@ -2684,7 +2685,7 @@ function CustomersPage({customers,setCustomers,sales,onNewSale,toast,logActivity
               {custSales(detail.id).length?custSales(detail.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>(
                 <div key={s.id} style={{padding:'9px 0',borderBottom:'1px solid #F8F7F4'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:3}}>
-                    <span style={{fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",fontSize:13,color:'#111'}}>{saleNum(s.saleNumber)}</span>
+                    <span style={{fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",fontSize:13,color:'var(--txt)'}}>{saleNum(s.saleNumber)}</span>
                     <span style={{fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",fontSize:13}}>{fmtM(s.total)}</span>
                   </div>
                   <div style={{fontSize:11,color:'#B0ADA4'}}>{fmtDate(s.date)} · {({cash:'💵 Cash',card:'💳 Card',transfer:'🏦 Transfer'})[s.paymentMethod]}</div>
@@ -2746,7 +2747,7 @@ function NewPOOverlay({products,suppliers,purchaseOrders,onClose,onSave}){
   return(
     <div className="po-overlay">
       <div className="po-hdr-bar">
-        <div style={{fontSize:16,fontWeight:700,color:'#111',fontFamily:"'IBM Plex Mono',monospace",flexShrink:0}}>New PO {poNum(purchaseOrders.length+1)}</div>
+        <div style={{fontSize:16,fontWeight:700,color:'var(--txt)',fontFamily:"'IBM Plex Mono',monospace",flexShrink:0}}>New PO {poNum(purchaseOrders.length+1)}</div>
         <div style={{fontSize:13,color:'#B0ADA4',flex:1}}>Supplier: <b style={{color:'#555',fontWeight:500}}>{selSupplier?.name||'—'}</b></div>
         <button className="btn-cancel-sale" onClick={onClose}>✕ Cancel</button>
         <button className="btn-complete" onClick={save}>Save as Draft</button>
@@ -2771,7 +2772,7 @@ function NewPOOverlay({products,suppliers,purchaseOrders,onClose,onSave}){
                     <span style={{fontSize:12,color:'#B0ADA4'}}>%</span>
                   </div>
                 </div>
-                {selSupplier&&<div className="fg span2"><div style={{background:'#F8F7F4',borderRadius:8,padding:'10px 12px',fontSize:12,color:'#666'}}><strong style={{color:'#111'}}>{selSupplier.contact||selSupplier.name}</strong>{selSupplier.phone&&` · ${selSupplier.phone}`}{selSupplier.paymentTerms&&<span style={{marginLeft:8,background:'#EEF2FF',color:'#4338CA',borderRadius:4,padding:'1px 6px',fontSize:11}}>{selSupplier.paymentTerms}</span>}</div></div>}
+                {selSupplier&&<div className="fg span2"><div style={{background:'#F8F7F4',borderRadius:8,padding:'10px 12px',fontSize:12,color:'#666'}}><strong style={{color:'var(--txt)'}}>{selSupplier.contact||selSupplier.name}</strong>{selSupplier.phone&&` · ${selSupplier.phone}`}{selSupplier.paymentTerms&&<span style={{marginLeft:8,background:'#EEF2FF',color:'#4338CA',borderRadius:4,padding:'1px 6px',fontSize:11}}>{selSupplier.paymentTerms}</span>}</div></div>}
               </div>
             </div>
           </div>
@@ -2799,7 +2800,7 @@ function NewPOOverlay({products,suppliers,purchaseOrders,onClose,onSave}){
                     </select>
                     <input type="number" min="1" className="mono-in" value={item.qty} onChange={e=>updateItem(item.id,'qty',e.target.value)}/>
                     <div className="input-prefix"><span style={{left:8,fontSize:12}}>$</span><input type="number" min="0" step="0.01" className="mono-in" style={{paddingLeft:20}} value={item.unitCost} onChange={e=>updateItem(item.id,'unitCost',e.target.value)}/></div>
-                    <div style={{textAlign:'right',fontFamily:"'IBM Plex Mono',monospace",fontSize:12.5,fontWeight:600,color:'#111',alignSelf:'center'}}>{item.total>0?fmtM(item.total):'—'}</div>
+                    <div style={{textAlign:'right',fontFamily:"'IBM Plex Mono',monospace",fontSize:12.5,fontWeight:600,color:'var(--txt)',alignSelf:'center'}}>{item.total>0?fmtM(item.total):'—'}</div>
                     <button className="btn-rm" onClick={()=>rmItem(item.id)}>×</button>
                   </div>
                 );
@@ -2874,17 +2875,17 @@ function PODetailModal({po,onClose,onUpdateStatus,onReceive}){
             </div>
             {po.items.map((item,i)=>(
               <div key={item.id} style={{display:'grid',gridTemplateColumns:'1fr auto auto auto',gap:'0 12px',padding:'10px 14px',borderTop:i>0?'1px solid #F8F7F4':'none',alignItems:'center'}}>
-                <div><div style={{fontSize:13,fontWeight:500,color:'#111'}}>{item.productBrand} {item.productModel}</div><div style={{fontSize:11,color:'#B0ADA4',marginTop:1}}>{item.variantName}</div></div>
+                <div><div style={{fontSize:13,fontWeight:500,color:'var(--txt)'}}>{item.productBrand} {item.productModel}</div><div style={{fontSize:11,color:'#B0ADA4',marginTop:1}}>{item.variantName}</div></div>
                 <span style={{fontSize:12,fontFamily:"'IBM Plex Mono',monospace",color:'#555',textAlign:'right'}}>{fmtM(item.unitCost)}</span>
-                <span style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'#111',textAlign:'center'}}>×{item.qty}</span>
-                <span style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'#111',textAlign:'right'}}>{fmtM(item.total)}</span>
+                <span style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'var(--txt)',textAlign:'center'}}>×{item.qty}</span>
+                <span style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'var(--txt)',textAlign:'right'}}>{fmtM(item.total)}</span>
               </div>
             ))}
           </div>
           <div style={{background:'#F8F7F4',borderRadius:10,padding:'14px 16px',marginBottom:16}}>
             <div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#777',marginBottom:6}}><span>Subtotal</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(po.subtotal)}</span></div>
             {po.taxAmount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#777',marginBottom:6}}><span>ITBIS ({po.taxRate}%)</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(po.taxAmount)}</span></div>}
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:700,color:'#111',paddingTop:8,borderTop:'1px solid #E8E6E0'}}><span>Grand Total</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(po.grandTotal)}</span></div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:700,color:'var(--txt)',paddingTop:8,borderTop:'1px solid #E8E6E0'}}><span>Grand Total</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(po.grandTotal)}</span></div>
           </div>
           {po.notes&&<div style={{background:'#FFFBF0',border:'1px solid #FDE68A',borderRadius:8,padding:'10px 14px',fontSize:13,color:'#92400E'}}>📌 {po.notes}</div>}
         </div>
@@ -3285,9 +3286,9 @@ function TopProductsTable({topProducts}){
             const mg=p.revenue>0?Math.round(p.profit/p.revenue*100):0;
             return(
               <tr key={i} style={{cursor:'help'}} onMouseEnter={e=>showTip(e,p)}>
-                <td><div style={{fontWeight:500,color:'#111',fontSize:12.5}}>{p.label}</div></td>
+                <td><div style={{fontWeight:500,color:'var(--txt)',fontSize:12.5}}>{p.label}</div></td>
                 <td>{p.units}</td>
-                <td style={{color:'#111'}}>{fmtShort(p.revenue)}</td>
+                <td style={{color:'var(--txt)'}}>{fmtShort(p.revenue)}</td>
                 <td style={{color:'#059669'}}>{fmtShort(p.profit)}</td>
                 <td><span style={{background:mg>=30?'#ECFDF5':mg>=15?'#FFFBEB':'#FEF2F2',color:mg>=30?'#047857':mg>=15?'#D97706':'#DC2626',borderRadius:4,padding:'1px 6px',fontSize:11,fontWeight:600}}>{mg}%</span></td>
               </tr>
@@ -3612,7 +3613,7 @@ function DashboardPage({sales,products,purchaseOrders,customers,onNewSale}){
                 {lowStockItems.length?lowStockItems.map((p,i)=>(
                   <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid #F8F7F4',fontSize:12}}>
                     <div>
-                      <div style={{fontWeight:500,color:'#111'}}>{p.brand} {p.model}</div>
+                      <div style={{fontWeight:500,color:'var(--txt)'}}>{p.brand} {p.model}</div>
                       <div style={{fontSize:10.5,color:'#B0ADA4',marginTop:1}}>{CAT_LABELS[p.category]}</div>
                     </div>
                     <span style={{fontFamily:"'IBM Plex Mono',monospace",color:'#DC2626',fontWeight:700,flexShrink:0}}>{totalQty(p)} left</span>
@@ -3691,7 +3692,7 @@ function QuotesPage({quotes,onNewQuote,onConvert,onUpdateQuote,toast}){
           <div className="sd-section" style={{background:'#F8F7F4',borderRadius:10,padding:'14px 16px',marginBottom:16,display:'flex',gap:14,alignItems:'flex-start'}}>
             <div style={{width:40,height:40,borderRadius:'50%',background:'#E8E6E0',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#777',fontSize:15,flexShrink:0}}>{initials(c.name||'?')}</div>
             <div style={{flex:1,minWidth:0}}>
-              <div className="sd-name" style={{fontSize:15,fontWeight:600,color:'#111',marginBottom:6}}>{c.name||'Customer'}</div>
+              <div className="sd-name" style={{fontSize:15,fontWeight:600,color:'var(--txt)',marginBottom:6}}>{c.name||'Customer'}</div>
               <div className="sd-detail" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 16px',fontSize:12,color:'#666'}}>
                 {c.phone&&<div><span style={{color:'#B0ADA4'}}>Phone </span>{c.phone}</div>}
                 {c.email&&<div><span style={{color:'#B0ADA4'}}>Email </span>{c.email}</div>}
@@ -3710,7 +3711,7 @@ function QuotesPage({quotes,onNewQuote,onConvert,onUpdateQuote,toast}){
             {detail.items.map((item,i)=>(
               <div key={item.key} className="sd-divider" style={{display:'grid',gridTemplateColumns:'1fr auto auto auto',gap:'0 12px',padding:'10px 14px',borderTop:i>0?'1px solid #F8F7F4':'none',alignItems:'center'}}>
                 <div>
-                  <div className="sd-product" style={{fontSize:13,fontWeight:500,color:'#111'}}>{item.productBrand} {item.productModel}</div>
+                  <div className="sd-product" style={{fontSize:13,fontWeight:500,color:'var(--txt)'}}>{item.productBrand} {item.productModel}</div>
                   <div style={{fontSize:11,color:'#B0ADA4',marginTop:1}}>{item.variantName}</div>
                   <div style={{display:'flex',gap:6,marginTop:3,alignItems:'center'}}>
                     {item.category&&<span className={`cat-pill ${catClass(item.category)}`} style={{fontSize:9,padding:'1px 6px'}}>{CAT_LABELS[item.category]||item.category}</span>}
@@ -3718,8 +3719,8 @@ function QuotesPage({quotes,onNewQuote,onConvert,onUpdateQuote,toast}){
                   </div>
                 </div>
                 <span className="sd-unit" style={{fontSize:12,fontFamily:"'IBM Plex Mono',monospace",color:'#555',textAlign:'right'}}>{fmtM(item.price)}</span>
-                <span className="sd-qty" style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'#111',textAlign:'center'}}>×{item.quantity}</span>
-                <span className="sd-total-val" style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'#111',textAlign:'right'}}>{fmtM(item.price*item.quantity)}</span>
+                <span className="sd-qty" style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'var(--txt)',textAlign:'center'}}>×{item.quantity}</span>
+                <span className="sd-total-val" style={{fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",color:'var(--txt)',textAlign:'right'}}>{fmtM(item.price*item.quantity)}</span>
               </div>
             ))}
           </div>
@@ -3728,7 +3729,7 @@ function QuotesPage({quotes,onNewQuote,onConvert,onUpdateQuote,toast}){
             <div className="sd-sub" style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#777',marginBottom:6}}><span>Subtotal</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(detail.subtotal)}</span></div>
             {detail.discountAmount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#059669',marginBottom:6}}><span>Discount{detail.discountType==='percent'?` (${detail.discountValue}%)`:''}</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>−{fmtM(detail.discountAmount)}</span></div>}
             {detail.taxAmount>0&&<div className="sd-sub" style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#777',marginBottom:6}}><span>ITBIS ({detail.taxRate}%)</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(detail.taxAmount)}</span></div>}
-            <div className="sd-grand" style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:700,color:'#111',paddingTop:8,borderTop:'1px solid #E8E6E0'}}><span>Total</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(detail.total)}</span></div>
+            <div className="sd-grand" style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:700,color:'var(--txt)',paddingTop:8,borderTop:'1px solid #E8E6E0'}}><span>Total</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{fmtM(detail.total)}</span></div>
           </div>
           {detail.notes&&<div style={{background:'#FFFBF0',border:'1px solid #FDE68A',borderRadius:8,padding:'10px 14px',fontSize:13,color:'#92400E',marginTop:12}}>📌 {detail.notes}</div>}
         </div>
