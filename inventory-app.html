@@ -4152,6 +4152,16 @@ function App(){
       promotions:setPromotions,activity_log:setActivityLog,
     };
     const sortKey={sales:'date',activity_log:'time'};
+    // Default seed for brand-new users (zero rows across every entity).
+    // The persist effect uploads this once; thereafter cloud is canonical.
+    const SEEDS={
+      products:PRODS,
+      sales:[...INIT_SALES,...HIST_SALES],
+      customers:INIT_CUSTS,
+      suppliers:INIT_SUPPLIERS,
+      purchase_orders:INIT_POS,
+      quotes:[],returns:[],deliveries:[],promotions:[],activity_log:[],
+    };
 
     (async()=>{
       try{
@@ -4161,12 +4171,22 @@ function App(){
         if(cancelled)return;
         const settingsRes=results.pop();
 
-        // Cloud is the absolute source of truth.
+        // Brand-new user detection: zero rows across every entity AND no
+        // settings row. In that case hydrate state with the default seed
+        // and leave snapshots empty so the persist effect uploads it once.
+        const totalCloudRows=ENTITY_TABLES.reduce((n,_,i)=>n+((results[i].data||[]).length),0);
+        const isBrandNewUser=totalCloudRows===0&&!(settingsRes&&settingsRes.data);
+
         ENTITY_TABLES.forEach(({table},i)=>{
           const {data,error}=results[i];
           const snap=snapshots.current[table];snap.clear();
           if(error){console.warn('fetch',table,error.message);SETTERS[table]([]);return;}
           const cloudRows=(data||[]).map(r=>r.data).filter(Boolean);
+          if(cloudRows.length===0&&isBrandNewUser){
+            // Seed local state; snapshot stays empty so persist uploads it.
+            SETTERS[table](SEEDS[table]||[]);
+            return;
+          }
           for(const r of cloudRows)snap.set(String(r.id),JSON.stringify(r));
           const k=sortKey[table];
           const ordered=k?cloudRows.slice().sort((a,b)=>String(b[k]||'').localeCompare(String(a[k]||''))):cloudRows;
