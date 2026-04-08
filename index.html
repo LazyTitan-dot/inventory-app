@@ -4513,18 +4513,20 @@ function App(){
   // Cloud-only: gate the app behind login. No local state ever shown
   // before the user authenticates and the cloud fetch resolves.
   if(authLoading){
-    return(<DarkCtx.Provider value={dark}><div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}><div style={{color:'rgba(255,255,255,.6)'}}>Connecting…</div></div></DarkCtx.Provider>);
+    return(<DarkCtx.Provider value={dark}><div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}><div style={{color:'var(--txt-soft)'}}>Connecting…</div></div></DarkCtx.Provider>);
   }
   if(!fbUser){
-    return(<DarkCtx.Provider value={dark}><div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',flexDirection:'column',gap:16}}>
-      <div style={{fontSize:24,fontWeight:600}}>SmartLiving Home</div>
-      <div style={{color:'rgba(255,255,255,.6)',fontSize:13}}>Sign in to access your inventory</div>
-      <button className="auth-btn" onClick={()=>setLoginOpen(true)}>☁️ Sign In</button>
+    return(<DarkCtx.Provider value={dark}><div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}>
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,padding:'40px 48px',borderRadius:14,background:dark?'#1C1B18':'#FFFFFF',border:dark?'1px solid #2A2925':'1px solid #E8E6E0',boxShadow:dark?'0 10px 30px rgba(0,0,0,.4)':'0 10px 30px rgba(28,27,24,.08)',minWidth:300}}>
+        <div style={{fontSize:24,fontWeight:700,color:'var(--txt)'}}>SmartLiving Home</div>
+        <div style={{color:'var(--txt-soft)',fontSize:13,marginBottom:6}}>Sign in to access your inventory</div>
+        <button onClick={()=>setLoginOpen(true)} style={{background:'#4F46E5',color:'#fff',border:'none',padding:'10px 20px',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit',width:'100%',transition:'background .15s'}} onMouseEnter={e=>e.currentTarget.style.background='#4338CA'} onMouseLeave={e=>e.currentTarget.style.background='#4F46E5'}>☁️ Sign In</button>
+      </div>
       {loginOpen&&<LoginModal onClose={()=>setLoginOpen(false)} onSuccess={()=>setLoginOpen(false)}/>}
     </div></DarkCtx.Provider>);
   }
   if(!cloudReady){
-    return(<DarkCtx.Provider value={dark}><div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}><div style={{color:'rgba(255,255,255,.6)'}}>Loading your data…</div></div></DarkCtx.Provider>);
+    return(<DarkCtx.Provider value={dark}><div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}><div style={{color:'var(--txt-soft)'}}>Loading your data…</div></div></DarkCtx.Provider>);
   }
 
   return(
