@@ -15,6 +15,11 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://twkpgzxkzdtgkkuahntr.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -1335,47 +1340,52 @@ const ENTITY_TABLES=[
 function loadData(){return null;}
 function saveData(_data){/* no-op: cloud is the only source of truth */}
 
-// Diff a current array against a snapshot Map<id, JSON>; returns {ups, dels}
-// and mutates the snapshot to match the current state.
+// Diff a current array against a snapshot Map<id, JSON>; returns
+// {ups:[[id,json]…], dels:[id…]}. Pure — the snapshot is only advanced by
+// pushEntity AFTER the server confirms each write, so a failed push is
+// retried on the next persist cycle instead of being silently dropped.
 function diffEntity(current,snapshot){
   const cur=new Map();
   for(const row of current){
     if(!row||!row.id)continue;
-    cur.set(row.id,JSON.stringify(row));
+    cur.set(String(row.id),JSON.stringify(row));
   }
   const ups=[],dels=[];
   for(const [id,json] of cur){
-    if(snapshot.get(id)!==json){
-      ups.push(JSON.parse(json));
-      snapshot.set(id,json);
-    }
+    if(snapshot.get(id)!==json)ups.push([id,json]);
   }
-  for(const id of [...snapshot.keys()]){
-    if(!cur.has(id)){dels.push(id);snapshot.delete(id);}
+  for(const id of snapshot.keys()){
+    if(!cur.has(id))dels.push(id);
   }
   return {ups,dels};
 }
+// Returns true only when every pending write for this table reached the cloud.
 async function pushEntity(table,current,snapshot){
-  if(!_currentUid)return; // gate on signed-in so writes never happen while logged out
+  if(!_currentUid)return true; // gate on signed-in so writes never happen while logged out
   const {ups,dels}=diffEntity(current,snapshot);
+  let ok=true;
   if(ups.length){
     // user_id is kept as a nullable "last writer" audit column.
-    const rows=ups.map(r=>({id:String(r.id),data:r,user_id:_currentUid}));
+    const rows=ups.map(([id,json])=>({id,data:JSON.parse(json),user_id:_currentUid}));
     const {error}=await sbClient.from(table).upsert(rows,{onConflict:'id'});
-    if(error)console.warn('upsert',table,error.message);
+    if(error){ok=false;console.warn('upsert',table,error.message);}
+    else for(const [id,json] of ups)snapshot.set(id,json);
   }
   if(dels.length){
     const {error}=await sbClient.from(table).delete().in('id',dels);
-    if(error)console.warn('delete',table,error.message);
+    if(error){ok=false;console.warn('delete',table,error.message);}
+    else for(const id of dels)snapshot.delete(id);
   }
+  return ok;
 }
 async function pushSettings(settings,snapshotRef){
-  if(!_currentUid)return;
+  if(!_currentUid)return true;
   const json=JSON.stringify(settings);
-  if(snapshotRef.current===json)return;
-  snapshotRef.current=json;
+  if(snapshotRef.current===json)return true;
   const {error}=await sbClient.from('settings').upsert({id:'global',...settings},{onConflict:'id'});
-  if(error)console.warn('upsert settings',error.message);
+  if(error){console.warn('upsert settings',error.message);return false;}
+  snapshotRef.current=json;
+  return true;
 }
 
 /* ─── Activity Log ──────────────────────────────────────────── */
@@ -1529,6 +1539,13 @@ function KbdShortcutsModal({onClose}){
 }
 
 /* ─── Activity Log Page ─────────────────────────────────────── */
+// Log entries historically store "<strong>…</strong>" markup around names.
+// Render those markers as real <strong> elements and EVERYTHING else as
+// plain text. Entries contain user-entered values (brands, customer names)
+// and sync to every account, so injecting them as raw HTML would be a
+// stored-XSS vector (e.g. a product brand named "<img src=x onerror=…>").
+const renderLogText=text=>String(text??'').split(/<\/?strong>/g)
+  .map((seg,i)=>i%2===1?<strong key={i}>{seg}</strong>:seg);
 function ActivityLogPage({log}){
   const [filter,setFilter]=useState('all');
   const filtered=useMemo(()=>filter==='all'?log:log.filter(l=>l.type===filter),[log,filter]);
@@ -1568,7 +1585,7 @@ function ActivityLogPage({log}){
           <div key={l.id} className="log-item" style={{animationDelay:`${Math.min(i*.03,.3)}s`}}>
             <div className={`log-icon-wrap ${iconCls[l.type]||'log-icon-product'}`}>{icons[l.type]||'📝'}</div>
             <div className="log-info">
-              <div className="log-text" dangerouslySetInnerHTML={{__html:l.text}}/>
+              <div className="log-text">{renderLogText(l.text)}</div>
               {l.detail&&<div style={{fontSize:11.5,color:'#B0ADA4',marginTop:2}}>{l.detail}</div>}
               <div className="log-time">{fmtLogTime(l.time)}</div>
             </div>
@@ -1601,8 +1618,12 @@ function ExportMenu({onExportCSV,onExportJSON,label}){
 }
 
 /* ─── Helpers ────────────────────────────────────────────────── */
-const uid=()=>Math.random().toString(36).slice(2,10);
+const uid=()=>window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 const saleNum=n=>'#'+String(n).padStart(4,'0');
+// Next document number = max existing + 1. Never reuses a number after a
+// void/delete/import, unlike "length+1" which collides as soon as the list
+// shrinks (and the cloud dataset is shared across terminals).
+const nextNum=(rows,field)=>rows.reduce((m,r)=>Math.max(m,Number(r&&r[field])||0),0)+1;
 const fmtDate=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 const fmtTime=d=>new Date(d).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 const totalQty=p=>p.variants.reduce((s,v)=>s+Number(v.quantity||0),0);
@@ -1697,7 +1718,7 @@ function Lightbox({images,startIndex,onClose}){
 }
 
 /* ─── Inventory Components ───────────────────────────────────── */
-function ProductCard({product,onEdit,onDelete,onToggle,onAdjustStock}){
+function ProductCard({product,expanded,onEdit,onDelete,onToggle,onAdjustStock}){
   const [lb,setLb]=useState(null);
   const total=totalQty(product);
   const low=isLowStock(product);
@@ -1713,7 +1734,7 @@ function ProductCard({product,onEdit,onDelete,onToggle,onAdjustStock}){
     <>
     <div className="p-card">
       <div className="p-header" onClick={()=>onToggle(product.id)}>
-        <button className="btn-expand" onClick={e=>e.stopPropagation()}><i className={`chev${product.expanded?' open':''}`}>›</i></button>
+        <button className="btn-expand" onClick={e=>e.stopPropagation()}><i className={`chev${expanded?' open':''}`}>›</i></button>
         {/* Product image thumbnail */}
         <div className="p-img-wrap" title={imgs.length?'Click to view images':'No image'} onClick={e=>{e.stopPropagation();imgs.length&&setLb(0);}} style={{cursor:imgs.length?'zoom-in':'default'}}>
           {imgs.length?<img src={imgs[0]} alt=""/>: <span style={{fontSize:18}}>📦</span>}
@@ -1740,7 +1761,7 @@ function ProductCard({product,onEdit,onDelete,onToggle,onAdjustStock}){
           <button className="btn-ic del" onClick={e=>{e.stopPropagation();onDelete(product);}}>✕</button>
         </div>
       </div>
-      {product.expanded&&(
+      {expanded&&(
         <div className="variants-body">
           {imgs.length>0&&(
             <div style={{padding:'12px 0 4px',borderBottom:'1px solid #F5F3EF',marginBottom:4}}>
@@ -2085,7 +2106,7 @@ function NewSaleOverlay({products,customers,sales,onClose,onComplete,promotions,
     if(!cust.name.trim())return alert('Customer name is required.');
     if(!cart.length)return alert('Add at least one product to the sale.');
     const ncfNumber=ncfType?fmtNCF(ncfType,ncfSeq+1):null;
-    const s={id:uid(),saleNumber:sales.length+1,date:new Date().toISOString(),customer:{...cust,id:cust.id||uid()},items:cart,subtotal,discountType:discType,discountValue:Number(discVal)||0,discountAmount:discAmt,taxRate:taxOn?taxRate:0,taxAmount:taxAmt,total,paymentMethod:payment,status:'completed',notes:saleNote,ncfType:ncfType||null,ncfNumber,couponCode:couponApplied?.code||null};
+    const s={id:uid(),saleNumber:nextNum(sales,'saleNumber'),date:new Date().toISOString(),customer:{...cust,id:cust.id||uid()},items:cart,subtotal,discountType:discType,discountValue:Number(discVal)||0,discountAmount:discAmt,taxRate:taxOn?taxRate:0,taxAmount:taxAmt,total,paymentMethod:payment,status:'completed',notes:saleNote,ncfType:ncfType||null,ncfNumber,couponCode:couponApplied?.code||null};
     onComplete(s);if(ncfType&&onNcfUsed)onNcfUsed();
     if(schedDelivery&&onScheduleDelivery){onScheduleDelivery({id:uid(),saleId:s.id,saleNumber:s.saleNumber,customer:s.customer,address:[cust.line1,cust.line2,cust.sector,cust.city].filter(Boolean).join(', ')||'No address',date:deliveryDate,timeSlot:deliverySlot,driver:deliveryDriver,status:'scheduled',notes:saleNote,deliveredAt:null});}
     setReceipt(s);
@@ -2100,7 +2121,7 @@ function NewSaleOverlay({products,customers,sales,onClose,onComplete,promotions,
   return(
     <div className="sale-overlay">
       <div className="sale-hdr">
-        <div className="sale-hdr-num">New Sale {saleNum(sales.length+1)}</div>
+        <div className="sale-hdr-num">New Sale {saleNum(nextNum(sales,'saleNumber'))}</div>
         <div className="sale-hdr-sep">|</div>
         <div className="sale-hdr-cust">Customer: <b>{cust.name.trim()||'—'}</b></div>
         <button className="btn-cancel-sale" onClick={onClose}>✕ Cancel</button>
@@ -2844,13 +2865,13 @@ function NewPOOverlay({products,suppliers,purchaseOrders,onClose,onSave}){
     if(!supplierId)return alert('Select a supplier.');
     if(!items.some(i=>i.productId))return alert('Add at least one product.');
     const validItems=items.filter(i=>i.productId);
-    const po={id:uid(),poNumber:purchaseOrders.length+1,date:new Date().toISOString(),supplierId,supplierName:selSupplier?.name||'',items:validItems.map(i=>({...i,qty:Number(i.qty)||1,unitCost:Number(i.unitCost)||0,total:Number(i.qty||1)*Number(i.unitCost||0)})),subtotal,taxRate:taxOn?taxRate:0,taxAmount:taxAmt,grandTotal,expectedDelivery,status:'draft',notes};
+    const po={id:uid(),poNumber:nextNum(purchaseOrders,'poNumber'),date:new Date().toISOString(),supplierId,supplierName:selSupplier?.name||'',items:validItems.map(i=>({...i,qty:Number(i.qty)||1,unitCost:Number(i.unitCost)||0,total:Number(i.qty||1)*Number(i.unitCost||0)})),subtotal,taxRate:taxOn?taxRate:0,taxAmount:taxAmt,grandTotal,expectedDelivery,status:'draft',notes};
     onSave(po);onClose();
   };
   return(
     <div className="po-overlay">
       <div className="po-hdr-bar">
-        <div style={{fontSize:16,fontWeight:700,color:'var(--txt)',fontFamily:"'IBM Plex Mono',monospace",flexShrink:0}}>New PO {poNum(purchaseOrders.length+1)}</div>
+        <div style={{fontSize:16,fontWeight:700,color:'var(--txt)',fontFamily:"'IBM Plex Mono',monospace",flexShrink:0}}>New PO {poNum(nextNum(purchaseOrders,'poNumber'))}</div>
         <div style={{fontSize:13,color:'#B0ADA4',flex:1}}>Supplier: <b style={{color:'#555',fontWeight:500}}>{selSupplier?.name||'—'}</b></div>
         <button className="btn-cancel-sale" onClick={onClose}>✕ Cancel</button>
         <button className="btn-complete" onClick={save}>Save as Draft</button>
@@ -3869,12 +3890,12 @@ function NewQuoteOverlay({products,customers,quotes,onClose,onSave}){
   const save=()=>{
     if(!cust.name.trim())return alert('Customer name required');if(!cart.length)return alert('Add items');
     const now=new Date();const exp=new Date(now);exp.setDate(exp.getDate()+expDays);
-    onSave({id:uid(),quoteNumber:quotes.length+1,date:now.toISOString(),expiresAt:exp.toISOString(),customer:{...cust,id:cust.id||uid()},items:cart,subtotal,discountType:discType,discountValue:Number(discVal)||0,discountAmount:discAmt,taxRate:taxOn?taxRate:0,taxAmount:taxAmt,total,status:'draft',convertedSaleId:null,notes:qNote});
+    onSave({id:uid(),quoteNumber:nextNum(quotes,'quoteNumber'),date:now.toISOString(),expiresAt:exp.toISOString(),customer:{...cust,id:cust.id||uid()},items:cart,subtotal,discountType:discType,discountValue:Number(discVal)||0,discountAmount:discAmt,taxRate:taxOn?taxRate:0,taxAmount:taxAmt,total,status:'draft',convertedSaleId:null,notes:qNote});
     onClose();
   };
   return(<div className="sale-overlay">
     <div className="sale-hdr">
-      <div className="sale-hdr-num">New Quote {quoteNum(quotes.length+1)}</div><div className="sale-hdr-sep">|</div>
+      <div className="sale-hdr-num">New Quote {quoteNum(nextNum(quotes,'quoteNumber'))}</div><div className="sale-hdr-sep">|</div>
       <div className="sale-hdr-cust">Customer: <b>{cust.name.trim()||'—'}</b></div>
       <button className="btn-cancel-sale" onClick={onClose}>✕ Cancel</button>
       <button className="btn-complete" onClick={save} disabled={!cust.name.trim()||!cart.length}>💾 Save Quote{total>0?` · ${fmtM(total)}`:''}</button>
@@ -3938,7 +3959,7 @@ function ReturnsPage({returns,sales,onCreateReturn,toast}){
     const items=Object.entries(selItems).filter(([,qty])=>qty>0).map(([key,qty])=>{const item=createFrom.items.find(i=>i.key===key);return{...item,returnQty:qty,reason};});
     if(!items.length)return alert('Select items to return');
     const refundAmount=items.reduce((s,i)=>s+(i.price*i.returnQty),0);
-    onCreateReturn({id:uid(),returnNumber:returns.length+1,date:new Date().toISOString(),originalSaleId:createFrom.id,originalSaleNumber:createFrom.saleNumber,customer:createFrom.customer,items,type:retType,refundAmount,status:'completed',notes:retNote});
+    onCreateReturn({id:uid(),returnNumber:nextNum(returns,'returnNumber'),date:new Date().toISOString(),originalSaleId:createFrom.id,originalSaleNumber:createFrom.saleNumber,customer:createFrom.customer,items,type:retType,refundAmount,status:'completed',notes:retNote});
     setCreateFrom(null);
   };
   return(<>
@@ -4214,6 +4235,8 @@ function App(){
     activity_log:new Map(),
   });
   const settingsSnapshot=useRef('');
+  const dirtyRef=useRef(false);        // true while changes haven't been confirmed by the cloud
+  const syncErrToastRef=useRef(false); // show one failure toast per offline streak, not one per retry
 
   // Latest state ref so cloud-sync effect (which only re-runs on fbUser
   // change) can read the freshest values when seeding snapshots from local.
@@ -4236,6 +4259,8 @@ function App(){
         setSyncStatus('offline');
         Object.values(snapshots.current).forEach(m=>m.clear());
         settingsSnapshot.current='';
+        dirtyRef.current=false;
+        syncErrToastRef.current=false;
       }
     });
     return()=>subscription.unsubscribe();
@@ -4371,39 +4396,68 @@ function App(){
     };
   },[fbUser]);
 
-  // Persist effect — saves to localStorage always, and pushes per-entity
-  // diffs to cloud once the initial fetch has resolved.
+  // Persist effect — debounces, then pushes per-entity diffs to cloud once
+  // the initial fetch has resolved. Snapshots only advance after the server
+  // confirms a write (see pushEntity), so the status dot tells the truth:
+  // a failed push flips it to red, schedules an automatic retry, and keeps
+  // dirtyRef set so the beforeunload guard can warn about unsynced data.
+  const toast=useToast();
   const [saveState,setSaveState]=useState('idle');
+  const [retryTick,setRetryTick]=useState(0);
   useEffect(()=>{
     if(authLoading)return;
-    const payload={products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq};
-    // Always save to localStorage (offline support)
-    saveData(payload);
     // Cloud writes only after initial sync resolved
     if(!fbUser||!cloudReady)return;
-    const timer=setTimeout(()=>{
+    dirtyRef.current=true;
+    let retryTimer;
+    const timer=setTimeout(async()=>{
+      setSaveState('saving');
+      setSyncStatus('syncing');
       const snaps=snapshots.current;
-      pushEntity('products',products,snaps.products);
-      pushEntity('sales',sales,snaps.sales);
-      pushEntity('customers',customers,snaps.customers);
-      pushEntity('suppliers',suppliers,snaps.suppliers);
-      pushEntity('purchase_orders',purchaseOrders,snaps.purchase_orders);
-      pushEntity('quotes',quotes,snaps.quotes);
-      pushEntity('returns',returns,snaps.returns);
-      pushEntity('deliveries',deliveries,snaps.deliveries);
-      pushEntity('promotions',promotions,snaps.promotions);
-      pushEntity('activity_log',activityLog,snaps.activity_log);
-      pushSettings({currency,exchange_rate:exchangeRate,ncf_seq:ncfSeq},settingsSnapshot);
-      setSaveState('saved');
-      setSyncStatus('synced');
-      setTimeout(()=>setSaveState('idle'),1500);
+      const results=await Promise.all([
+        pushEntity('products',products,snaps.products),
+        pushEntity('sales',sales,snaps.sales),
+        pushEntity('customers',customers,snaps.customers),
+        pushEntity('suppliers',suppliers,snaps.suppliers),
+        pushEntity('purchase_orders',purchaseOrders,snaps.purchase_orders),
+        pushEntity('quotes',quotes,snaps.quotes),
+        pushEntity('returns',returns,snaps.returns),
+        pushEntity('deliveries',deliveries,snaps.deliveries),
+        pushEntity('promotions',promotions,snaps.promotions),
+        pushEntity('activity_log',activityLog,snaps.activity_log),
+        pushSettings({currency,exchange_rate:exchangeRate,ncf_seq:ncfSeq},settingsSnapshot),
+      ]);
+      if(results.every(Boolean)){
+        dirtyRef.current=false;
+        syncErrToastRef.current=false;
+        setSaveState('saved');
+        setSyncStatus('synced');
+        setTimeout(()=>setSaveState('idle'),1500);
+      }else{
+        setSaveState('idle');
+        setSyncStatus('error');
+        if(!syncErrToastRef.current){
+          syncErrToastRef.current=true;
+          toast('Could not reach the cloud — your latest changes are not saved yet. Retrying automatically…',{type:'error',title:'Sync Failed',duration:7000});
+        }
+        retryTimer=setTimeout(()=>setRetryTick(t=>t+1),4000);
+      }
     },300);
-    return()=>clearTimeout(timer);
-  },[products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,fbUser,cloudReady,authLoading]);
+    return()=>{clearTimeout(timer);clearTimeout(retryTimer);};
+  },[products,sales,customers,suppliers,purchaseOrders,activityLog,quotes,returns,deliveries,promotions,currency,exchangeRate,ncfSeq,fbUser,cloudReady,authLoading,retryTick]);
+
+  // Cloud-only mode means unsynced changes are lost when the tab closes —
+  // warn while a push is pending, failed, or still being retried.
+  useEffect(()=>{
+    const handler=e=>{if(dirtyRef.current){e.preventDefault();e.returnValue='';}};
+    window.addEventListener('beforeunload',handler);
+    return()=>window.removeEventListener('beforeunload',handler);
+  },[]);
 
   const [view,setView]=useState('dashboard');
   const [cat,setCat]=useState('all');
   const [q,setQ]=useState('');
+  const [expandedIds,setExpandedIds]=useState(()=>new Set());
   const [modal,setModal]=useState(null);
   const [delTarget,setDelTarget]=useState(null);
   const [newSaleOpen,setNewSaleOpen]=useState(false);
@@ -4413,7 +4467,6 @@ function App(){
   const [kbdOpen,setKbdOpen]=useState(false);
   const [mobOpen,setMobOpen]=useState(false);
   const [fabOpen,setFabOpen]=useState(false);
-  const toast=useToast();
 
   // Global barcode scanner (when NOT in sale overlay)
   const gBcBuf=useRef('');const gBcTimer=useRef(null);
@@ -4428,7 +4481,7 @@ function App(){
           const matchedVariant=prod.variants.find(v=>v.barcode===code);
           setView('inventory');setCat('all');setQ(code);
           // Auto-expand the matching product
-          setProducts(ps=>ps.map(p=>p.id===prod.id?{...p,expanded:true}:p));
+          setExpandedIds(s=>{const n=new Set(s);n.add(prod.id);return n;});
           const detail=matchedVariant?` — ${matchedVariant.name}`:'';
           toast(`Found: ${prod.brand} ${prod.model}${detail}`,{type:'success',title:'Barcode Scanned'});
         } else {
@@ -4486,7 +4539,10 @@ function App(){
     return{total,units,low,skus,invCost,retail};
   },[products]);
 
-  const toggleExpand=id=>setProducts(ps=>ps.map(p=>p.id===id?{...p,expanded:!p.expanded}:p));
+  // Expand/collapse is pure UI state. It used to live on the product row
+  // itself, which meant every chevron click was written to the cloud and
+  // realtime-broadcast — flipping cards open on every other terminal.
+  const toggleExpand=id=>setExpandedIds(s=>{const n=new Set(s);if(n.has(id))n.delete(id);else n.add(id);return n;});
 
   const saveProd=p=>{
     const isNew=!products.find(x=>x.id===p.id);
@@ -4551,7 +4607,7 @@ function App(){
   const saveQuote=q=>{setQuotes(qs=>[...qs,q]);logActivity('sale',`Created quote <strong>${quoteNum(q.quoteNumber)}</strong>`,`${q.customer.name} · ${fmtM(q.total)}`);toast(`Quote ${quoteNum(q.quoteNumber)} created`,{type:'success',title:'Quote Created'});};
   const updateQuote=(id,updates)=>setQuotes(qs=>qs.map(q=>q.id===id?{...q,...updates}:q));
   const convertQuote=q=>{
-    const s={id:uid(),saleNumber:sales.length+1,date:new Date().toISOString(),customer:q.customer,items:q.items,subtotal:q.subtotal,discountType:q.discountType,discountValue:q.discountValue,discountAmount:q.discountAmount,taxRate:q.taxRate,taxAmount:q.taxAmount,total:q.total,paymentMethod:'cash',status:'completed',notes:`Converted from ${quoteNum(q.quoteNumber)}`};
+    const s={id:uid(),saleNumber:nextNum(sales,'saleNumber'),date:new Date().toISOString(),customer:q.customer,items:q.items,subtotal:q.subtotal,discountType:q.discountType,discountValue:q.discountValue,discountAmount:q.discountAmount,taxRate:q.taxRate,taxAmount:q.taxAmount,total:q.total,paymentMethod:'cash',status:'completed',notes:`Converted from ${quoteNum(q.quoteNumber)}`};
     completeSale(s);updateQuote(q.id,{status:'converted',convertedSaleId:s.id});toast(`Quote converted to Sale ${saleNum(s.saleNumber)}`,{type:'success'});
   };
 
@@ -4589,7 +4645,11 @@ function App(){
     reader.onload=ev=>{
       try{
         const d=JSON.parse(ev.target.result);
-        if(d.products){setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);if(d.ncfSeq)setNcfSeq(d.ncfSeq);
+        if(d.products){
+        // Shared dataset: restoring a backup replaces the data every signed-in
+        // account sees, not just this device's.
+        if(!window.confirm('Restore this backup? It will REPLACE the current data for ALL users of this store.'))return;
+        setProducts(d.products);setSales(d.sales||[]);setCustomers(d.customers||[]);setSuppliers(d.suppliers||[]);setPurchaseOrders(d.purchaseOrders||[]);setActivityLog(d.activityLog||[]);setQuotes(d.quotes||[]);setReturns(d.returns||[]);setDeliveries(d.deliveries||[]);setPromotions(d.promotions||[]);if(d.currency)setCurrency(d.currency);if(d.exchangeRate)setExchangeRate(d.exchangeRate);if(d.ncfSeq)setNcfSeq(d.ncfSeq);
         logActivity('product','Imported data backup');toast('Data restored from backup',{type:'success',title:'Import Complete'});}
         else toast('Invalid backup file',{type:'error',title:'Import Failed'});
       }catch(err){toast('Failed to parse backup file',{type:'error',title:'Import Failed'});}
@@ -4746,7 +4806,7 @@ function App(){
               {!filtered.length?(
                 <div className="empty"><div className="empty-icon">{q?'🔍':'📦'}</div><div className="empty-h">{q?'No results found':'No products yet'}</div><div className="empty-p">{q?`No products match "${q}"`:'Add your first product above'}</div></div>
               ):filtered.map(p=>(
-                <ProductCard key={p.id} product={p} onEdit={p=>setModal({mode:'edit',product:p})} onDelete={setDelTarget} onToggle={toggleExpand} onAdjustStock={adjustStock}/>
+                <ProductCard key={p.id} product={p} expanded={expandedIds.has(p.id)} onEdit={p=>setModal({mode:'edit',product:p})} onDelete={setDelTarget} onToggle={toggleExpand} onAdjustStock={adjustStock}/>
               ))}
             </div>
           </>
