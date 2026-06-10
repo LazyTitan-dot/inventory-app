@@ -751,7 +751,7 @@ body.dark .img-thumb{border-color:#2A2820;background:#22201A}
 
 /* ── Toast Notifications ── */
 .toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none}
-.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:12px;background:rgba(28,27,24,.88);color:#fff;font-size:13px;box-shadow:0 12px 40px rgba(0,0,0,.3),0 4px 12px rgba(0,0,0,.12),0 0 0 1px rgba(255,255,255,.06);animation:toastIn .4s cubic-bezier(.21,1.02,.73,1) forwards;min-width:280px;max-width:420px;backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%)}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:16px;background:rgba(24,24,26,.66);color:#fff;font-size:13px;box-shadow:0 12px 40px rgba(0,0,0,.3),0 4px 12px rgba(0,0,0,.12),0 0 0 1px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.1);animation:toastIn .4s cubic-bezier(.21,1.02,.73,1) forwards;min-width:280px;max-width:420px;backdrop-filter:blur(24px) saturate(170%);-webkit-backdrop-filter:blur(24px) saturate(170%)}
 .toast.exit{animation:toastOut .3s cubic-bezier(.55,.06,.68,.19) forwards}
 .toast-icon{font-size:16px;flex-shrink:0;width:22px;text-align:center}
 .toast-body{flex:1;line-height:1.4}
@@ -761,10 +761,12 @@ body.dark .img-thumb{border-color:#2A2820;background:#22201A}
 .toast-action:hover{background:rgba(255,255,255,.2)}
 .toast-close{background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;padding:2px;font-size:16px;line-height:1;flex-shrink:0;transition:color .12s}
 .toast-close:hover{color:rgba(255,255,255,.7)}
-.toast.success{border-left:3px solid #10B981;background:rgba(16,185,129,.12);backdrop-filter:blur(16px) saturate(180%)}
-.toast.error{border-left:3px solid #EF4444;background:rgba(239,68,68,.1);backdrop-filter:blur(16px) saturate(180%)}
-.toast.warning{border-left:3px solid #F59E0B;background:rgba(245,158,11,.1);backdrop-filter:blur(16px) saturate(180%)}
-.toast.info{border-left:3px solid #3B82F6;background:rgba(59,130,246,.1);backdrop-filter:blur(16px) saturate(180%)}
+/* Tint layered over the dark glass base so white text stays readable
+   over any page background (the old flat 10% tints washed out in light mode) */
+.toast.success{border-left:3px solid #10B981;background:linear-gradient(rgba(16,185,129,.18),rgba(16,185,129,.18)),rgba(24,24,26,.66)}
+.toast.error{border-left:3px solid #EF4444;background:linear-gradient(rgba(239,68,68,.16),rgba(239,68,68,.16)),rgba(24,24,26,.66)}
+.toast.warning{border-left:3px solid #F59E0B;background:linear-gradient(rgba(245,158,11,.16),rgba(245,158,11,.16)),rgba(24,24,26,.66)}
+.toast.info{border-left:3px solid #3B82F6;background:linear-gradient(rgba(59,130,246,.16),rgba(59,130,246,.16)),rgba(24,24,26,.66)}
 @keyframes toastIn{from{opacity:0;transform:translateY(20px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes toastOut{from{opacity:1;transform:translateY(0) scale(1) translateX(0)}to{opacity:0;transform:translateY(0) scale(.95) translateX(40px)}}
 
@@ -930,9 +932,9 @@ body.dark .mob-hamburger:hover{color:#EAE8E1}
 /* ── Mobile Responsive ── */
 @media(max-width:768px){
   .mob-hamburger{display:flex}
-  /* Sidebar → slide-out drawer */
-  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:999;width:280px;transform:translateX(-100%);transition:transform .25s ease;box-shadow:none}
-  .sidebar.mob-open{transform:translateX(0)!important;box-shadow:4px 0 24px rgba(0,0,0,.3)}
+  /* Sidebar → slide-out drawer (liquid glass on mobile) */
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:999;width:280px;transform:translateX(-100%);transition:transform .25s ease;box-shadow:none;background:rgba(15,14,10,.74);backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);border-right:1px solid rgba(255,255,255,.08)}
+  .sidebar.mob-open{transform:translateX(0)!important;box-shadow:4px 0 32px rgba(0,0,0,.45)}
   .mob-overlay.open{display:block}
   /* Main takes full width */
   .app{flex-direction:column}
@@ -1044,44 +1046,55 @@ body.dark .mob-hamburger:hover{color:#EAE8E1}
 }
 
 /* Extra small screens (iPhone SE, etc) */
-/* ── Mobile Bottom Tab Bar ── */
-.bottom-tabs{display:none;position:fixed;bottom:0;left:0;right:0;z-index:997;background:rgba(255,255,255,.88);backdrop-filter:blur(24px) saturate(200%);-webkit-backdrop-filter:blur(24px) saturate(200%);border-top:1px solid rgba(0,0,0,.06);padding:6px 0 env(safe-area-inset-bottom,8px);height:auto}
-.bottom-tabs-inner{display:flex;justify-content:space-around;align-items:center;max-width:600px;margin:0 auto}
-.btab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;border:none;background:none;cursor:pointer;font-family:inherit;min-width:56px;transition:all .2s cubic-bezier(.25,.46,.45,.94);-webkit-tap-highlight-color:transparent;position:relative}
-.btab-icon{font-size:21px;line-height:1;transition:transform .25s cubic-bezier(.34,1.56,.64,1);filter:grayscale(.5) opacity(.7)}
-.btab-label{font-size:10px;font-weight:500;color:#8E8E93;letter-spacing:-.1px;transition:all .2s}
-.btab.active .btab-icon{transform:scale(1.15);filter:none}
-.btab.active .btab-label{color:#F59E0B;font-weight:600}
-.btab.active::before{content:'';position:absolute;top:-6px;width:20px;height:3px;background:linear-gradient(90deg,#F59E0B,#D97706);border-radius:0 0 4px 4px;box-shadow:0 2px 8px rgba(245,158,11,.3)}
-.btab:active .btab-icon{transform:scale(.85);transition:transform .06s}
-.btab:active .btab-label{transform:scale(.95);transition:transform .06s}
-body.dark .bottom-tabs{background:rgba(14,13,10,.88);border-top-color:rgba(255,255,255,.05)}
-body.dark .btab-label{color:#706D66}
-body.dark .btab.active .btab-label{color:#F59E0B}
-body.dark .btab-icon{filter:grayscale(.4) opacity(.6)}
-body.dark .btab.active .btab-icon{filter:none}
+/* ── Mobile Bottom Tab Bar — iOS liquid-glass floating pill ── */
+.bottom-tabs{display:none;position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);z-index:997;padding:7px;border-radius:35px;background:rgba(252,252,250,.6);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);border:1px solid rgba(255,255,255,.55);box-shadow:0 18px 44px rgba(28,27,24,.22),0 4px 14px rgba(28,27,24,.12),inset 0 1px 0 rgba(255,255,255,.65),inset 0 -1px 1px rgba(28,27,24,.06)}
+.bottom-tabs-inner{display:flex;align-items:center;gap:2px}
+.btab{display:flex;align-items:center;justify-content:center;width:57px;height:46px;padding:0;border:none;background:none;border-radius:25px;cursor:pointer;font-family:inherit;color:#2A2925;transition:background .22s cubic-bezier(.25,.46,.45,.94);-webkit-tap-highlight-color:transparent;position:relative}
+.btab svg{width:24px;height:24px;display:block;opacity:.7;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s}
+.btab.active{background:rgba(28,27,24,.12);box-shadow:inset 0 1px 1px rgba(255,255,255,.3)}
+.btab.active svg{opacity:1;stroke-width:2.1}
+.btab:active svg{transform:scale(.85);transition:transform .06s}
+body.dark .bottom-tabs{background:rgba(16,16,18,.55);border-color:rgba(255,255,255,.13);box-shadow:0 18px 44px rgba(0,0,0,.5),0 4px 14px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 1px rgba(0,0,0,.3)}
+body.dark .btab{color:#F4F3EF}
+body.dark .btab.active{background:rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+/* No backdrop-filter support → nearly opaque fallback */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .bottom-tabs{background:rgba(252,252,250,.96)}
+  body.dark .bottom-tabs{background:rgba(16,16,18,.95)}
+}
 
 @media(max-width:768px){
   .bottom-tabs{display:block}
-  .main{padding-bottom:72px}
+  /* Content scrolls UNDER the floating glass pill (that's what it blurs);
+     extra bottom padding lets the last card scroll clear of it. */
+  .content,.db-content{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))}
   .mob-hamburger{display:none!important}
 }
 
-/* ── Floating Action Button ── */
-.fab{display:none;position:fixed;z-index:996;width:56px;height:56px;border-radius:28px;background:linear-gradient(145deg,#F59E0B,#D97706);color:#fff;border:none;cursor:pointer;font-size:26px;line-height:1;box-shadow:0 6px 20px rgba(245,158,11,.4),0 2px 6px rgba(0,0,0,.12);transition:all .25s cubic-bezier(.34,1.56,.64,1);-webkit-tap-highlight-color:transparent;font-family:inherit}
-.fab:active{transform:scale(.85);box-shadow:0 2px 8px rgba(245,158,11,.25);transition:all .06s}
-.fab-menu{position:fixed;z-index:995;bottom:144px;right:18px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;animation:fabMenuIn .25s cubic-bezier(.21,1.02,.73,1)}
-.fab-menu-item{display:flex;align-items:center;gap:10px;background:rgba(28,27,24,.88);backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);color:#fff;border:none;padding:11px 18px;border-radius:13px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;box-shadow:0 6px 24px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.06);white-space:nowrap;transition:all .15s cubic-bezier(.25,.46,.45,.94)}
-.fab-menu-item:hover{background:rgba(40,38,32,.92);transform:translateX(-4px)}
+/* ── Floating Action Button — glass disc, amber glyph ── */
+.fab{display:none;position:fixed;z-index:996;width:56px;height:56px;border-radius:28px;background:rgba(252,252,250,.6);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);color:#D97706;border:1px solid rgba(255,255,255,.55);cursor:pointer;font-size:27px;font-weight:500;line-height:1;box-shadow:0 14px 34px rgba(28,27,24,.25),0 3px 10px rgba(28,27,24,.12),inset 0 1px 0 rgba(255,255,255,.6);transition:all .25s cubic-bezier(.34,1.56,.64,1);-webkit-tap-highlight-color:transparent;font-family:inherit}
+.fab.open{transform:rotate(45deg);background:rgba(245,158,11,.3)}
+.fab:active{transform:scale(.85);transition:all .06s}
+.fab.open:active{transform:rotate(45deg) scale(.85);transition:all .06s}
+body.dark .fab{background:rgba(16,16,18,.55);border-color:rgba(255,255,255,.13);color:#F59E0B;box-shadow:0 14px 34px rgba(0,0,0,.5),0 3px 10px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.14)}
+body.dark .fab.open{background:rgba(245,158,11,.26)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .fab{background:rgba(252,252,250,.96)}
+  body.dark .fab{background:rgba(16,16,18,.95)}
+}
+.fab-menu{position:fixed;z-index:995;bottom:158px;right:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;animation:fabMenuIn .25s cubic-bezier(.21,1.02,.73,1)}
+.fab-menu-item{display:flex;align-items:center;gap:10px;background:rgba(22,22,24,.62);backdrop-filter:blur(24px) saturate(170%);-webkit-backdrop-filter:blur(24px) saturate(170%);color:#fff;border:1px solid rgba(255,255,255,.12);padding:11px 18px;border-radius:16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;box-shadow:0 8px 28px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.12);white-space:nowrap;transition:all .15s cubic-bezier(.25,.46,.45,.94)}
+.fab-menu-item:hover{background:rgba(40,38,32,.7);transform:translateX(-4px)}
 .fab-menu-item:active{transform:scale(.95);transition:all .06s}
 .fab-menu-item span:first-child{font-size:16px}
 @keyframes fabMenuIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.fab-scrim{position:fixed;inset:0;z-index:994;background:rgba(0,0,0,.25);animation:fadeIn .15s}
+.fab-scrim{position:fixed;inset:0;z-index:994;background:rgba(0,0,0,.28);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);animation:fadeIn .15s}
 .fab-menu,.fab-scrim{display:none}
 @media(max-width:768px){
-  .fab{display:flex;align-items:center;justify-content:center;bottom:86px;right:18px}
+  .fab{display:flex;align-items:center;justify-content:center;bottom:calc(88px + env(safe-area-inset-bottom,0px));right:16px}
   .fab-menu,.fab-scrim{display:flex}
   .fab-scrim{display:block}
+  .fab-menu{bottom:calc(158px + env(safe-area-inset-bottom,0px))}
 }
 
 /* ── Page Transition Animations ── */
@@ -1136,7 +1149,7 @@ body.dark .btab.active .btab-icon{filter:none}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   html,body{background:#fff!important;overflow:visible!important;height:auto!important;width:100%!important}
   /* hide sidebar, topbar, stats, content, and other non-receipt UI */
-  .sidebar,.topbar,.stats-strip,.content,.toast-container,.spotlight-overlay,.kbd-overlay,.sale-overlay,.po-overlay,.confirm-box,.mob-hamburger,.mob-overlay{display:none!important}
+  .sidebar,.topbar,.stats-strip,.content,.toast-container,.spotlight-overlay,.kbd-overlay,.sale-overlay,.po-overlay,.confirm-box,.mob-hamburger,.mob-overlay,.bottom-tabs,.fab,.fab-menu,.fab-scrim{display:none!important}
   /* make app + main containers transparent and flow-based so receipt/overlay children remain visible */
   .app,.main{background:none!important;display:block!important;position:static!important;overflow:visible!important;min-height:0!important;width:100%!important;padding:0!important;margin:0!important}
   /* receipt overlay — make it full page, no centering constraints */
@@ -3753,6 +3766,18 @@ function DashboardPage({sales,products,purchaseOrders,customers,onNewSale}){
   );
 }
 
+/* ─── Mobile Tab Bar Icons (iOS-style stroke glyphs) ────────── */
+const tabIcon=children=>(
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+);
+const TAB_ICONS={
+  dashboard:tabIcon(<><path d="M4.3 10.6 12 4.2l7.7 6.4"/><path d="M6.2 9.4V19.8h11.6V9.4"/><path d="M9.8 19.8v-5.6h4.4v5.6"/></>),
+  inventory:tabIcon(<><path d="M12 3 4.5 7v10L12 21l7.5-4V7L12 3z"/><path d="M4.5 7 12 11l7.5-4"/><path d="M12 11v10"/></>),
+  sales:tabIcon(<><path d="M6.5 3.5h11v17l-1.8-1.2-1.9 1.2-1.8-1.2-1.9 1.2-1.8-1.2-1.8 1.2v-17z"/><path d="M9.5 8.2h5"/><path d="M9.5 12h5"/></>),
+  customers:tabIcon(<><circle cx="9.5" cy="8" r="3.2"/><path d="M3.8 19.6c.6-3.2 2.9-5.1 5.7-5.1s5.1 1.9 5.7 5.1"/><path d="M15.4 5.2a3.2 3.2 0 0 1 0 5.6"/><path d="M17.4 14.8c1.7.7 2.9 2.3 3.3 4.8"/></>),
+  activity:tabIcon(<><circle cx="12" cy="12" r="8.2"/><path d="M12 7.6V12l3.1 2"/></>),
+};
+
 /* ─── App Root ───────────────────────────────────────────────── */
 /* ─── Quotes Page (Cotizaciones) ────────────────────────────── */
 function QuotesPage({quotes,onNewQuote,onConvert,onUpdateQuote,toast}){
@@ -4823,26 +4848,25 @@ function App(){
         {view==='activity'&&<ActivityLogPage log={activityLog}/>}
       </div>
 
-      {/* ── Mobile Bottom Tab Bar ── */}
+      {/* ── Mobile Bottom Tab Bar — liquid-glass floating pill ── */}
       <nav className="bottom-tabs">
         <div className="bottom-tabs-inner">
           {[
-            {id:'dashboard',icon:'📊',label:'Dashboard'},
-            {id:'inventory',icon:'▦',label:'Inventory'},
-            {id:'sales',icon:'🧾',label:'Sales'},
-            {id:'customers',icon:'👥',label:'Customers'},
-            {id:'activity',icon:'📜',label:'Activity'},
+            {id:'dashboard',label:'Dashboard'},
+            {id:'inventory',label:'Inventory'},
+            {id:'sales',label:'Sales'},
+            {id:'customers',label:'Customers'},
+            {id:'activity',label:'Activity'},
           ].map(t=>(
-            <button key={t.id} className={`btab${view===t.id?' active':''}`} onClick={()=>{setView(t.id);setFabOpen(false);}}>
-              <span className="btab-icon">{t.icon}</span>
-              <span className="btab-label">{t.label}</span>
+            <button key={t.id} className={`btab${view===t.id?' active':''}`} onClick={()=>{setView(t.id);setFabOpen(false);}} aria-label={t.label} title={t.label}>
+              {TAB_ICONS[t.id]}
             </button>
           ))}
         </div>
       </nav>
 
       {/* ── Floating Action Button ── */}
-      <button className="fab" onClick={()=>setFabOpen(o=>!o)} aria-label="Quick actions" style={fabOpen?{transform:'rotate(45deg)',background:'linear-gradient(145deg,#D97706,#B45309)'}:{}}>＋</button>
+      <button className={`fab${fabOpen?' open':''}`} onClick={()=>setFabOpen(o=>!o)} aria-label="Quick actions">＋</button>
       {fabOpen&&<>
         <div className="fab-scrim" onClick={()=>setFabOpen(false)}/>
         <div className="fab-menu">
