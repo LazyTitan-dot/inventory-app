@@ -1,14 +1,14 @@
 # Registro de verificación
 
-Fecha: 24 de septiembre de 2026. La segunda versión está publicada y verificada, el corte de datos se completó y los recorridos comerciales descritos abajo se comprobaron con una sesión real en producción. La limpieza de los datos de prueba se confirmó y concilió. Este registro **no constituye una aprobación Astra Ultra**: falta publicar y verificar el último ajuste de importes en tarjetas móviles y permanecen las limitaciones documentadas abajo.
+Fecha: 24 de septiembre de 2026. **Astra Ultra: aprobado para el alcance operativo verificado de una tienda única**, sobre la revisión de código `b4576d15d8c3fffd1399cff264e439212fc9722c`. La versión está publicada, el corte se concilió, los recorridos descritos abajo se comprobaron con una sesión real en producción y se limpiaron los registros de prueba. No quedan pendientes de implementación ni pruebas principales de ese alcance. La aprobación se limita a las comprobaciones documentadas; no constituye una garantía absoluta ni una certificación fiscal, de seguridad o de carga.
 
 ## Versión publicada
 
-- `master` publicado en GitHub: [`3d72c223ba5235946f43d6cd092c1f6a93d65c39`](https://github.com/LazyTitan-dot/inventory-app/commit/3d72c223ba5235946f43d6cd092c1f6a93d65c39).
-- [GitHub Actions, ejecución 36032948365](https://github.com/LazyTitan-dot/inventory-app/actions/runs/36032948365): `success`.
-- Vercel: despliegue `dpl_9ESdTKTQJNCfZ63qC53byXLge52m`, estado `Ready`.
+- Código publicado y verificado en GitHub: [`b4576d15d8c3fffd1399cff264e439212fc9722c`](https://github.com/LazyTitan-dot/inventory-app/commit/b4576d15d8c3fffd1399cff264e439212fc9722c).
+- [GitHub Actions, ejecución 36034420815](https://github.com/LazyTitan-dot/inventory-app/actions/runs/36034420815): `success`.
+- Vercel: despliegue `dpl_8RfoRJHeAkcDqEY9XXdR2hpY1EA8`, estado `Ready`.
 - Aplicación publicada: [inventory-app-nine-navy.vercel.app](https://inventory-app-nine-navy.vercel.app/).
-- El segundo ciclo corrigió precios pendientes, plurales, pies de órdenes y cotizaciones, desbordamiento y menú móvil accesible. Su despliegue y nueva verificación se completaron. El ajuste adicional de importes móviles descrito al final aún no pertenece a esta versión acreditada.
+- La versión incluye las correcciones de precios pendientes, plurales, pies documentales, menú móvil, importes móviles y manejo de cierre de sesión fallido. El despliegue y la comprobación final descrita abajo se completaron. Esta referencia acredita el código verificado; no declara publicado un commit documental posterior.
 
 ## Comprobado
 
@@ -48,7 +48,9 @@ Auditoría mostró las acciones en español y el informe de legado presentó las
 
 La carga de un archivo de imagen local quedó inicialmente bloqueada por el permiso de la extensión. Después de que el usuario habilitara el acceso a archivos locales, se subió un PNG local de 512 × 512 píxeles: la interfaz confirmó «1 imagen subida» y su almacenamiento privado. Se guardó correctamente el producto de prueba con SKU `QA-IMAGEN-260924`. Tras recargar producción, buscar el SKU y abrir la edición, se verificó la imagen visible y completamente decodificada, con tamaño natural de 512 × 512 y URL firmada de Storage. Una captura real documentó el resultado; se canceló el formulario sin modificarlo. La carga local y su persistencia quedaron verificadas. Las búsquedas sin coincidencias mostraron el estado vacío en español y cero variantes.
 
-La limpieza de las tres filas de este nuevo ensayo sigue en curso. El objeto privado de prueba, de 664 bytes, se conservará como artefacto técnico fuera del catálogo; no se afirma que haya sido eliminado.
+La limpieza de las tres filas de este nuevo ensayo se confirmó mediante `COMMIT`: quedaron cero filas de ese ensayo, con su auditoría y operaciones conservadas. El objeto privado de prueba, de 664 bytes, permanece como artefacto técnico fuera del catálogo; no se afirma que haya sido eliminado.
+
+Un archivo falso presentado como PNG fue rechazado con el mensaje «El contenido del archivo no corresponde a una imagen JPG, PNG o WEBP válida.». No se guardó y la consola permaneció sin errores. El intento de acceder al objeto privado mediante su URL pública devolvió HTTP `400`, sin acceso al archivo; la cuenta propietaria sí pudo mostrar la imagen de 512 × 512 mediante una URL firmada.
 
 ## Corte real y conciliación
 
@@ -90,7 +92,7 @@ No se ha inferido la identidad de productos a partir de IDs reutilizados. Las ob
 
 ## Segundo ciclo y limpieza de pruebas
 
-Las comprobaciones del segundo ciclo pasaron: 99 pruebas unitarias, 310 aserciones SQL, lint, TypeScript y compilación. Tras el ajuste de la etiqueta de limpieza se repitieron lint y TypeScript satisfactoriamente. La versión indicada arriba se publicó y se repitieron estas comprobaciones de interfaz en producción:
+Las comprobaciones del segundo ciclo pasaron: 99 pruebas unitarias, 310 aserciones SQL, lint, TypeScript y compilación. Tras el ajuste de la etiqueta de limpieza se repitieron lint y TypeScript satisfactoriamente. Durante ese ciclo se repitieron estas comprobaciones de interfaz en producción:
 
 - Catálogo: 14 variantes indicadas como Precio pendiente y un filtro que devolvió una variante.
 - Menú móvil: ausente del árbol de accesibilidad al cerrar y `aria-expanded=true` al abrir.
@@ -106,16 +108,21 @@ La limpieza de datos de prueba se ensayó primero con `ROLLBACK`, sin errores, y
 
 Después de la limpieza, Realtime actualizó el reporte de septiembre a cero sin recarga. Auditoría mostró la acción Limpieza de pruebas y conservó las entradas históricas.
 
-## Último ajuste pendiente de acreditar
+## Comprobación final de producción y limpieza
 
-Se detectó un desbordamiento de 6 píxeles en el importe de una tarjeta móvil. La corrección local adapta el texto entre 16 y 22 píxeles y permite salto de línea de respaldo. Lint, TypeScript y compilación pasaron. Su publicación y comprobación visual en producción aún no están acreditadas; las capturas de la versión anterior no validan este último cambio.
+Se corrigió un desbordamiento de 6 píxeles en el importe de una tarjeta móvil con texto adaptable entre 16 y 22 píxeles y salto de línea de respaldo. Lint, TypeScript y compilación pasaron. En la versión final publicada, la comprobación a 390 × 844 mostró anchos visible y de contenido iguales a 375 píxeles. El importe RD$1,916,000.00 se mostró completo, con texto calculado de 16.38 píxeles, y quedó documentado en una captura real.
 
-También están en curso la revisión del manejo de un cierre de sesión fallido, el ensayo de un archivo que se presenta como PNG sin serlo y la limpieza de los registros del nuevo ensayo de imagen local.
+El manejo de un cierre de sesión fallido se corrigió con una alerta accesible en español, estado de operación en curso y opción de reintentar. Pasaron lint, TypeScript y las 99 pruebas unitarias; la corrección forma parte del código final publicado.
+
+Caja móvil abrió correctamente, mantuvo deshabilitada la confirmación de una venta vacía y permitió cancelar. Tras recargar y recorrer rutas, la consola mostró cero errores y cero advertencias. La última comprobación HTTP de `/ventas` respondió `200` con el bundle `index--LNjWgAR.js`, coincidente con la compilación `b4576d1`, y los encabezados CSP y `nosniff`. Se cerraron los servidores de desarrollo locales, se restauró el tamaño de la ventana y se dejó abierto el resumen operativo de producción.
+
+La limpieza del ensayo posterior de imagen local terminó con `COMMIT`: tres filas retiradas y cero restantes, con auditoría y operaciones conservadas. La lectura final independiente confirmó 13 productos, 25 variantes, 216 unidades disponibles, cero en cuarentena, 7 contactos, 30 ventas, 3 compras y las 148 filas archivadas con hash idéntico. El bucket de imágenes permanece privado. No quedan pendientes de implementación ni pruebas principales del alcance operativo verificado.
 
 ## Limitaciones vigentes
 
+- Los precios y costos históricos faltantes, las garantías desconocidas y las demás incidencias del origen se conservan explícitamente. Su resolución requiere evidencia comercial; no se inventaron valores ni relaciones.
 - Cancelar un formulario después de subir una imagen puede dejar un archivo privado sin referencia. No existe una retirada automática de esos archivos; requiere mantenimiento y no altera existencias.
 - La protección contra contraseñas filtradas sigue deshabilitada en el plan Free; requiere Pro.
 - Los recibos son internos: la aplicación no emite ni certifica NCF/e-CF ni procesa cobros bancarios o de tarjeta; registra el medio de pago utilizado.
 
-Los resultados distinguen pruebas locales, comprobaciones HTTP y SQL, y recorridos reales de interfaz autenticada. La aprobación final continúa abierta mientras termina la verificación. Las condiciones del plan Free y el alcance de los comprobantes internos se documentan como límites del producto; no implican que el alcance operativo acordado requiera incorporar funciones fiscales o procesamiento de pagos.
+La aprobación Astra Ultra corresponde a los flujos operativos de una tienda única comprobados en este registro. Los resultados distinguen pruebas locales, comprobaciones HTTP y SQL, y recorridos reales de interfaz autenticada. Las condiciones del plan Free, el mantenimiento de archivos privados y el alcance de los comprobantes internos permanecen explícitos; no se extiende la aprobación a funciones fiscales, procesamiento de pagos ni escenarios no ensayados.
