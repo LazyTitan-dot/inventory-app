@@ -9,8 +9,15 @@ import.meta.hot?.dispose(removeValidation);
 
 // Retire the original app's offline worker so it cannot keep serving an old release.
 if ('serviceWorker' in navigator) {
-  void navigator.serviceWorker.getRegistrations().then(registrations => {
-    for (const registration of registrations) void registration.unregister();
-  }).catch(() => undefined);
+  void navigator.serviceWorker
+    .getRegistrations()
+    .then((registrations) => {
+      for (const registration of registrations) void registration.unregister();
+    })
+    .catch(() => undefined);
 }
-createRoot(document.getElementById('root')!).render(<StrictMode><App/></StrictMode>);
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

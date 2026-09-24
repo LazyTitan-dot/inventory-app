@@ -2,6 +2,8 @@
 
 Aplicación en español para una tienda de electrodomésticos en República Dominicana. React, TypeScript, Vite y Supabase (PostgreSQL, Auth, Realtime y Storage). Importes en pesos dominicanos; fechas operativas en `America/Santo_Domingo`.
 
+Publicada en [inventory-app-nine-navy.vercel.app](https://inventory-app-nine-navy.vercel.app/). El corte de datos se completó el 24 de septiembre de 2026 y se verificaron los principales recorridos comerciales con una sesión real en producción. **Siguen pendientes comprobaciones finales, retirar los datos de prueba y publicar y verificar las correcciones del segundo ciclo**; todavía no se ha declarado una aprobación Astra Ultra. La evidencia y los pendientes están en [el registro de verificación](docs/verification-log.md).
+
 ## Operación diaria
 
 - Resumen operativo, catálogo por variantes, SKU, código de barras, imágenes privadas, costos, precios y reposición.
@@ -53,7 +55,13 @@ Las imágenes nuevas usan un bucket privado. Las imágenes originales se conserv
 
 ## Acceso del equipo
 
-Las cuentas se registran y confirman con Supabase Auth; no hay registro público que conceda acceso al negocio. Un propietario autoriza cuentas existentes desde **Configuración → Equipo y permisos**.
+El registro público de cuentas y el inicio de sesión anónimo están deshabilitados. Para dar acceso a una persona del equipo:
+
+1. Un administrador del proyecto debe crear o invitar previamente la cuenta desde Supabase Auth. La cuenta debe tener su correo confirmado; una cuenta Auth por sí sola no concede acceso al negocio.
+2. Un propietario autoriza la cuenta existente desde **Configuración → Equipo y permisos** y le asigna el rol correspondiente.
+3. La persona inicia sesión en la aplicación con su cuenta. El servidor exige contraseñas de al menos 12 caracteres y la recuperación tiene configurada la redirección hacia la aplicación publicada.
+
+La protección contra contraseñas filtradas requiere Supabase Pro. El proyecto actual utiliza Free y esa función permanece deshabilitada.
 
 | Rol | Acceso |
 | --- | --- |
@@ -82,6 +90,8 @@ El adaptador de legado se define mediante una migración, pero **no importa auto
 
 El archivo conserva todas las filas originales, sus hashes y sus permisos previos. Se conserva el saldo actual sin repetir ventas o compras históricas. La importación revoca el acceso API al modelo anterior en la misma transacción. No elimina sus filas. No reactivar el frontend antiguo después del corte sin un plan de reconciliación: las nuevas operaciones pertenecen al modelo normalizado.
 
+El corte de esta instalación ya se realizó: 13 productos, 25 variantes, 216 unidades, 7 contactos, 30 ventas, 3 compras, 47 partidas y 2 entregas; 148 filas originales permanecen en el archivo privado y se registraron 121 incidencias del origen. Los totales de conciliación se conservaron exactamente: ventas RD$148,307.41 y compras RD$19,161.80. No son indicadores de ventas netas confirmadas. Las consultas posteriores al corte verificaron cero discrepancias aritméticas, cero saldos negativos, hash del origen sin cambios y archivo idéntico al original.
+
 Identidades históricas reutilizadas, garantías desconocidas, precios sin registrar y discrepancias de tasas se señalan en Auditoría. No se inventan enlaces ni se recalculan importes antiguos. La resolución de un dato de negocio desconocido requiere evidencia del documento original.
 
 ## Despliegue y verificación
@@ -89,3 +99,13 @@ Identidades históricas reutilizadas, garantías desconocidas, precios sin regis
 Vercel ejecuta `npm ci` y `npm run build`; únicamente publica `dist`. Los HTML y SQL originales conservados en el repositorio no se sirven como aplicación. `vercel.json` configura rutas SPA, encabezados de seguridad y políticas de caché. El service worker anterior se retira para que no mantenga una versión obsoleta.
 
 Revisar build, entorno público, autenticación, recarga de rutas, CSP, imágenes y flujos reales después de cada despliegue. Un build correcto no acredita por sí solo una aprobación de producción. Consultar `docs/verification-log.md` para distinguir comprobaciones realizadas de pendientes.
+
+La revisión publicada en `master` es [`e97ea2d14d69e89b88bf8fc85a9febfdfcd84766`](https://github.com/LazyTitan-dot/inventory-app/commit/e97ea2d14d69e89b88bf8fc85a9febfdfcd84766); el despliegue Vercel `dpl_4eq5tdWys9pCHG9kDojK8pGYS34L` está `Ready` y la [ejecución de CI 36028864130](https://github.com/LazyTitan-dot/inventory-app/actions/runs/36028864130) terminó en `success`. Pasaron lint, TypeScript, build, 99 pruebas unitarias y 310 aserciones SQL.
+
+La entrega de la SPA y la ruta `/ventas` respondió HTTP 200 con la aplicación nueva y CSP; la consola de acceso no mostró errores ni advertencias. Las pruebas HTTP rechazaron el acceso anónimo a tablas originales, tablas nuevas y RPC protegidos, además de rechazar tokens inválidos.
+
+Una cuenta propietaria inició sesión real en producción. Se verificaron productos y edición, búsqueda y código de barras, ajustes de existencias, clientes, proveedores, compra y recepción parcial, venta en efectivo con cambio, entrega, devolución a cuarentena, edición y conversión de cotización, anulación de venta, cupón y cancelación de cotización. También se comprobaron los rechazos de cantidades e importes insuficientes, la recarga y el manejo de un enlace de recuperación expirado. Dos pestañas intentaron vender la última unidad: una venta se completó y la segunda fue rechazada por falta de existencias.
+
+El reporte del escenario de prueba concilió neto RD$4,000.00, impuestos RD$720.00, cobrado RD$4,720.00 y margen RD$1,914.30. Una imagen por URL HTTPS se guardó y decodificó; la carga de archivo local sigue sin verificar porque la extensión bloqueó el permiso, sin eludirlo ni demostrar un fallo de la aplicación.
+
+El segundo ciclo corrigió precio pendiente, plurales, pies de órdenes y cotizaciones, desbordamiento y menú móvil accesible. Aún faltan su nuevo despliegue y verificación, las comprobaciones finales de exportación, Auditoría y Configuración, y retirar los datos de prueba. El registro de verificación conserva el alcance exacto de cada resultado.
