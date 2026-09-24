@@ -1,14 +1,14 @@
 # Registro de verificación
 
-Fecha: 24 de septiembre de 2026. La versión está publicada, el corte de datos se completó y los recorridos comerciales descritos abajo se verificaron con una sesión real en producción. Este registro **no constituye una aprobación Astra Ultra**: faltan comprobaciones finales, retirar los datos de prueba y publicar y verificar las correcciones del segundo ciclo.
+Fecha: 24 de septiembre de 2026. La segunda versión está publicada y verificada, el corte de datos se completó y los recorridos comerciales descritos abajo se comprobaron con una sesión real en producción. La limpieza de los datos de prueba se confirmó y concilió. Este registro **no constituye una aprobación Astra Ultra**: falta publicar y verificar el último ajuste de importes en tarjetas móviles y permanecen las limitaciones documentadas abajo.
 
 ## Versión publicada
 
-- `master` publicado en GitHub: [`e97ea2d14d69e89b88bf8fc85a9febfdfcd84766`](https://github.com/LazyTitan-dot/inventory-app/commit/e97ea2d14d69e89b88bf8fc85a9febfdfcd84766).
-- [GitHub Actions, ejecución 36028864130](https://github.com/LazyTitan-dot/inventory-app/actions/runs/36028864130): `success`.
-- Vercel: despliegue `dpl_4eq5tdWys9pCHG9kDojK8pGYS34L`, estado `Ready`.
+- `master` publicado en GitHub: [`3d72c223ba5235946f43d6cd092c1f6a93d65c39`](https://github.com/LazyTitan-dot/inventory-app/commit/3d72c223ba5235946f43d6cd092c1f6a93d65c39).
+- [GitHub Actions, ejecución 36032948365](https://github.com/LazyTitan-dot/inventory-app/actions/runs/36032948365): `success`.
+- Vercel: despliegue `dpl_9ESdTKTQJNCfZ63qC53byXLge52m`, estado `Ready`.
 - Aplicación publicada: [inventory-app-nine-navy.vercel.app](https://inventory-app-nine-navy.vercel.app/).
-- El segundo ciclo corrigió precios pendientes, plurales, pies de órdenes y cotizaciones, desbordamiento y menú móvil accesible. Su nuevo despliegue y la verificación de esa versión siguen pendientes; no se acredita todavía una versión posterior a la indicada aquí.
+- El segundo ciclo corrigió precios pendientes, plurales, pies de órdenes y cotizaciones, desbordamiento y menú móvil accesible. Su despliegue y nueva verificación se completaron. El ajuste adicional de importes móviles descrito al final aún no pertenece a esta versión acreditada.
 
 ## Comprobado
 
@@ -42,7 +42,13 @@ Dos pestañas intentaron vender simultáneamente la última unidad disponible: s
 
 En el escenario de verificación, el reporte concilió **neto RD$4,000.00**, **impuestos RD$720.00**, **cobrado RD$4,720.00** y **margen RD$1,914.30**. Estos importes pertenecen al escenario de prueba, no a la conciliación del archivo histórico.
 
-La carga de un archivo de imagen local quedó bloqueada por el permiso de la extensión. No se eludió ese permiso ni se demostró un fallo de la aplicación; ese método de carga sigue sin verificar.
+La exportación CSV se descargó realmente: se verificó el archivo en Descargas, con 3 filas y sumas exactas de base RD$4,000.00, impuestos RD$720.00 y total RD$4,720.00. El evento de descarga no fue capturado por la herramienta del navegador; la evidencia procede del archivo descargado.
+
+Auditoría mostró las acciones en español y el informe de legado presentó las 121 incidencias. Se verificaron en modo de solo lectura las secciones Negocio y Equipo de Configuración, incluida la cuenta propietaria y la tabla de permisos.
+
+La carga de un archivo de imagen local quedó inicialmente bloqueada por el permiso de la extensión. Después de que el usuario habilitara el acceso a archivos locales, se subió un PNG local de 512 × 512 píxeles: la interfaz confirmó «1 imagen subida» y su almacenamiento privado. Se guardó correctamente el producto de prueba con SKU `QA-IMAGEN-260924`. Tras recargar producción, buscar el SKU y abrir la edición, se verificó la imagen visible y completamente decodificada, con tamaño natural de 512 × 512 y URL firmada de Storage. Una captura real documentó el resultado; se canceló el formulario sin modificarlo. La carga local y su persistencia quedaron verificadas. Las búsquedas sin coincidencias mostraron el estado vacío en español y cero variantes.
+
+La limpieza de las tres filas de este nuevo ensayo sigue en curso. El objeto privado de prueba, de 664 bytes, se conservará como artefacto técnico fuera del catálogo; no se afirma que haya sido eliminado.
 
 ## Corte real y conciliación
 
@@ -73,7 +79,8 @@ Las consultas posteriores al corte encontraron cero discrepancias aritméticas y
 - Registro público de cuentas deshabilitado e inicio de sesión anónimo deshabilitado en Supabase Auth.
 - Confirmación de correo habilitada y longitud mínima de contraseña de 12 caracteres verificada en el servidor.
 - Redirección de recuperación configurada hacia la aplicación real publicada.
-- La protección contra contraseñas filtradas permanece deshabilitada: requiere el plan Pro y el proyecto utiliza el plan Free.
+- Los asesores de seguridad de Supabase informaron 0 errores, 1 advertencia por protección contra contraseñas filtradas deshabilitada y 7 avisos informativos por RLS sin políticas en el esquema privado. Estos últimos corresponden al cierre de acceso por diseño.
+- La protección contra contraseñas filtradas permanece deshabilitada: requiere el plan Pro y el proyecto utiliza el plan Free. La corrección disponible se describe en la [documentación de seguridad de contraseñas de Supabase](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
 
 ## Incidencias del origen conservadas
 
@@ -81,13 +88,34 @@ Las 121 observaciones incluyen 14 costos cero, 14 precios cero, 30 fechas sin zo
 
 No se ha inferido la identidad de productos a partir de IDs reutilizados. Las observaciones se presentan al administrador y los flujos que necesitarían datos desconocidos se bloquean con una explicación.
 
-## Pendiente de acreditar
+## Segundo ciclo y limpieza de pruebas
 
-- Comprobaciones finales de exportación, Auditoría y Configuración desde la interfaz de producción.
-- Retirada de los datos de prueba creados durante los recorridos de producción y comprobación de la conciliación posterior.
-- Nuevo despliegue y verificación de las correcciones del segundo ciclo: precio pendiente, plurales, pies documentales, desbordamiento y menú móvil accesible.
-- Carga de imágenes mediante archivo local cuando esté disponible el permiso correspondiente.
-- Cierre de las comprobaciones móviles, de permisos y de casos de red o errores que todavía no estén acreditadas por los recorridos anteriores.
-- Revisión final de asesores de Supabase y aceptación de las limitaciones operativas documentadas.
+Las comprobaciones del segundo ciclo pasaron: 99 pruebas unitarias, 310 aserciones SQL, lint, TypeScript y compilación. Tras el ajuste de la etiqueta de limpieza se repitieron lint y TypeScript satisfactoriamente. La versión indicada arriba se publicó y se repitieron estas comprobaciones de interfaz en producción:
 
-Los resultados distinguen pruebas locales, comprobaciones HTTP y SQL, y recorridos reales de interfaz autenticada. La aprobación final continúa pendiente hasta cerrar las comprobaciones y la verificación del nuevo despliegue.
+- Catálogo: 14 variantes indicadas como Precio pendiente y un filtro que devolvió una variante.
+- Menú móvil: ausente del árbol de accesibilidad al cerrar y `aria-expanded=true` al abrir.
+- Compra: columna Costo unitario y pie «Conserve esta orden para verificar la mercancía recibida.»; cotización: pie correcto sobre vigencia y ausencia de reserva de existencias.
+- Reporte: texto «1 devolución» y los importes del escenario conciliados.
+- Recarga de producción: cero errores y cero advertencias en consola.
+- Imagen original Samsung Q72DD: obtenida por RPC privado y decodificada a 1600 × 1200 píxeles.
+- Formulario móvil: apertura y cierre sin guardar datos.
+- Garantía del escenario de prueba: 12 meses, vencimiento en 2027, estado vigente y cantidad exacta de unidades sin devolver.
+- Tableta de 768 × 1024 y escritorio de 1440 × 1000: capturas revisadas y sin desbordamiento horizontal del documento; ancho de contenido y visible iguales a 768 y 1425 píxeles, respectivamente.
+
+La limpieza de datos de prueba se ensayó primero con `ROLLBACK`, sin errores, y después se confirmó mediante **`COMMIT`**. La verificación independiente posterior encontró cero documentos, productos y demás filas de prueba; permanecen exactamente 13 productos, 25 variantes, 216 unidades, 7 contactos, 30 ventas, 3 compras, 47 partidas, 2 entregas y 148 filas archivadas. Las aserciones del script comprobaron la conservación de datos originales, auditoría, operaciones y contadores. Los hashes de las 22 entradas previas de auditoría y 22 operaciones permanecieron idénticos; hubo cero descuadres, cero saldos negativos y ningún cambio en el hash del origen.
+
+Después de la limpieza, Realtime actualizó el reporte de septiembre a cero sin recarga. Auditoría mostró la acción Limpieza de pruebas y conservó las entradas históricas.
+
+## Último ajuste pendiente de acreditar
+
+Se detectó un desbordamiento de 6 píxeles en el importe de una tarjeta móvil. La corrección local adapta el texto entre 16 y 22 píxeles y permite salto de línea de respaldo. Lint, TypeScript y compilación pasaron. Su publicación y comprobación visual en producción aún no están acreditadas; las capturas de la versión anterior no validan este último cambio.
+
+También están en curso la revisión del manejo de un cierre de sesión fallido, el ensayo de un archivo que se presenta como PNG sin serlo y la limpieza de los registros del nuevo ensayo de imagen local.
+
+## Limitaciones vigentes
+
+- Cancelar un formulario después de subir una imagen puede dejar un archivo privado sin referencia. No existe una retirada automática de esos archivos; requiere mantenimiento y no altera existencias.
+- La protección contra contraseñas filtradas sigue deshabilitada en el plan Free; requiere Pro.
+- Los recibos son internos: la aplicación no emite ni certifica NCF/e-CF ni procesa cobros bancarios o de tarjeta; registra el medio de pago utilizado.
+
+Los resultados distinguen pruebas locales, comprobaciones HTTP y SQL, y recorridos reales de interfaz autenticada. La aprobación final continúa abierta mientras termina la verificación. Las condiciones del plan Free y el alcance de los comprobantes internos se documentan como límites del producto; no implican que el alcance operativo acordado requiera incorporar funciones fiscales o procesamiento de pagos.

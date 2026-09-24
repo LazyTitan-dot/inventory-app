@@ -527,6 +527,7 @@ a.button:hover {
   font-weight: 750;
   letter-spacing: -1px;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 .stat-card > small {
   font-size: 10px;
@@ -2058,7 +2059,7 @@ small,
     min-width: 42px;
   }
   .stat-card > strong {
-    font-size: 22px;
+    font-size: clamp(16px, 4.2vw, 22px);
   }
   .stat-card > span,
   .stat-card > small {

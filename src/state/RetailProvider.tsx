@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { CheckCircle2, RefreshCw, WifiOff, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { errorMessage } from '../lib/errors';
 import { RetailContext } from './RetailContext';
 import { createRetailStore } from './retailStore';
 
@@ -22,7 +23,22 @@ export function RetailProvider({ children, userId }: { children: ReactNode; user
   const refresh = store.refresh;
   const [toast, setToast] = useState('');
   const [online, setOnline] = useState(() => navigator.onLine);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
   const notify = useCallback((message: string) => setToast(message), []);
+  async function logout() {
+    if (!supabase || loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError('');
+    try {
+      const result = await supabase.auth.signOut();
+      if (result.error) throw result.error;
+    } catch (cause) {
+      setLogoutError(`No pudimos cerrar la sesión. ${errorMessage(cause)}`);
+    } finally {
+      setLoggingOut(false);
+    }
+  }
   useEffect(() => {
     void store.refresh().catch(() => undefined);
     const onFocus = () => {
@@ -85,13 +101,18 @@ export function RetailProvider({ children, userId }: { children: ReactNode; user
               >
                 <RefreshCw size={16} /> Volver a intentar
               </button>
-              <button className="button secondary" onClick={() => void supabase?.auth.signOut()}>
-                Cerrar sesión
+              <button
+                className="button secondary"
+                disabled={loggingOut}
+                onClick={() => void logout()}
+              >
+                {loggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
               </button>
             </div>
           ) : (
             <div className="loading-line" />
           )}
+          {logoutError && <p role="alert">{logoutError}</p>}
         </div>
       </main>
     );
