@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowDownToLine, Building2, Plus, UserRound } from 'lucide-react';
+import { ArrowDownToLine, Building2, MessageCircle, Plus, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Contact } from '../lib/contracts';
 import { useRetail } from '../state/useRetail';
 import { useOperation } from '../state/useOperation';
 import { dateTime, documentNumber, downloadCsv, matches, money } from '../lib/format';
+import { WhatsAppComposer } from '../components/WhatsAppComposer';
+import { buildContactWhatsAppMessage } from '../lib/whatsapp';
 import {
   EmptyState,
   ErrorNotice,
@@ -158,9 +160,17 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
   const [query, setQuery] = useState('');
   const [archived, setArchived] = useState(false);
   const [editor, setEditor] = useState<Contact | 'new' | null>(null);
-  const [detail, setDetail] = useState<Contact | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Contact | null>(null);
+  const [whatsAppContactId, setWhatsAppContactId] = useState<string | null>(null);
   const permitted = kind === 'customer' ? data.permissions.sell : data.permissions.purchase;
+  const detail = data.contacts.find((contact) => contact.id === detailId && contact.kind === kind);
+  const whatsAppContact =
+    kind === 'customer' && permitted
+      ? data.contacts.find(
+          (contact) => contact.id === whatsAppContactId && contact.kind === 'customer',
+        )
+      : undefined;
   const rows = data.contacts.filter(
     (c) =>
       c.kind === kind &&
@@ -182,7 +192,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
           : 'Registro reactivado.',
       );
       setArchiveTarget(null);
-      setDetail(null);
+      setDetailId(null);
     } catch {
       /* Mostrar error. */
     }
@@ -255,7 +265,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
                 {rows.map((c) => (
                   <tr key={c.id}>
                     <td>
-                      <button className="product-cell" onClick={() => setDetail(c)}>
+                      <button className="product-cell" onClick={() => setDetailId(c.id)}>
                         <span className="contact-avatar">
                           {kind === 'customer' ? <UserRound size={20} /> : <Building2 size={20} />}
                         </span>
@@ -269,6 +279,15 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
                     <td>{c.tax_id || '—'}</td>
                     <td className="truncate-cell">{c.address || '—'}</td>
                     <td>
+                      {kind === 'customer' && permitted && (
+                        <button
+                          className="button ghost"
+                          aria-label={`Escribir a ${c.name} por WhatsApp`}
+                          onClick={() => setWhatsAppContactId(c.id)}
+                        >
+                          <MessageCircle size={17} /> WhatsApp
+                        </button>
+                      )}
                       {permitted && (
                         <button className="button ghost" onClick={() => setEditor(c)}>
                           Editar
@@ -302,8 +321,8 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
           onClose={() => setEditor(null)}
         />
       )}
-      {detail && (
-        <Modal title={detail.name} onClose={() => setDetail(null)} wide>
+      {detail && !whatsAppContact && (
+        <Modal title={detail.name} onClose={() => setDetailId(null)} wide>
           <div className="contact-detail">
             <p>
               {detail.phone || 'Sin teléfono'} · {detail.email || 'Sin correo'}
@@ -311,6 +330,11 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
             <p>{detail.address || 'Sin dirección registrada'}</p>
             {detail.notes && <p className="note-box">{detail.notes}</p>}
             <div className="toolbar">
+              {kind === 'customer' && detail.kind === 'customer' && permitted && (
+                <button className="button secondary" onClick={() => setWhatsAppContactId(detail.id)}>
+                  <MessageCircle size={17} /> WhatsApp
+                </button>
+              )}
               {permitted && detail.active && (
                 <Link
                   className="button primary"
@@ -324,7 +348,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
                   className="button secondary"
                   onClick={() => {
                     setEditor(detail);
-                    setDetail(null);
+                    setDetailId(null);
                   }}
                 >
                   Editar datos
@@ -335,7 +359,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
                   className="button ghost"
                   onClick={() => {
                     setArchiveTarget(detail);
-                    setDetail(null);
+                    setDetailId(null);
                   }}
                 >
                   {detail.active ? 'Archivar' : 'Reactivar'}
@@ -409,6 +433,18 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
             </button>
           </div>
         </Modal>
+      )}
+      {whatsAppContact?.kind === 'customer' && kind === 'customer' && permitted && (
+        <WhatsAppComposer
+          title="Mensaje al cliente por WhatsApp"
+          contactName={whatsAppContact.name}
+          phone={whatsAppContact.phone ?? ''}
+          message={buildContactWhatsAppMessage({
+            contact: whatsAppContact,
+            businessName: data.settings.business_name,
+          })}
+          onClose={() => setWhatsAppContactId(null)}
+        />
       )}
     </>
   );

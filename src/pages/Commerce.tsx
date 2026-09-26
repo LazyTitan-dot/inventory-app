@@ -5,6 +5,7 @@ import {
   Check,
   ClipboardList,
   FileText,
+  MessageCircle,
   Package,
   Pencil,
   Plus,
@@ -40,6 +41,8 @@ import {
   StatusBadge,
 } from '../components/ui';
 import { ProductImage } from '../components/ProductImage';
+import { WhatsAppComposer } from '../components/WhatsAppComposer';
+import { buildDocumentWhatsAppMessage } from '../lib/whatsapp';
 import './commerce.css';
 
 type Kind = 'sale' | 'purchase' | 'quote';
@@ -1249,6 +1252,7 @@ function DocumentDetail({
   const operation = useOperation();
   const now = useNow();
   const [mode, setMode] = useState<DetailMode>('detail');
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
   const [linkItemId, setLinkItemId] = useState<string | null>(null);
   const items = data.document_items.filter((item) => item.document_id === doc.id);
   const linkItem = items.find((item) => item.id === linkItemId);
@@ -1278,6 +1282,30 @@ function DocumentDetail({
   const draftSupplier = data.contacts.find(
     (contact) => contact.id === doc.contact_id && contact.kind === 'supplier' && contact.active,
   );
+  const canShare = data.permissions.sell && (doc.type === 'sale' || doc.type === 'quote');
+  const customer = data.contacts.find(
+    (contact) => contact.id === doc.contact_id && contact.kind === 'customer',
+  );
+  const recipientPhone = customer
+    ? customer.phone ?? ''
+    : typeof doc.contact_snapshot.phone === 'string'
+      ? doc.contact_snapshot.phone
+      : '';
+  if (whatsAppOpen && canShare) {
+    return (
+      <WhatsAppComposer
+        title={`${doc.type === 'quote' ? 'Cotización' : 'Recibo de venta'} por WhatsApp`}
+        contactName={customer?.name || contactName(doc)}
+        phone={recipientPhone}
+        message={buildDocumentWhatsAppMessage({
+          document: doc,
+          items,
+          businessName: data.settings.business_name,
+        })}
+        onClose={() => setWhatsAppOpen(false)}
+      />
+    );
+  }
   return (
     <Modal title={documentNumber(doc)} onClose={operation.busy ? () => undefined : onClose} wide>
       {mode !== 'detail' && (
@@ -1559,6 +1587,12 @@ function DocumentDetail({
             </div>
           )}
           <div className="modal-footer commerce-document-actions">
+            {canShare && (
+              <button className="button secondary" onClick={() => setWhatsAppOpen(true)}>
+                <MessageCircle size={17} />
+                WhatsApp
+              </button>
+            )}
             <button className="button secondary" onClick={() => window.print()}>
               <Printer size={17} />
               Imprimir

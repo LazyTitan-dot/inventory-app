@@ -1,0 +1,47 @@
+.catalog-sku-control {
+  min-width: 0;
+}
+
+.catalog-sku-control > .button {
+  margin-top: 8px;
+}
+
+.catalog-price-preview {
+  padding: 16px;
+  margin: 14px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f5f8f6;
+}
+
+.catalog-price-preview dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 12px;
+}
+
+.catalog-price-preview dt,
+.catalog-price-preview > small,
+.catalog-price-notice {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.catalog-price-preview dd {
+  margin: 6px 0 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.catalog-price-notice {
+  margin: 14px 0;
+}
+
+@media (max-width: 620px) {
+  .catalog-price-preview dl {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

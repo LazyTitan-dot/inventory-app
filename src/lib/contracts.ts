@@ -128,6 +128,7 @@ export const deliverySchema = z.object({
   notes: optionalText,
   received_by: optionalText,
   delivered_at: timestamp.nullable(),
+  legacy: z.record(z.string(), z.unknown()).optional(),
   history: z.array(
     z.object({ at: timestamp, actor: id.nullable(), status: z.string(), note: optionalText }),
   ),

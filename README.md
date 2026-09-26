@@ -14,6 +14,10 @@ Publicada en [inventory-app-nine-navy.vercel.app](https://inventory-app-nine-nav
 - Entregas con responsable, reprogramación, intentos fallidos y constancia de recepción.
 - Reportes, exportación CSV, configuración comercial, roles y auditoría.
 
+Las variantes nuevas reciben un **SKU automático y editable**, generado a partir de la marca, el modelo y la variante. Los SKU existentes se conservan; el formulario comprueba duplicados y permite generar un código. El catálogo, la ficha y la exportación muestran el **precio sin ITBIS, el impuesto y el precio con ITBIS por unidad**, según la tasa configurada del negocio y antes de descuentos. Un precio de cero se identifica como pendiente. Estos cálculos no modifican los importes de documentos históricos.
+
+Desde clientes, recibos de venta, cotizaciones y entregas se puede preparar un mensaje de **WhatsApp**. La aplicación permite revisar y editar el destinatario y el texto antes de abrir WhatsApp; el usuario realiza el envío allí. No utiliza WhatsApp Cloud API, no envía mensajes automáticamente ni confirma su envío o entrega. Las plantillas omiten costos, notas internas, identificadores técnicos y enlaces de imágenes privadas.
+
 Los recibos son documentos internos. La aplicación no emite ni certifica NCF/e-CF y no procesa cobros bancarios ni de tarjeta: registra el medio de pago utilizado. La configuración tributaria debe corresponder a la operación del negocio.
 
 ## Desarrollo

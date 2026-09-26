@@ -4,6 +4,7 @@ import {
   ArrowDownToLine,
   ArrowUpRight,
   Plus,
+  RefreshCw,
   SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
@@ -31,9 +32,14 @@ import {
 } from '../components/ui';
 import { ProductImage } from '../components/ProductImage';
 import { ProductImagesEditor } from '../components/ProductImagesEditor';
+import { generateSku, MAX_SKU_LENGTH, normalizeSku, validateSkus } from '../lib/sku';
+import { calculateUnitPrice, isValidCatalogAmount, MAX_CATALOG_PRICE } from '../lib/pricing';
+import './catalog.css';
 
 interface VariantDraft {
   id?: string;
+  draftId: string;
+  autoSku: boolean;
   name: string;
   sku: string;
   barcode: string;
@@ -44,17 +50,58 @@ interface VariantDraft {
   opening_quantity?: number;
   active: boolean;
 }
-const newVariant = (): VariantDraft => ({
-  name: 'Estándar',
-  sku: '',
-  barcode: '',
-  cost: 0,
-  price: 0,
-  min_stock: 3,
-  reorder_target: 10,
-  opening_quantity: 0,
-  active: true,
-});
+function newVariant(brand: string, model: string, occupied: string[]): VariantDraft {
+  const draftId = crypto.randomUUID();
+  return {
+    draftId,
+    autoSku: true,
+    name: 'Estándar',
+    sku: generateSku({ brand, model, variant: 'Estándar', seed: draftId, occupied }),
+    barcode: '',
+    cost: 0,
+    price: 0,
+    min_stock: 3,
+    reorder_target: 10,
+    opening_quantity: 0,
+    active: true,
+  };
+}
+
+const taxRateLabel = (rate: number) =>
+  `${new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 }).format(rate)} %`;
+
+function PriceDetails({ price, taxRate }: { price: number; taxRate: number }) {
+  const amounts = calculateUnitPrice(price, taxRate);
+  if (!amounts)
+    return (
+      <p className="catalog-price-notice">
+        {price === 0
+          ? 'Precio pendiente: define el precio sin ITBIS para habilitar la venta.'
+          : 'Ingresa un precio válido con un máximo de dos decimales.'}
+      </p>
+    );
+  return (
+    <div className="catalog-price-preview">
+      <dl>
+        <div>
+          <dt>Precio sin ITBIS</dt>
+          <dd>{money(amounts.base)}</dd>
+        </div>
+        <div>
+          <dt>ITBIS ({taxRateLabel(taxRate)})</dt>
+          <dd>{money(amounts.tax)}</dd>
+        </div>
+        <div>
+          <dt>Precio con ITBIS</dt>
+          <dd>{money(amounts.total)}</dd>
+        </div>
+      </dl>
+      <small>
+        Por unidad, antes de descuentos. Se aplica la tasa configurada de {taxRateLabel(taxRate)}.
+      </small>
+    </div>
+  );
+}
 
 function ProductEditor({ product, onClose }: { product?: Product; onClose: () => void }) {
   const { data, notify } = useRetail();
@@ -67,6 +114,7 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
   const [images, setImages] = useState<string[]>(() => product?.images ?? []);
   const [uploading, setUploading] = useState(false);
   const [openedVersion] = useState(product?.updated_at);
+  const [catalogVariants] = useState(() => data.variants);
   const [expectedVariants] = useState(() =>
     product
       ? data.variants
@@ -78,17 +126,92 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
     product
       ? data.variants
           .filter((v) => v.product_id === product.id)
-          .map((v) => ({ ...v, cost: v.cost ?? 0, barcode: v.barcode ?? '' }))
-      : [newVariant()],
+          .map((v) => ({
+            ...v,
+            draftId: v.id,
+            autoSku: false,
+            cost: v.cost ?? 0,
+            barcode: v.barcode ?? '',
+          }))
+      : [
+          newVariant(
+            brand,
+            model,
+            catalogVariants.map((v) => v.sku),
+          ),
+        ],
   );
   const [validation, setValidation] = useState('');
+  function suggestedSku(
+    row: VariantDraft,
+    rows: VariantDraft[],
+    nextBrand = brand,
+    nextModel = model,
+  ) {
+    return generateSku({
+      brand: nextBrand,
+      model: nextModel,
+      variant: row.name,
+      seed: row.draftId,
+      occupied: [
+        ...catalogVariants.filter((v) => v.id !== row.id).map((v) => v.sku),
+        ...rows.filter((v) => v.draftId !== row.draftId).map((v) => v.sku),
+      ],
+    });
+  }
   const setVariant = (index: number, patch: Partial<VariantDraft>) =>
-    setVariants((rows) => rows.map((v, i) => (i === index ? { ...v, ...patch } : v)));
+    setVariants((rows) =>
+      rows.map((v, i) => {
+        if (i !== index) return v;
+        const next = { ...v, ...patch };
+        if (patch.name !== undefined && next.autoSku) next.sku = suggestedSku(next, rows);
+        return next;
+      }),
+    );
+  function changeIdentity(nextBrand: string, nextModel: string) {
+    setBrand(nextBrand);
+    setModel(nextModel);
+    setVariants((rows) => {
+      const next = [...rows];
+      for (let index = 0; index < next.length; index++) {
+        const row = next[index];
+        if (row?.autoSku)
+          next[index] = { ...row, sku: suggestedSku(row, next, nextBrand, nextModel) };
+      }
+      return next;
+    });
+  }
   async function save(event: FormEvent) {
     event.preventDefault();
     setValidation('');
     if (uploading) return;
     const urls = images;
+    const skuError = validateSkus(variants, catalogVariants);
+    if (skuError) {
+      setValidation(skuError);
+      return;
+    }
+    if (variants.some((v) => !isValidCatalogAmount(v.price) || !isValidCatalogAmount(v.cost))) {
+      setValidation(
+        `El costo y el precio deben estar entre 0 y ${money(MAX_CATALOG_PRICE)}, con un máximo de dos decimales.`,
+      );
+      return;
+    }
+    if (
+      !Number.isInteger(warranty) ||
+      warranty < 0 ||
+      warranty > 120 ||
+      variants.some((v) =>
+        [v.min_stock, v.reorder_target, ...(!v.id ? [v.opening_quantity] : [])].some(
+          (value) => value === undefined || !Number.isInteger(value) || value < 0 || value > 999999,
+        ),
+      )
+    ) {
+      setValidation(
+        'Las existencias deben ser cantidades enteras entre 0 y 999,999. La garantía debe estar entre 0 y 120 meses.',
+      );
+      return;
+    }
     if (variants.some((v) => v.reorder_target < v.min_stock)) {
       setValidation('El objetivo de reposición debe ser igual o mayor al mínimo.');
       return;
@@ -106,10 +229,16 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
         warranty_months: warranty,
         images: urls,
         variants: variants.map((v) => ({
-          ...v,
+          id: v.id,
           name: v.name.trim(),
-          sku: v.sku.trim().toUpperCase(),
+          sku: normalizeSku(v.sku),
           barcode: v.barcode.trim(),
+          cost: v.cost,
+          price: v.price,
+          min_stock: v.min_stock,
+          reorder_target: v.reorder_target,
+          opening_quantity: v.opening_quantity,
+          active: v.active,
         })),
       });
       notify(
@@ -134,16 +263,18 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
             <input
               required
               maxLength={100}
+              disabled={busy}
               value={brand}
-              onChange={(e) => setBrand(e.target.value)}
+              onChange={(e) => changeIdentity(e.target.value, model)}
             />
           </Field>
           <Field label="Modelo">
             <input
               required
               maxLength={160}
+              disabled={busy}
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => changeIdentity(brand, e.target.value)}
             />
           </Field>
           <Field label="Categoría">
@@ -177,18 +308,25 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
         <div className="section-heading">
           <div>
             <h3>Variantes y precios</h3>
-            <p>Un SKU por combinación de tamaño, capacidad o color.</p>
+            <p>El SKU se genera para las variantes nuevas. Puedes editarlo manualmente.</p>
           </div>
           <button
             type="button"
             className="button secondary"
-            onClick={() => setVariants([...variants, { ...newVariant(), name: '' }])}
+            disabled={busy}
+            onClick={() => {
+              const variant = newVariant(brand, model, [
+                ...catalogVariants.map((v) => v.sku),
+                ...variants.map((v) => v.sku),
+              ]);
+              setVariants((rows) => [...rows, variant]);
+            }}
           >
             <Plus size={16} /> Añadir variante
           </button>
         </div>
         {variants.map((variant, index) => (
-          <fieldset className="variant-editor" key={variant.id ?? `new-${index}`}>
+          <fieldset className="variant-editor" key={variant.draftId} disabled={busy}>
             <legend>Variante {index + 1}</legend>
             <div className="form-grid cols-3">
               <Field label="Nombre">
@@ -199,14 +337,36 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
                   onChange={(e) => setVariant(index, { name: e.target.value })}
                 />
               </Field>
-              <Field label="SKU">
-                <input
-                  required
-                  maxLength={80}
-                  value={variant.sku}
-                  onChange={(e) => setVariant(index, { sku: e.target.value })}
-                />
-              </Field>
+              <div className="catalog-sku-control">
+                <Field
+                  label="SKU"
+                  hint={
+                    variant.autoSku
+                      ? 'Automático según marca, modelo y variante.'
+                      : 'SKU manual; se conserva al cambiar el producto.'
+                  }
+                >
+                  <input
+                    required
+                    maxLength={MAX_SKU_LENGTH}
+                    value={variant.sku}
+                    onChange={(e) => setVariant(index, { sku: e.target.value, autoSku: false })}
+                  />
+                </Field>
+                <button
+                  type="button"
+                  className="button secondary"
+                  aria-label={`Generar SKU para la variante ${index + 1}`}
+                  onClick={() =>
+                    setVariant(index, {
+                      sku: suggestedSku(variant, variants),
+                      autoSku: !variant.id,
+                    })
+                  }
+                >
+                  <RefreshCw size={14} /> Generar SKU
+                </button>
+              </div>
               <Field label="Código de barras">
                 <input
                   maxLength={80}
@@ -219,18 +379,21 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
                   required
                   type="number"
                   min={0}
-                  max={99999999}
+                  max={MAX_CATALOG_PRICE}
                   step="0.01"
                   value={Number.isFinite(variant.cost) ? variant.cost : ''}
                   onChange={(e) => setVariant(index, { cost: e.target.valueAsNumber })}
                 />
               </Field>
-              <Field label="Precio de venta (RD$)">
+              <Field
+                label="Precio sin ITBIS (RD$)"
+                hint="0 indica precio pendiente; no habilita ventas gratis."
+              >
                 <input
                   required
                   type="number"
                   min={0}
-                  max={99999999}
+                  max={MAX_CATALOG_PRICE}
                   step="0.01"
                   value={Number.isFinite(variant.price) ? variant.price : ''}
                   onChange={(e) => setVariant(index, { price: e.target.valueAsNumber })}
@@ -241,7 +404,7 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
                   required
                   type="number"
                   min={0}
-                  max={1000000}
+                  max={999999}
                   step={1}
                   value={Number.isFinite(variant.min_stock) ? variant.min_stock : ''}
                   onChange={(e) => setVariant(index, { min_stock: e.target.valueAsNumber })}
@@ -252,7 +415,7 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
                   required
                   type="number"
                   min={0}
-                  max={1000000}
+                  max={999999}
                   step={1}
                   value={Number.isFinite(variant.reorder_target) ? variant.reorder_target : ''}
                   onChange={(e) => setVariant(index, { reorder_target: e.target.valueAsNumber })}
@@ -264,7 +427,7 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
                     required
                     type="number"
                     min={0}
-                    max={1000000}
+                    max={999999}
                     step={1}
                     value={
                       Number.isFinite(variant.opening_quantity) ? variant.opening_quantity : ''
@@ -276,6 +439,7 @@ function ProductEditor({ product, onClose }: { product?: Product; onClose: () =>
                 </Field>
               )}
             </div>
+            <PriceDetails price={variant.price} taxRate={data.settings.tax_rate} />
             {variants.length > 1 && (
               <button
                 className="button ghost danger-text"
@@ -455,20 +619,31 @@ export function CatalogPage() {
         'Disponibles',
         'En revisión',
         'Mínimo',
-        'Precio RD$',
+        'Precio sin ITBIS RD$',
+        'ITBIS configurado %',
+        'ITBIS por unidad RD$',
+        'Precio con ITBIS RD$',
+        'Estado de precio',
         ...(data.permissions.view_costs ? ['Costo RD$'] : []),
       ],
-      ...visible.map(({ product, variant, stock }) => [
-        variant.sku,
-        `${product.brand} ${product.model}`,
-        variant.name,
-        categoryName(product.category),
-        stock?.available ?? 0,
-        stock?.quarantine ?? 0,
-        variant.min_stock,
-        variant.price,
-        ...(data.permissions.view_costs ? [variant.cost ?? 0] : []),
-      ]),
+      ...visible.map(({ product, variant, stock }) => {
+        const amounts = calculateUnitPrice(variant.price, data.settings.tax_rate);
+        return [
+          variant.sku,
+          `${product.brand} ${product.model}`,
+          variant.name,
+          categoryName(product.category),
+          stock?.available ?? 0,
+          stock?.quarantine ?? 0,
+          variant.min_stock,
+          amounts?.base ?? '',
+          data.settings.tax_rate,
+          amounts?.tax ?? '',
+          amounts?.total ?? '',
+          amounts ? 'Definido' : 'Precio pendiente',
+          ...(data.permissions.view_costs ? [variant.cost ?? 0] : []),
+        ];
+      }),
     ]);
   }
   async function archive() {
@@ -572,7 +747,9 @@ export function CatalogPage() {
           <span>
             {visible.length} {visible.length === 1 ? 'variante' : 'variantes'}
           </span>
-          <span>Precios en pesos dominicanos</span>
+          <span>
+            Precios por unidad en RD$ · ITBIS configurado: {taxRateLabel(data.settings.tax_rate)}
+          </span>
         </div>
         {visible.length ? (
           <div className="table-wrap">
@@ -582,7 +759,8 @@ export function CatalogPage() {
                   <th>Producto / variante</th>
                   <th>SKU</th>
                   <th>Disponibles</th>
-                  <th>Precio</th>
+                  <th>Precio sin ITBIS</th>
+                  <th>Precio con ITBIS</th>
                   {data.permissions.view_costs && <th>Margen</th>}
                   <th>
                     <span className="sr-only">Acciones</span>
@@ -590,82 +768,95 @@ export function CatalogPage() {
                 </tr>
               </thead>
               <tbody>
-                {visible.map(({ product, variant, stock }) => (
-                  <tr key={variant.id}>
-                    <td>
-                      <button className="product-cell" onClick={() => setDetail(variant)}>
-                        <ProductImage
-                          productId={product.id}
-                          source={product.images[0]}
-                          alt=""
-                          className="product-thumbnail"
-                        />
-                        <span>
-                          <strong>
-                            {product.brand} {product.model}
-                          </strong>
-                          <small>
-                            {variant.name} · {categoryName(product.category)}
-                          </small>
-                        </span>
-                      </button>
-                    </td>
-                    <td>
-                      <code>{variant.sku}</code>
-                    </td>
-                    <td>
-                      <div className="stock-cell">
-                        <strong>{stock?.available ?? 0}</strong>
-                        <span
-                          className={`badge ${(stock?.available ?? 0) === 0 ? 'danger' : (stock?.available ?? 0) <= variant.min_stock ? 'warning' : 'success'}`}
-                        >
-                          {(stock?.available ?? 0) === 0
-                            ? 'Agotado'
-                            : (stock?.available ?? 0) <= variant.min_stock
-                              ? 'Stock bajo'
-                              : 'Disponible'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="numeric">
-                      {variant.price > 0 ? (
-                        money(variant.price)
-                      ) : (
-                        <span className="badge warning">Precio pendiente</span>
-                      )}
-                    </td>
-                    {data.permissions.view_costs && (
+                {visible.map(({ product, variant, stock }) => {
+                  const amounts = calculateUnitPrice(variant.price, data.settings.tax_rate);
+                  return (
+                    <tr key={variant.id}>
                       <td>
-                        {variant.price > 0
-                          ? `${(((variant.price - (variant.cost ?? 0)) / variant.price) * 100).toFixed(1)} %`
-                          : '—'}
+                        <button className="product-cell" onClick={() => setDetail(variant)}>
+                          <ProductImage
+                            productId={product.id}
+                            source={product.images[0]}
+                            alt=""
+                            className="product-thumbnail"
+                          />
+                          <span>
+                            <strong>
+                              {product.brand} {product.model}
+                            </strong>
+                            <small>
+                              {variant.name} · {categoryName(product.category)}
+                            </small>
+                          </span>
+                        </button>
                       </td>
-                    )}
-                    <td>
-                      {data.permissions.manage_catalog && (
-                        <div className="row-actions">
-                          <button
-                            className="icon-button"
-                            aria-label={`Ajustar ${variant.sku}`}
-                            onClick={() => setAdjustment(variant)}
+                      <td>
+                        <code>{variant.sku}</code>
+                      </td>
+                      <td>
+                        <div className="stock-cell">
+                          <strong>{stock?.available ?? 0}</strong>
+                          <span
+                            className={`badge ${(stock?.available ?? 0) === 0 ? 'danger' : (stock?.available ?? 0) <= variant.min_stock ? 'warning' : 'success'}`}
                           >
-                            <SlidersHorizontal size={17} />
-                          </button>
-                          <button className="button ghost" onClick={() => setEditor(product)}>
-                            Editar
-                          </button>
-                          <button
-                            className="icon-button"
-                            aria-label={`${product.active ? 'Archivar' : 'Reactivar'} ${product.model}`}
-                            onClick={() => setArchiving(product)}
-                          >
-                            <Archive size={16} />
-                          </button>
+                            {(stock?.available ?? 0) === 0
+                              ? 'Agotado'
+                              : (stock?.available ?? 0) <= variant.min_stock
+                                ? 'Stock bajo'
+                                : 'Disponible'}
+                          </span>
                         </div>
+                      </td>
+                      <td className="numeric">
+                        {amounts ? (
+                          money(amounts.base)
+                        ) : (
+                          <span className="badge warning">Precio pendiente</span>
+                        )}
+                      </td>
+                      <td className="numeric">
+                        {amounts ? (
+                          <>
+                            <strong>{money(amounts.total)}</strong>
+                            <small>ITBIS: {money(amounts.tax)}</small>
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      {data.permissions.view_costs && (
+                        <td>
+                          {variant.price > 0
+                            ? `${(((variant.price - (variant.cost ?? 0)) / variant.price) * 100).toFixed(1)} %`
+                            : '—'}
+                        </td>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                      <td>
+                        {data.permissions.manage_catalog && (
+                          <div className="row-actions">
+                            <button
+                              className="icon-button"
+                              aria-label={`Ajustar ${variant.sku}`}
+                              onClick={() => setAdjustment(variant)}
+                            >
+                              <SlidersHorizontal size={17} />
+                            </button>
+                            <button className="button ghost" onClick={() => setEditor(product)}>
+                              Editar
+                            </button>
+                            <button
+                              className="icon-button"
+                              aria-label={`${product.active ? 'Archivar' : 'Reactivar'} ${product.model}`}
+                              onClick={() => setArchiving(product)}
+                            >
+                              <Archive size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -693,10 +884,11 @@ export function CatalogPage() {
       {adjustment && <StockEditor variant={adjustment} onClose={() => setAdjustment(null)} />}
       {detail && (
         <Modal title={`${detail.sku} · ${detail.name}`} onClose={() => setDetail(null)} wide>
+          <PriceDetails price={detail.price} taxRate={data.settings.tax_rate} />
           <div className="stats-grid">
             <StatCard
-              label="Precio"
-              value={detail.price > 0 ? money(detail.price) : 'Precio pendiente'}
+              label="Disponibles"
+              value={data.stocks.find((stock) => stock.variant_id === detail.id)?.available ?? 0}
             />
             <StatCard label="Stock mínimo" value={detail.min_stock} />
             <StatCard label="Objetivo" value={detail.reorder_target} />

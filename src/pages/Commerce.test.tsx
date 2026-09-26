@@ -161,6 +161,26 @@ beforeEach(() => {
 });
 
 describe('Commerce lifecycle controls', () => {
+  it('offers WhatsApp only for accessible sales and quotes with the current sales permission', () => {
+    for (const kind of ['sale', 'quote'] as const) {
+      data.documents = [document(kind, kind === 'sale' ? 'completed' : 'open')];
+      expect(markup(kind)).toContain('WhatsApp');
+      data.permissions.sell = false;
+      expect(markup(kind)).not.toContain('WhatsApp');
+      data.permissions.sell = true;
+    }
+    data.documents = [document('purchase', 'pending')];
+    expect(markup('purchase')).not.toContain('WhatsApp');
+  });
+
+  it('does not share or render a document that is absent from the current authorized data', () => {
+    data.documents = [];
+    const html = markup('sale');
+    expect(html).toContain('El documento solicitado no está disponible');
+    expect(html).not.toContain('WhatsApp');
+    expect(html).not.toContain('<dialog');
+  });
+
   it('allows an open quote to be edited or cancelled, and removes those actions after conversion', () => {
     expect(markup('quote')).toContain('Editar cotización');
     expect(markup('quote')).toContain('Cancelar cotización');

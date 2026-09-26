@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, Check, Clock3, Pencil, Plus, Tag, Truck } from 'lucide-react';
+import { CalendarDays, Check, Clock3, MessageCircle, Pencil, Plus, Tag, Truck } from 'lucide-react';
 import {
   EmptyState,
   ErrorNotice,
@@ -25,6 +25,8 @@ import {
 } from '../lib/format';
 import { useOperation } from '../state/useOperation';
 import { useRetail } from '../state/useRetail';
+import { WhatsAppComposer } from '../components/WhatsAppComposer';
+import { buildDeliveryWhatsAppMessage } from '../lib/whatsapp';
 import './operations.css';
 
 type DeliveryStatus = Delivery['status'];
@@ -601,6 +603,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
   const { data } = useRetail();
   const [mode, setMode] = useState<'detail' | 'edit'>('detail');
   const [transition, setTransition] = useState<DeliveryStatus | null>(null);
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
   const sale = data.documents.find((item) => item.id === delivery.sale_id);
   const canManage = canManageDeliveries(data) && (!sale || saleIsCurrent(sale));
   const actorName = (id: string | null) =>
@@ -608,6 +611,22 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
       ? data.profile.display_name || data.profile.email
       : data.team.find((member) => member.user_id === id)?.display_name ||
         (id ? 'Usuario del equipo' : 'Sistema');
+  if (whatsAppOpen && canManageDeliveries(data)) {
+    return (
+      <WhatsAppComposer
+        title="Entrega por WhatsApp"
+        contactName={delivery.contact_name}
+        phone={delivery.phone}
+        message={buildDeliveryWhatsAppMessage({
+          delivery,
+          sale,
+          items: data.document_items.filter((item) => item.document_id === delivery.sale_id),
+          businessName: data.settings.business_name,
+        })}
+        onClose={() => setWhatsAppOpen(false)}
+      />
+    );
+  }
   if (mode === 'edit') return <DeliveryEditor delivery={delivery} onClose={onClose} />;
   if (transition)
     return (
@@ -725,6 +744,11 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           )}
         </section>
         <div className="modal-footer">
+          {canManageDeliveries(data) && (
+            <button className="button secondary" onClick={() => setWhatsAppOpen(true)}>
+              <MessageCircle size={17} /> WhatsApp
+            </button>
+          )}
           <button className="button secondary" onClick={onClose}>
             Cerrar
           </button>
