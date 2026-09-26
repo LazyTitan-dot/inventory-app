@@ -126,3 +126,23 @@ La limpieza del ensayo posterior de imagen local terminó con `COMMIT`: tres fil
 - Los recibos son internos: la aplicación no emite ni certifica NCF/e-CF ni procesa cobros bancarios o de tarjeta; registra el medio de pago utilizado.
 
 La aprobación Astra Ultra corresponde a los flujos operativos de una tienda única comprobados en este registro. Los resultados distinguen pruebas locales, comprobaciones HTTP y SQL, y recorridos reales de interfaz autenticada. Las condiciones del plan Free, el mantenimiento de archivos privados y el alcance de los comprobantes internos permanecen explícitos; no se extiende la aprobación a funciones fiscales, procesamiento de pagos ni escenarios no ensayados.
+
+## Ampliación del 26 de septiembre de 2026: SKU, ITBIS y WhatsApp
+
+Código `ab79496859786bb3ce614200a689427e3799ef5d`, desplegado en el dominio de producción. GitHub Actions terminó correctamente en la ejecución `36271538213`; Vercel publicó `dpl_A9Eb9zCLCARW5VnowsXsWwhGUyHC` con estado READY. No se modificaron tablas, tasas, precios históricos, credenciales ni variables de entorno. El contrato del cliente ahora conserva los metadatos ya existentes de las entregas históricas.
+
+Lint, TypeScript, 310 aserciones SQL (6 pruebas aprobadas; ensayo opcional del perfil legado omitido) y build de producción pasaron. La suite unitaria final contiene 193 pruebas aprobadas. Se añadieron regresiones de generación y duplicación de SKU, redondeo decimal del ITBIS, límites, teléfonos, codificación de mensajes, privacidad, estados de documentos, importes históricos, mensajes largos y permisos. La revisión de archivos modificados no encontró credenciales ni datos personales de la prueba en código o fixtures públicos.
+
+Recorridos comprobados con sesión real:
+
+- Creación de un producto temporal sin existencias, con SKU automático, precio base RD$1,000.25, ITBIS RD$180.05 y total RD$1,180.30. Guardado, recarga, búsqueda por SKU y edición del modelo conservando el código. El formulario rechazó un segundo producto con el mismo SKU.
+- Generación independiente al añadir variantes; la edición manual del SKU se conserva al cambiar marca o modelo. Los SKU del catálogo anterior no se regeneran automáticamente.
+- Precio base, impuesto y total visibles en inventario, ficha y editor. Exportación CSV descargada y leída: RD$29,900.00 + RD$5,382.00 = RD$35,282.00, con columnas separadas y tasa configurada.
+- Previsualización de mensajes desde cliente, cotización cancelada, venta completada y entrega programada. Conserva estados e importes guardados; las plantillas omiten notas internas, costos y referencias privadas. Volver restaura el detalle sin superponer diálogos. Un teléfono inválido o mensaje vacío impide abrir el enlace y muestra un error en español.
+- Entrega histórica: la plantilla muestra fecha y franja original, sin afirmar una hora exacta desconocida. Las reprogramaciones posteriores acreditadas usan la cita actual.
+- Un único mensaje de prueba fue enviado al destinatario expresamente indicado por el usuario, partiendo del botón de producción y completando Enviar en WhatsApp Web. El texto aclaró que no correspondía a una compra, cobro ni entrega real. La conversación mostró el mensaje saliente. No se enviaron los documentos comerciales utilizados para revisar plantillas.
+- Copiar mensaje mostró confirmación correcta. Consola de producción sin errores ni advertencias en los recorridos nuevos; capturas de escritorio del catálogo y compositor revisadas. La ruta `/inventario` respondió HTTP 200 con el bundle `index-BYVqz8Sd.js`, CSP y `nosniff`.
+
+La limpieza del producto de prueba se ensayó con ROLLBACK y se confirmó con COMMIT tras verificar identidad, hashes, cero existencias y ausencia de dependencias. Se retiraron únicamente su producto, variante y saldo; una lectura posterior confirmó cero filas restantes de esos identificadores. Se conservaron sus dos operaciones y entradas de auditoría, se añadió un registro de limpieza y se verificó que el resto del catálogo, correlativos y archivo original no cambió durante la transacción. Los datos reales creados por el usuario desde el corte anterior se conservaron.
+
+La emulación de tamaño móvil de la herramienta de navegador no aplicó el ancho solicitado en esta ronda (continuó reportando el ancho de escritorio). Por tanto, no se presenta ese intento como una nueva prueba visual móvil aprobada; se revisaron los estilos adaptables y se conserva la evidencia móvil de la versión base. La integración WhatsApp es click-to-chat: requiere pulsar Enviar en WhatsApp y no dispone de envío desatendido, Cloud API ni seguimiento de entrega dentro de SmartLiving.
