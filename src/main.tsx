@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { installSpanishValidation } from './lib/formValidation';
 import './styles.css';
+import './design-system/tokens.css';
+import './design-system/components.css';
+import './design-system/app-theme.css';
 
 const removeValidation = installSpanishValidation();
 import.meta.hot?.dispose(removeValidation);

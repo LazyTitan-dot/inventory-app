@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   BrowserRouter,
   Link,
@@ -19,6 +19,8 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Moon,
+  Sun,
   Package,
   RefreshCw,
   Settings2,
@@ -55,10 +57,72 @@ const Promotions = lazy(() =>
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
 const Audit = lazy(() => import('./pages/Settings').then((m) => ({ default: m.AuditPage })));
 
-function Shell() {
+export function Shell() {
   const { data, refresh, refreshing, lastUpdated, notify } = useRetail();
   const [menu, setMenu] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const selected = window.localStorage.getItem('smartliving-theme');
+      if (selected === 'light' || selected === 'dark') return selected;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('smartliving-theme', theme);
+    } catch { /* Storage can be unavailable in private browsers. */ }
+  }, [theme]);
   const [loggingOut, setLoggingOut] = useState(false);
+  const sidebar = useRef<HTMLElement>(null);
+  const main = useRef<HTMLDivElement>(null);
+  // The mobile drawer is modal: keep focus inside and restore its trigger on close.
+  useEffect(() => {
+    if (!menu) return;
+    const mobile = window.matchMedia('(max-width: 850px)');
+    if (!mobile.matches) return;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    const content = main.current;
+    const drawer = sidebar.current;
+    if (!drawer) return;
+    if (content) content.inert = true;
+    document.body.style.overflow = 'hidden';
+    const focusable = () => Array.from(drawer.querySelectorAll<HTMLElement>(
+      'a[href], button:not(:disabled), [tabindex="0"]',
+    )).filter((element) => element.getClientRects().length > 0);
+    drawer.querySelector<HTMLButtonElement>('.mobile-sidebar-close')?.focus();
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMenu(false);
+      }
+      if (event.key !== 'Tab') return;
+      const elements = focusable();
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+    function onResize() {
+      if (!mobile.matches) setMenu(false);
+    }
+    document.addEventListener('keydown', onKeyDown);
+    mobile.addEventListener('change', onResize);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      mobile.removeEventListener('change', onResize);
+      if (content) content.inert = false;
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+    };
+  }, [menu]);
   const location = useLocation();
   const p = data.permissions;
   const viewCommerce = p.sell || p.manage_business;
@@ -91,24 +155,29 @@ function Shell() {
     }
   }
   return (
-    <div className="app-layout">
+    <div className="app-layout" data-theme={theme}>
       <a className="skip-link" href="#contenido">
         Saltar al contenido
       </a>
       {menu && (
         <button
+          type="button"
+          tabIndex={-1}
           className="sidebar-backdrop"
           aria-label="Cerrar menú"
           onClick={() => setMenu(false)}
         />
       )}
-      <aside id="menu-principal" className={`sidebar ${menu ? 'open' : ''}`}>
+      <aside
+        ref={sidebar}
+        id="menu-principal"
+        className={`sidebar ${menu ? 'open' : ''}`}
+        role={menu ? 'dialog' : undefined}
+        aria-modal={menu ? true : undefined}
+        aria-label="Menú principal"
+      >
         <Link to="/" className="brand sidebar-brand" onClick={() => setMenu(false)}>
-          <span className="brand-mark">S</span>
-          <span>
-            smartliving<span className="brand-dot">.</span>
-            <small>RETAIL & OPERACIONES</small>
-          </span>
+          <img src="/brand/primary_dark.png" alt="S-mart Living" />
         </Link>
         <button
           className="mobile-sidebar-close icon-button"
@@ -119,7 +188,7 @@ function Shell() {
         </button>
         <div className="business-switch">
           <span className="business-avatar">
-            {data.settings.business_name.slice(0, 2).toUpperCase()}
+            <img src="/brand/square_icon.png" alt="" />
           </span>
           <span>
             <strong>{data.settings.business_name}</strong>
@@ -165,7 +234,7 @@ function Shell() {
           </button>
         </div>
       </aside>
-      <div className="app-main">
+      <div className="app-main" ref={main}>
         <header className="topbar">
           <div className="toolbar">
             <button
@@ -190,6 +259,15 @@ function Shell() {
                 : `Actualizado ${lastUpdated.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', timeZone: BUSINESS_TIMEZONE })}`}
             </span>
             <button
+              type="button"
+              className="icon-button sl-theme-toggle"
+              aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
+              title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+              onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
+            >
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+            <button
               className="icon-button"
               disabled={refreshing}
               aria-label="Actualizar información"
@@ -199,7 +277,7 @@ function Shell() {
             </button>
           </div>
         </header>
-        <main id="contenido" className="page-content" key={location.pathname}>
+        <main id="contenido" tabIndex={-1} className="page-content" key={location.pathname}>
           <Suspense
             fallback={
               <div className="page-skeleton" role="status" aria-label="Cargando pantalla">
@@ -292,9 +370,41 @@ function Shell() {
           </Suspense>
         </main>
         <footer className="app-footer">
-          <span>SmartLiving · Operaciones con claridad</span>
+          <span>S-mart Living · Operaciones con claridad</span>
           <span>Pesos dominicanos · Hora de Santo Domingo</span>
         </footer>
+        <nav className="sl-bottom-dock" aria-label="Navegación móvil">
+          <NavLink to="/" end className="sl-bottom-tab">
+            <span className="sl-bottom-lens"><LayoutDashboard size={20} /></span>
+            <span>Inicio</span>
+          </NavLink>
+          <NavLink to="/inventario" className="sl-bottom-tab">
+            <span className="sl-bottom-lens"><Package size={20} /></span>
+            <span>Inventario</span>
+          </NavLink>
+          {viewCommerce ? (
+            <NavLink to="/ventas" className="sl-bottom-tab">
+              <span className="sl-bottom-lens"><ShoppingBag size={20} /></span>
+              <span>Ventas</span>
+            </NavLink>
+          ) : p.purchase ? (
+            <NavLink to="/compras" className="sl-bottom-tab">
+              <span className="sl-bottom-lens"><ClipboardList size={20} /></span>
+              <span>Compras</span>
+            </NavLink>
+          ) : null}
+          <button
+            type="button"
+            className={`sl-bottom-tab ${menu ? 'is-current' : ''}`}
+            aria-label="Más secciones"
+            aria-controls="menu-principal"
+            aria-expanded={menu}
+            onClick={() => setMenu(true)}
+          >
+            <span className="sl-bottom-lens"><Menu size={20} /></span>
+            <span>Más</span>
+          </button>
+        </nav>
       </div>
     </div>
   );
