@@ -694,7 +694,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
   const { data } = useRetail();
   const [mode, setMode] = useState<'detail' | 'edit'>('detail');
   const [transition, setTransition] = useState<DeliveryStatus | null>(null);
-  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
+  const [whatsAppMode, setWhatsAppMode] = useState<'delivery' | 'tracking' | null>(null);
   const [copyFallback, setCopyFallback] = useState('');
   const { notify } = useRetail();
   const sale = data.documents.find((item) => item.id === delivery.sale_id);
@@ -716,19 +716,19 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
       ? data.profile.display_name || data.profile.email
       : data.team.find((member) => member.user_id === id)?.display_name ||
         (id ? 'Usuario del equipo' : 'Sistema');
-  if (whatsAppOpen && canManageDeliveries(data)) {
+  if (whatsAppMode && canManageDeliveries(data)) {
     return (
       <WhatsAppComposer
-        title="Entrega por WhatsApp"
+        title={whatsAppMode === 'tracking' ? 'Seguimiento por WhatsApp' : 'Entrega por WhatsApp'}
         contactName={delivery.contact_name}
         phone={delivery.phone}
-        message={buildDeliveryWhatsAppMessage({
+        message={whatsAppMode === 'tracking' ? buildDeliveryTrackingSummary(delivery, data.settings.business_name, sale?.number) : buildDeliveryWhatsAppMessage({
           delivery,
           sale,
           items: data.document_items.filter((item) => item.document_id === delivery.sale_id),
           businessName: data.settings.business_name,
         })}
-        onClose={() => setWhatsAppOpen(false)}
+        onClose={() => setWhatsAppMode(null)}
       />
     );
   }
@@ -771,7 +771,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           </p>
           <div className="operations-actions">
             {mapUrl && <a className="button secondary" href={mapUrl} target="_blank" rel="noopener noreferrer"><MapPin size={16} /> Ver destino en Maps</a>}
-            <button className="button secondary" onClick={() => void copyDetails(buildDeliveryTrackingSummary(delivery, data.settings.business_name, sale?.number), 'Resumen de seguimiento copiado.')}><Copy size={16} /> Copiar seguimiento</button>
+            {canManageDeliveries(data) && <button className="button secondary" onClick={() => setWhatsAppMode('tracking')}><MessageCircle size={16} /> Enviar seguimiento por WhatsApp</button>}
             <button className="button ghost" onClick={() => void copyDetails([delivery.address, delivery.address_snapshot?.reference, delivery.phone].filter(Boolean).join('\n'), 'Dirección copiada.')}><Copy size={16} /> Copiar dirección</button>
           </div>
           <small>Eventos registrados por el equipo. Esta vista no muestra GPS, velocidad, distancias ni una hora estimada de llegada.</small>
@@ -876,7 +876,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
         </section>
         <div className="modal-footer">
           {canManageDeliveries(data) && (
-            <button className="button secondary" onClick={() => setWhatsAppOpen(true)}>
+            <button className="button secondary" onClick={() => setWhatsAppMode('delivery')}>
               <MessageCircle size={17} /> WhatsApp
             </button>
           )}

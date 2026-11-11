@@ -1,4 +1,4 @@
-# SmartLiving · Inventario y operaciones retail
+# S-Mart Living · Inventario y operaciones retail
 
 Aplicación en español para una tienda de electrodomésticos en República Dominicana. React, TypeScript, Vite y Supabase (PostgreSQL, Auth, Realtime y Storage). Importes en pesos dominicanos; fechas operativas en `America/Santo_Domingo`.
 

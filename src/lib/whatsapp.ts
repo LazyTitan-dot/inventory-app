@@ -1,7 +1,9 @@
 import type { Contact, Delivery, DocumentItem, RetailDocument } from './contracts';
 import { dateTime, money, paymentLabels, shortDate, statusLabels } from './format';
+import { displayBusinessName } from './brand';
 
 export const MAX_WHATSAPP_MESSAGE_LENGTH = 3500;
+export const DELIVERY_CHAT_REPLY = 'Puedes escribirnos por este mismo chat para cualquier consulta o cambio en tu entrega.';
 
 export interface ContactWhatsAppInput {
   contact: Pick<Contact, 'name' | 'kind'>;
@@ -140,7 +142,7 @@ function deliverySchedule(delivery: DeliveryWhatsAppInput['delivery']): string {
 }
 
 function business(name: string): string {
-  return text(name, 100) || 'Nuestro negocio';
+  return displayBusinessName(text(name, 100)) || 'Nuestro negocio';
 }
 
 function itemName(item: DocumentItem): string {
@@ -293,7 +295,29 @@ export function buildDeliveryWhatsAppMessage({
     cancelled: 'Esta entrega está cancelada.',
   };
   // A delivery does not carry a financial summary or recompute the original sale.
+  const footer = [closing[delivery.status], DELIVERY_CHAT_REPLY];
   return lines.length
-    ? withItems(header, lines, [closing[delivery.status]])
-    : [...header, '', closing[delivery.status]].join('\n');
+    ? withItems(header, lines, footer)
+    : [...header, '', ...footer].join('\n');
+}
+
+export function buildDeliveryTrackingWhatsAppMessage({
+  delivery,
+  businessName,
+  saleNumber,
+}: {
+  delivery: Delivery;
+  businessName: string;
+  saleNumber?: string;
+}): string {
+  const latest = [...delivery.history].sort((a, b) => b.at.localeCompare(a.at))[0];
+  return [
+    `${business(businessName)} · Seguimiento de entrega`,
+    ...(saleNumber ? [`Venta: ${text(saleNumber, 100)}`] : []),
+    `Estado: ${statusLabels[delivery.status] ?? 'No registrado'}`,
+    `Fecha programada: ${deliverySchedule(delivery)}`,
+    ...(latest ? [`Último evento: ${statusLabels[latest.status] ?? 'Actualización registrada'} · ${date(latest.at)}`] : []),
+    DELIVERY_CHAT_REPLY,
+    'Este resumen muestra eventos registrados; no incluye ubicación GPS ni una hora estimada de llegada.',
+  ].join('\n');
 }

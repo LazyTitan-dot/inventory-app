@@ -50,7 +50,20 @@ anterior; se conservan tablas y registros nuevos, sin borrado destructivo.
 
 Campos `id` opcionales en altas, obligatorios en edición; UUID nuevo generado por servidor si se omite.
 
-- `save_product`: `{id?,category,brand,model,description?,warranty_months,images?:string[],variants:[{id?,name,sku,barcode?,cost,price,min_stock,reorder_target,active?,opening_quantity?}]}`. Variantes existentes omitidas se archivan, nunca eliminan; `opening_quantity` solo al crear. Producto activo por defecto. Validar mínimo una variante activa. Variantes con existencias o pedidos pendientes no se archivan.
+La migración `20261111151930_catalog_tax_rate_guard.sql` añade una guarda opcional
+al guardado de catálogo: `expected_tax_rate` debe ser un número entre 0 y 100,
+con la precisión admitida para tasas, igual a la tasa vigente de
+`retail_settings`. El servidor bloquea esa fila `FOR SHARE` hasta finalizar el
+comando; un cambio de tasa rechazará la edición completa antes de escribir el
+producto. El editor de precio final envía la tasa con la que el usuario revisó
+el desglose y conserva el borrador cuando necesita recalcularlo. La omisión del
+campo mantiene la compatibilidad anterior. Un reintento ya confirmado con UUID y
+payload idénticos devuelve el resultado original sin volver a aplicar la
+escritura. Se conserva `variants.price` como precio neto de dos decimales; no se
+reescriben precios ni documentos históricos. La conversión del total con ITBIS
+muestra cualquier ajuste de centavo en la UI antes de guardar.
+
+- `save_product`: `{id?,category,brand,model,description?,warranty_months,images?:string[],expected_tax_rate?:number,variants:[{id?,name,sku,barcode?,cost,price,min_stock,reorder_target,active?,opening_quantity?}]}`. Variantes existentes omitidas se archivan, nunca eliminan; `opening_quantity` solo al crear. Producto activo por defecto. Validar mínimo una variante activa. Variantes con existencias o pedidos pendientes no se archivan.
 - `archive_product`: `{id,active:boolean}`. Archivar con existencias/pedidos pendientes rechazado.
 - `save_contact`: `{id?,kind,name,email?,phone?,tax_id?,address?,notes?}`; `archive_contact`: `{id,active:boolean}`.
 - `adjust_stock`: `{variant_id,quantity:number,expected_quantity:number,bucket?:available|quarantine,reason}`; cantidad es diferencia con signo, no saldo final. Motivo obligatorio. expected_quantity es el saldo observado al abrir formulario; rechaza si cambió mientras tanto.

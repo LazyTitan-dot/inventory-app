@@ -475,3 +475,5 @@
 @media (max-width: 440px) {
   .catalog-header-actions .button.primary { flex-basis: 100%; }
 }
+.catalog-price-suggestion { display: grid; align-content: start; gap: 8px; padding-top: 20px; }
+.catalog-price-suggestion > small { color: var(--sl-muted, var(--muted)); line-height: 1.6; font-size: 12px; }

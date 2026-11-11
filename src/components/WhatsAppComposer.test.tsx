@@ -21,7 +21,20 @@ describe('Revisión del mensaje de WhatsApp', () => {
     expect(html).toContain('Destino:');
     expect(html).toContain('noopener noreferrer');
     expect(html).toContain('Esta vista no confirma su envío ni su entrega.');
+    expect(html).toContain('Enviar por WhatsApp');
+    expect(html).toContain('sin copiar y');
+    expect(html).not.toContain('Copiar mensaje');
     expect(html).not.toContain('Mensaje enviado');
+  });
+
+  it('prepares the complete editable message directly in the chat link', () => {
+    const message = 'S-Mart Living\nPuedes escribirnos por este mismo chat para cualquier consulta o cambio.';
+    const html = render('8490000000', message);
+    const href = html.match(/href="([^"]+)"/)?.[1]?.replaceAll('&amp;', '&');
+    expect(href).toBeDefined();
+    expect(new URL(href!).searchParams.get('text')).toBe(message);
+    expect(html).toContain('<textarea');
+    expect(html).not.toContain('readonly');
   });
 
   it.each(['', '849', 'cliente@example.test', '2025550123', '+1<script>8490000000'])(

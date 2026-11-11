@@ -1,5 +1,5 @@
 import type { Delivery } from './contracts';
-import { dateTime, statusLabels } from './format';
+import { buildDeliveryTrackingWhatsAppMessage } from './whatsapp';
 
 export function trackingSteps(delivery: Pick<Delivery, 'status' | 'history'>) {
   const active = delivery.status === 'delivered' ? 2 :
@@ -21,14 +21,5 @@ export function deliveryMapsUrl(delivery: Pick<Delivery, 'address' | 'address_sn
 }
 
 export function buildDeliveryTrackingSummary(delivery: Delivery, businessName: string, saleNumber?: string): string {
-  const latest = [...delivery.history].sort((a, b) => b.at.localeCompare(a.at))[0];
-  return [
-    `${businessName} · Seguimiento de entrega`,
-    ...(saleNumber ? [`Venta: ${saleNumber}`] : []),
-    `Estado: ${statusLabels[delivery.status] ?? delivery.status}`,
-    `Fecha programada: ${dateTime(delivery.scheduled_at)} (hora de RD)`,
-    ...(latest ? [`Último evento: ${statusLabels[latest.status] ?? latest.status} · ${dateTime(latest.at)}`] : []),
-    'Consulta con la tienda para coordinar tu entrega.',
-    'Este resumen muestra eventos registrados; no incluye ubicación GPS ni una hora estimada de llegada.',
-  ].join('\n');
+  return buildDeliveryTrackingWhatsAppMessage({ delivery, businessName, saleNumber });
 }

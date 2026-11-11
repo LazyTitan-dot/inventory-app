@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Camera, CameraOff, ScanLine } from 'lucide-react';
 import { ErrorNotice, Field, Modal } from './ui';
-import { MAX_BARCODE_LENGTH, normalizeBarcode } from '../lib/barcode';
+import { MAX_BARCODE_LENGTH } from '../lib/barcode';
+import {
+  cameraFailureMessage,
+  createCameraFrameDecoder,
+  loadSoftwareFrameDecoder,
+  validScannedCode,
+  type CameraFrameDecoder,
+  type NativeCodeDetectorConstructor,
+} from '../lib/cameraScanner';
 import './barcode-scanner.css';
-
-type Detector = { detect(source: HTMLVideoElement): Promise<Array<{ rawValue?: string }>> };
-type DetectorConstructor = {
-  new (options: { formats: string[] }): Detector;
-  getSupportedFormats(): Promise<string[]>;
-};
 
 /** Camera access starts only after a click. USB/Bluetooth scanners can enter text and press Enter. */
 export function BarcodeScanner({
@@ -24,6 +26,12 @@ export function BarcodeScanner({
   const stream = useRef<MediaStream | null>(null);
   const frame = useRef(0);
   const generation = useRef(0);
+  const active = useRef(false);
+  const decoder = useRef<CameraFrameDecoder | null>(null);
+  const callbacks = useRef({ onDetected, onClose });
+  useEffect(() => {
+    callbacks.current = { onDetected, onClose };
+  }, [onDetected, onClose]);
   const [value, setValue] = useState('');
   const [status, setStatus] = useState('Usa un lector, introduce el código o activa la cámara.');
   const [error, setError] = useState('');
@@ -31,6 +39,9 @@ export function BarcodeScanner({
   const [starting, setStarting] = useState(false);
   const release = useCallback(() => {
     generation.current++;
+    active.current = false;
+    decoder.current?.dispose();
+    decoder.current = null;
     cancelAnimationFrame(frame.current);
     stream.current?.getTracks().forEach((track) => track.stop());
     stream.current = null;
@@ -40,6 +51,7 @@ export function BarcodeScanner({
     release();
     setRunning(false);
     setStarting(false);
+    setStatus('Cámara detenida. Puedes volver a activarla o introducir el código.');
   }, [release]);
   useEffect(() => {
     const onVisibility = () => {
@@ -51,58 +63,42 @@ export function BarcodeScanner({
       release();
     };
   }, [release, stop]);
-  function accept(raw: string) {
-    const code = normalizeBarcode(raw);
-    if (
-      !code ||
-      code.length > MAX_BARCODE_LENGTH ||
-      Array.from(code).some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)
-    ) {
-      setError('Introduce un código válido de hasta 80 caracteres.');
-      return false;
-    }
-    stop();
-    onDetected(code);
-    onClose();
-    return true;
-  }
+  const accept = useCallback(
+    (raw: string) => {
+      const code = validScannedCode(raw);
+      if (!code) {
+        setError('Introduce un código válido de hasta 80 caracteres.');
+        return false;
+      }
+      stop();
+      callbacks.current.onDetected(code);
+      callbacks.current.onClose();
+      return true;
+    },
+    [stop],
+  );
   async function start() {
-    if (starting || running) return;
+    if (active.current) return;
     setError('');
-    const Constructor = (window as Window & { BarcodeDetector?: DetectorConstructor })
-      .BarcodeDetector;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       setError(
-        'La cámara necesita HTTPS y un navegador compatible. Puedes usar el campo manual o un lector.',
-      );
-      return;
-    }
-    if (!Constructor) {
-      setError(
-        'Este navegador no reconoce códigos con la cámara. Usa un lector USB/Bluetooth o introduce el código.',
+        'La cámara necesita HTTPS. Abre la dirección segura de la app en Safari o Chrome; también puedes usar un lector o el campo manual.',
       );
       return;
     }
     const token = ++generation.current;
+    active.current = true;
     setStarting(true);
+    setStatus('Permite el acceso a la cámara cuando el navegador lo solicite.');
     try {
-      const supported = await Constructor.getSupportedFormats();
-      if (generation.current !== token) return;
-      const formats = [
-        'code_128',
-        'ean_13',
-        'ean_8',
-        'upc_a',
-        'upc_e',
-        'code_39',
-        'itf',
-        'codabar',
-        'qr_code',
-      ].filter((format) => supported.includes(format));
-      if (!formats.length) throw new Error('unsupported');
-      const detector = new Constructor({ formats });
+      // Request access from the explicit button action, before loading a decoder.
+      // The app alone owns this stream throughout native/software decoding.
       const media = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
       });
       if (generation.current !== token) {
@@ -110,32 +106,69 @@ export function BarcodeScanner({
         return;
       }
       stream.current = media;
-      if (!video.current) {
+      const preview = video.current;
+      if (!preview) {
         release();
         return;
       }
-      video.current.srcObject = media;
-      await video.current.play();
+      for (const track of media.getVideoTracks())
+        track.addEventListener(
+          'ended',
+          () => {
+            if (generation.current !== token) return;
+            stop();
+            setError('El acceso a la cámara terminó. Vuelve a activarla para continuar.');
+          },
+          { once: true },
+        );
+      preview.srcObject = media;
+      await preview.play();
       if (generation.current !== token) return;
+      setStatus('Preparando la lectura de códigos QR y de barras…');
+      const Constructor = (window as Window & { BarcodeDetector?: NativeCodeDetectorConstructor })
+        .BarcodeDetector;
+      const selected = await createCameraFrameDecoder(Constructor);
+      if (generation.current !== token) {
+        selected.dispose();
+        return;
+      }
+      decoder.current = selected;
       setStarting(false);
       setRunning(true);
-      setStatus('Acerca el código a la cámara con buena iluminación.');
+      setStatus('Acerca el código QR o de barras a la cámara con buena iluminación.');
       let previous = 0;
+      let nativeFailures = 0;
       const tick = async (timestamp: number) => {
         if (generation.current !== token) return;
-        if (
-          timestamp - previous >= 180 &&
-          video.current?.readyState &&
-          video.current.readyState >= 2
-        ) {
+        if (timestamp - previous >= 180 && preview.readyState >= 2) {
           previous = timestamp;
           try {
-            const result = await detector.detect(video.current);
+            const code = await decoder.current?.decode(preview);
             if (generation.current !== token) return;
-            const code = result.find((item) => item.rawValue)?.rawValue;
+            nativeFailures = 0;
             if (code && accept(code)) return;
-          } catch {
-            /* Some frames cannot be read; manual input remains available. */
+          } catch (cause) {
+            if (generation.current !== token) return;
+            if (decoder.current?.kind === 'native' && ++nativeFailures >= 3) {
+              try {
+                const fallback = await loadSoftwareFrameDecoder();
+                if (generation.current !== token) {
+                  fallback.dispose();
+                  return;
+                }
+                decoder.current?.dispose();
+                decoder.current = fallback;
+              } catch (fallbackError) {
+                if (generation.current !== token) return;
+                stop();
+                setError(cameraFailureMessage(fallbackError));
+                return;
+              }
+            } else if (decoder.current?.kind === 'software') {
+              stop();
+              setError(cameraFailureMessage(cause));
+              return;
+            }
           }
         }
         if (generation.current === token)
@@ -149,14 +182,7 @@ export function BarcodeScanner({
     } catch (cause) {
       if (generation.current !== token) return;
       stop();
-      const name = cause instanceof DOMException ? cause.name : '';
-      setError(
-        name === 'NotAllowedError'
-          ? 'No se autorizó la cámara. Puedes usar un lector o introducir el código.'
-          : name === 'NotFoundError'
-            ? 'No encontramos una cámara disponible. Usa el campo manual.'
-            : 'No pudimos iniciar la lectura con cámara. Usa un lector o introduce el código.',
-      );
+      setError(cameraFailureMessage(cause));
     }
   }
   function submit(event: FormEvent) {
@@ -195,6 +221,7 @@ export function BarcodeScanner({
         <video
           ref={video}
           muted
+          autoPlay
           playsInline
           className={running || starting ? 'barcode-camera active' : 'barcode-camera'}
           aria-label="Vista previa de la cámara"

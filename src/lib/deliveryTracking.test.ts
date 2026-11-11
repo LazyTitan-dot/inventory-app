@@ -26,6 +26,8 @@ describe('operational delivery tracking', () => {
     const message = buildDeliveryTrackingSummary(delivery, 'Tienda de prueba', 'VEN-001');
     expect(message).toContain('VEN-001');
     expect(message).toContain('no incluye ubicación GPS');
+    expect(message).toContain('Puedes escribirnos por este mismo chat');
+    expect(message).not.toContain('Consulta con la tienda');
     for (const privateValue of [delivery.id, delivery.phone, delivery.notes, delivery.address]) expect(message).not.toContain(privateValue);
   });
 });

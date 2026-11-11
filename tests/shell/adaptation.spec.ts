@@ -3,6 +3,7 @@ import { test, expect, customerId, availableSaleId, deliveryId, purchaseId } fro
 test('global search opens an exact variant in its contextual drawer', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Buscar en el negocio', exact: true })).toBeVisible();
   await page.keyboard.press('Control+k');
   const search = page.getByRole('combobox', { name: 'Buscar productos, contactos, documentos y secciones' });
   await search.fill('FIXTURE-001');

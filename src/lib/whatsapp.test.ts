@@ -5,11 +5,13 @@ import { money } from './format';
 import {
   buildContactWhatsAppMessage,
   buildDeliveryWhatsAppMessage,
+  buildDeliveryTrackingWhatsAppMessage,
   buildDocumentWhatsAppMessage,
   buildQuoteWhatsAppMessage,
   buildSaleReceiptWhatsAppMessage,
   buildWhatsAppUrl,
   MAX_WHATSAPP_MESSAGE_LENGTH,
+  DELIVERY_CHAT_REPLY,
   normalizeWhatsAppPhone,
 } from './whatsapp';
 
@@ -164,6 +166,21 @@ describe('teléfonos y enlaces WhatsApp', () => {
 });
 
 describe('mensajes comerciales', () => {
+  it.each(['SmartLiving', 'Smart Living', 'S-mart Living', 'S-Mart Living', 'SmartLiving Home'])(
+    'uses S-Mart Living for legacy business branding %s across prepared chats', (name) => {
+      const messages = [
+        buildContactWhatsAppMessage({ contact: { name: 'Cliente QA', kind: 'customer' }, businessName: name }),
+        buildSaleReceiptWhatsAppMessage({ document: document(), items: [item()], businessName: name }),
+        buildQuoteWhatsAppMessage({ document: document({ type: 'quote' }), items: [item()], businessName: name }),
+        buildDeliveryWhatsAppMessage({ delivery: delivery(), businessName: name }),
+        buildDeliveryTrackingWhatsAppMessage({ delivery: delivery(), businessName: name }),
+      ];
+      for (const message of messages) {
+        expect(message).toContain('S-Mart Living');
+        expect(message).not.toMatch(/SmartLiving|Smart Living|S-mart Living/);
+      }
+    },
+  );
   it('presenta documento, fecha de RD, variante, precio unitario y totales históricos exactos', () => {
     const message = buildSaleReceiptWhatsAppMessage({
       document: document(),
@@ -539,6 +556,7 @@ describe('saludos y coordinación de entregas', () => {
     const message = buildDeliveryWhatsAppMessage({ delivery: delivery({ status }), businessName });
     expect(message).toContain(`Estado de entrega: ${label}`);
     expect(message).toContain(closing);
+    expect(message).toContain(DELIVERY_CHAT_REPLY);
     if (status !== 'scheduled') expect(message).not.toContain('Confírmanos si podrás recibir');
   });
 
@@ -570,7 +588,34 @@ describe('saludos y coordinación de entregas', () => {
     expect(message).toMatch(/Resumen: \d+ de 100 partidas/);
     expect(message).toContain('Estado de entrega: No entregada');
     expect(
-      message.endsWith('No se completó la entrega. Escríbenos para coordinar el próximo paso.'),
+      message.endsWith(DELIVERY_CHAT_REPLY),
     ).toBe(true);
+  });
+
+  it('shares tracking through the same prepared-chat text without internal fields or redirecting replies away', () => {
+    const message = buildDeliveryTrackingWhatsAppMessage({
+      delivery: delivery({ history: [{ at: createdAt, actor: 'private-actor', status: 'private-state', note: 'private-history' }] }),
+      businessName: 'SmartLiving', saleNumber: 'VTA-QA-0001',
+    });
+    expect(message).toContain('S-Mart Living · Seguimiento de entrega');
+    expect(message).toContain('Venta: VTA-QA-0001');
+    expect(message).toContain('Último evento: Actualización registrada');
+    expect(message).toContain(DELIVERY_CHAT_REPLY);
+    expect(message).not.toContain('Consulta con la tienda');
+    expect(message).not.toMatch(/private-|internal-|RD\$|costo|margen/);
+    expect(new URL(buildWhatsAppUrl('8490000000', message)).searchParams.get('text')).toBe(message);
+  });
+
+  it('retains approximate historical delivery schedules and sanitizes public tracking text', () => {
+    const message = buildDeliveryTrackingWhatsAppMessage({
+      delivery: delivery({ legacy: { original_date: '2026-04-15', time_slot: 'PM', exact_time_known: false } }),
+      businessName: 'Tienda QA https://private.example.test/sign?token=secret',
+      saleNumber: 'VTA-QA 11111111-1111-4111-8111-111111111111',
+    });
+    expect(message).toContain('15 abr de 2026 · Tarde (hora exacta no registrada');
+    expect(message).toContain('[enlace omitido]');
+    expect(message).toContain('[referencia omitida]');
+    expect(message).not.toMatch(/private\.example|token=|11111111/);
+    expect(message.split('\n').find((line) => line.startsWith('Fecha programada:'))).not.toContain('11:00');
   });
 });

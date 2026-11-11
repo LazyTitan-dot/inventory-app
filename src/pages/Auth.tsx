@@ -1,8 +1,9 @@
-import { useRef, useState, type FormEvent } from 'react';
-import { ArrowRight, Eye, EyeOff, PackageCheck, ShieldCheck } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { ArrowRight, Eye, EyeOff, Moon, PackageCheck, ShieldCheck, Sun } from 'lucide-react';
 import { configured, supabase } from '../lib/supabase';
 import { errorMessage } from '../lib/errors';
 import { ErrorNotice, Field } from '../components/ui';
+import './auth.css';
 
 interface AuthPageProps {
   recovery?: boolean;
@@ -21,6 +22,22 @@ export function AuthPage({
   onRecoveryComplete,
   onExitRecovery,
 }: AuthPageProps) {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = window.localStorage.getItem('smartliving-theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('smartliving-theme', theme);
+    } catch {
+      /* Appearance remains available when private browsing disables storage. */
+    }
+  }, [theme]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -102,19 +119,26 @@ export function AuthPage({
     setMessage('');
   }
   return (
-    <main className="auth-layout">
-      <section className="auth-story">
-        <div className="brand">
-          <span className="brand-mark">S</span>
-          <span>
-            smartliving<span className="brand-dot">.</span>
-            <small>RETAIL & OPERACIONES</small>
-          </span>
+    <main className="auth-glass" data-theme={theme}>
+      <header className="auth-glass-header">
+        <div className="auth-glass-brand">
+          <img src="/brand/primary_dark.png" alt="S-Mart Living" width={200} height={80} />
         </div>
-        <div className="auth-story-content">
-          <span className="eyebrow">TODO EN SU LUGAR</span>
-          <h1>
-            Tu tienda,
+        <button
+          type="button"
+          className="auth-glass-theme"
+          aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
+          title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+          onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')}
+        >
+          {theme === 'light' ? <Moon size={19} /> : <Sun size={19} />}
+        </button>
+      </header>
+      <div className="auth-glass-content">
+        <section className="auth-glass-intro" aria-labelledby="auth-intro-title">
+          <span className="auth-glass-eyebrow">TU NEGOCIO, EN ARMONÍA</span>
+          <h1 id="auth-intro-title">
+            Tu tienda,{' '}
             <br />
             bajo control.
           </h1>
@@ -122,20 +146,17 @@ export function AuthPage({
             Del primer pedido a la última entrega. Inventario, ventas y operaciones en un mismo
             lugar.
           </p>
-          <div className="auth-illustration" aria-hidden="true">
-            <PackageCheck size={86} strokeWidth={1} />
+          <div className="auth-glass-highlight">
+            <span className="auth-glass-highlight-icon" aria-hidden="true"><PackageCheck size={28} strokeWidth={1.5} /></span>
             <div>
               <span>Una operación más simple</span>
               <strong>Más tiempo para tus clientes.</strong>
             </div>
           </div>
-        </div>
-        <span className="auth-foot">Hecho para el ritmo de tu negocio · República Dominicana</span>
-      </section>
-      <section className="auth-form-area">
-        <div className="auth-card">
-          <span className="badge">SmartLiving · Acceso al negocio</span>
-          <h2>
+        </section>
+        <section className="auth-glass-card" aria-labelledby="auth-form-title">
+          <span className="auth-glass-eyebrow">S-Mart Living · Acceso al negocio</span>
+          <h2 id="auth-form-title">
             {recovery
               ? 'Elige una contraseña nueva'
               : mode === 'reset'
@@ -247,7 +268,7 @@ export function AuthPage({
           </form>
           {(!recovery || onExitRecovery) && (
             <button
-              className="text-button auth-reset"
+              className="text-button auth-glass-reset"
               disabled={busy}
               type="button"
               onClick={switchMode}
@@ -259,7 +280,7 @@ export function AuthPage({
                   : 'Volver a iniciar sesión'}
             </button>
           )}
-          <div className="auth-security">
+          <div className="auth-glass-security">
             <ShieldCheck size={19} />
             <span>
               Acceso exclusivo para el equipo autorizado.
@@ -267,8 +288,9 @@ export function AuthPage({
               Solicita tu cuenta al administrador.
             </span>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
+      <footer className="auth-glass-footer">S-Mart Living · Operaciones con claridad · República Dominicana</footer>
     </main>
   );
 }

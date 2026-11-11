@@ -1,0 +1,154 @@
+/* The signed-out entry uses the same web glass materials as the app shell.
+   Authentication logic and native browser controls remain unchanged. */
+.auth-glass {
+  --ink: var(--sl-ink);
+  --muted: var(--sl-muted);
+  --line: var(--sl-line);
+  --primary: var(--sl-accent);
+  --primary-dark: #084f97;
+  --danger: var(--sl-danger);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 30px max(24px, calc((100vw - 1240px) / 2));
+  color: var(--sl-ink);
+  font-family: var(--sl-font);
+  background:
+    radial-gradient(ellipse at 8% 5%, rgba(33, 190, 231, .16), transparent 54%),
+    radial-gradient(ellipse at 96% 95%, rgba(10, 100, 187, .10), transparent 58%),
+    var(--sl-canvas);
+}
+.auth-glass[data-theme="dark"] {
+  --primary-dark: #9bd7ff;
+  background:
+    radial-gradient(ellipse at 10% 8%, rgba(33, 190, 231, .13), transparent 48%),
+    radial-gradient(ellipse at 95% 95%, rgba(10, 100, 187, .17), transparent 56%),
+    var(--sl-canvas);
+}
+.auth-glass :is(h1, h2, h3) { font-family: var(--sl-font); }
+.auth-glass-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.auth-glass-brand {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 18px;
+  background: var(--sl-brand-navy);
+  box-shadow: 0 8px 26px rgba(13, 39, 79, .10);
+}
+.auth-glass-brand img { display: block; width: 180px; max-width: 100%; height: 72px; object-fit: contain; }
+.auth-glass-theme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--sl-line);
+  border-radius: 50%;
+  color: var(--sl-ink);
+  background: color-mix(in srgb, var(--sl-surface) 78%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.auth-glass-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+  align-items: center;
+  gap: clamp(40px, 7vw, 112px);
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(48px, 7vh, 88px) 0;
+}
+.auth-glass-intro { max-width: 480px; }
+.auth-glass-eyebrow { color: var(--sl-accent); font-size: 11px; font-weight: 750; letter-spacing: .12em; line-height: 1.6; }
+.auth-glass-intro h1 { margin: 22px 0; font-size: clamp(44px, 4.9vw, 68px); line-height: 1.08; font-weight: 750; letter-spacing: -.055em; }
+.auth-glass-intro > p { max-width: 400px; font-size: 16px; color: var(--sl-muted); line-height: 1.8; }
+.auth-glass-highlight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 410px;
+  margin-top: 36px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--sl-line) 72%, #fff);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--sl-surface) 52%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.auth-glass-highlight-icon { display: grid; place-items: center; flex: 0 0 52px; width: 52px; height: 52px; border-radius: 16px; color: var(--sl-accent); background: var(--sl-accent-soft); }
+.auth-glass-highlight > div > span { display: block; font-size: 12px; line-height: 1.5; color: var(--sl-muted); }
+.auth-glass-highlight strong { display: block; margin-top: 4px; font-size: 14px; line-height: 1.6; color: var(--sl-ink); }
+.auth-glass-card {
+  width: 100%;
+  padding: clamp(24px, 3.2vw, 40px);
+  border: 1px solid rgba(255, 255, 255, .88);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, .82);
+  box-shadow: 0 22px 72px rgba(28, 58, 91, .10), inset 0 1px 0 rgba(255, 255, 255, .8);
+  backdrop-filter: blur(28px) saturate(135%);
+  -webkit-backdrop-filter: blur(28px) saturate(135%);
+}
+.auth-glass[data-theme="dark"] .auth-glass-card {
+  border-color: rgba(180, 211, 241, .20);
+  background: rgba(18, 36, 60, .86);
+  box-shadow: 0 22px 72px rgba(0, 0, 0, .20), inset 0 1px 0 rgba(215, 236, 255, .05);
+}
+.auth-glass-card h2 { margin: 14px 0 12px; font-size: clamp(27px, 2.4vw, 32px); line-height: 1.2; letter-spacing: -.04em; }
+.auth-glass-card > p { margin-bottom: 28px; color: var(--sl-muted); font-size: 14px; line-height: 1.7; }
+.auth-glass-card form { gap: 18px; }
+.auth-glass-card .field { gap: 8px; }
+.auth-glass-card .field > span:first-child { font-size: 13px; font-weight: 600; color: var(--sl-ink); }
+.auth-glass-card input { min-height: 52px; padding: 12px 14px; border: 1px solid var(--sl-line); border-radius: 13px; font-size: 16px; color: var(--sl-ink); background: var(--sl-surface); }
+.auth-glass-card input::placeholder { color: var(--sl-muted); opacity: 1; }
+.auth-glass-card .password-field input { padding-right: 56px; }
+.auth-glass-card .password-field .icon-button { top: 4px; right: 4px; width: 44px; min-width: 44px; height: 44px; padding: 10px; border-radius: 10px; color: var(--sl-muted); }
+.auth-glass-card .password-field .icon-button:hover { background: var(--sl-accent-soft); color: var(--sl-accent); }
+.auth-glass-card .button { min-height: 48px; border-radius: 13px; font-size: 14px; }
+.auth-glass-card .button.primary { min-height: 52px; color: var(--sl-on-accent); background: var(--sl-accent); border-color: transparent; box-shadow: 0 6px 18px rgba(10, 100, 187, .15); }
+.auth-glass-card .button.primary:hover:not(:disabled) { filter: brightness(.96); }
+.auth-glass-card .button.secondary { color: var(--sl-ink); border-color: var(--sl-line); background: var(--sl-surface); }
+.auth-glass-card .error-notice { margin: 0; color: var(--sl-danger); background: color-mix(in srgb, var(--sl-danger) 10%, var(--sl-surface)); border-color: color-mix(in srgb, var(--sl-danger) 25%, var(--sl-surface)); }
+.auth-glass-card .success-notice { color: var(--sl-success); background: color-mix(in srgb, var(--sl-success) 10%, var(--sl-surface)); border-color: color-mix(in srgb, var(--sl-success) 25%, var(--sl-surface)); }
+.auth-glass-card .error-notice, .auth-glass-card .success-notice { padding: 12px 14px; font-size: 13px; line-height: 1.7; border-radius: 13px; }
+.auth-glass-reset { display: block; min-height: 44px; margin: 12px auto 0; padding: 10px 4px; color: var(--sl-accent); font-size: 14px; }
+.auth-glass-security { display: flex; align-items: flex-start; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--sl-line); color: var(--sl-muted); font-size: 12px; line-height: 1.7; }
+.auth-glass-security svg { flex: 0 0 auto; margin-top: 2px; color: var(--sl-accent); }
+.auth-glass-footer { text-align: center; color: var(--sl-muted); font-size: 11px; line-height: 1.8; }
+.auth-glass :is(button, input):focus-visible { outline: 3px solid var(--sl-focus); outline-offset: 3px; }
+@media (max-width: 880px) {
+  .auth-glass { padding: 24px; }
+  .auth-glass-content { max-width: 480px; grid-template-columns: minmax(0, 1fr); gap: 30px; padding: 40px 0; }
+  .auth-glass-intro h1 { margin: 14px 0; font-size: 40px; }
+  .auth-glass-intro h1 br { display: none; }
+  .auth-glass-intro > p { max-width: none; font-size: 14px; line-height: 1.7; }
+  .auth-glass-highlight { display: none; }
+  .auth-glass-brand img { width: 150px; height: 60px; }
+}
+@media (max-width: 440px) {
+  .auth-glass { padding: 18px 16px max(20px, env(safe-area-inset-bottom)); }
+  .auth-glass-content { padding: 28px 0; gap: 24px; }
+  .auth-glass-brand { border-radius: 14px; }
+  .auth-glass-brand img { width: 132px; height: 52px; }
+  .auth-glass-intro > .auth-glass-eyebrow { font-size: 10px; }
+  .auth-glass-intro h1 { font-size: clamp(30px, 8.2vw, 36px); }
+  .auth-glass-intro > p { font-size: 13px; }
+  .auth-glass-card { padding: 24px 20px; border-radius: 25px; }
+  .auth-glass-card > .auth-glass-eyebrow { font-size: 10px; letter-spacing: .07em; }
+  .auth-glass-card h2 { font-size: 26px; }
+  .auth-glass-card > p { font-size: 13px; margin-bottom: 24px; }
+  .auth-glass-footer { font-size: 10px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .auth-glass .auth-glass-card, .auth-glass .auth-glass-theme, .auth-glass .auth-glass-highlight { background: var(--sl-surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (forced-colors: active) {
+  .auth-glass, .auth-glass .auth-glass-card, .auth-glass .auth-glass-highlight, .auth-glass .auth-glass-theme { color: CanvasText; background: Canvas; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .auth-glass .auth-glass-card, .auth-glass .auth-glass-highlight, .auth-glass .auth-glass-theme, .auth-glass input { border: 1px solid CanvasText; }
+  .auth-glass :is(button, input):focus-visible { outline-color: Highlight; }
+}

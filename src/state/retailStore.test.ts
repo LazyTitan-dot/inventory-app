@@ -319,4 +319,12 @@ describe('createRetailStore', () => {
     expect(store.getSnapshot()).toMatchObject({ data: null, refreshing: false });
     expect(store.getSnapshot().error).toMatch(/conexión configurada/);
   });
+
+  it('normalizes the legacy business brand for every consumer without mutating the loaded record', async () => {
+    const record = bootstrap('Smart Living');
+    const store = createRetailStore(userId, async () => record);
+    await store.refresh();
+    expect(store.getSnapshot().data?.settings.business_name).toBe('S-Mart Living');
+    expect(record.settings.business_name).toBe('Smart Living');
+  });
 });

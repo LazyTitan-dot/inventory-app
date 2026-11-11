@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateUnitPrice, isValidCatalogAmount, MAX_CATALOG_PRICE } from './pricing';
+import { calculatePriceFromTotal, calculateUnitPrice, isValidCatalogAmount, MAX_CATALOG_PRICE, potentialUnitProfit, suggestFinalPrice } from './pricing';
 
 describe('precio unitario con ITBIS', () => {
   it('muestra base, ITBIS y total sin convertir el precio almacenado en precio incluido', () => {
@@ -40,5 +40,42 @@ describe('precio unitario con ITBIS', () => {
   it('distingue el total unitario del redondeo de una factura con varias unidades', () => {
     expect(calculateUnitPrice(0.05, 10)?.total).toBe(0.06);
     expect(calculateUnitPrice(0.1, 10)?.total).toBe(0.11);
+  });
+});
+
+describe('final-price entry and cost suggestions', () => {
+  it('suggests cost plus 25% as the complete final amount, without adding ITBIS twice', () => {
+    expect(suggestFinalPrice(100, 18)).toMatchObject({ base: 105.93, tax: 19.07, total: 125, requestedTotal: 125 });
+    expect(suggestFinalPrice(100, 0)).toMatchObject({ base: 125, tax: 0, total: 125 });
+    expect(suggestFinalPrice(5000, 18)?.total).toBe(6250);
+  });
+  it('converts a manually chosen final amount to the existing net-price contract', () => {
+    expect(calculatePriceFromTotal(150, 18)).toMatchObject({ base: 127.12, tax: 22.88, total: 150, roundingAdjustment: 0 });
+  });
+  it('reports the one-cent adjustment when net-price precision cannot represent a final cent', () => {
+    const converted = calculatePriceFromTotal(100, 18)!;
+    expect(converted).toMatchObject({ requestedTotal: 100, total: 99.99, roundingAdjustment: -0.01 });
+    expect(calculateUnitPrice(converted.base, 18)?.total).toBe(converted.total);
+  });
+  it('keeps final entries and displayed tax breakdown consistent across rates', () => {
+    for (const rate of [0, 10, 16.25, 18, 100]) for (let cents = 1; cents <= 1000; cents++) {
+      const price = calculatePriceFromTotal(cents / 100, rate)!;
+      expect(calculateUnitPrice(price.base, rate)?.total).toBe(price.total);
+      expect(Math.abs(price.roundingAdjustment)).toBeLessThanOrEqual(0.01);
+    }
+  });
+  it('keeps zero pending and rejects invalid or unrepresentable prices', () => {
+    expect(suggestFinalPrice(0, 18)?.total).toBe(0);
+    for (const value of [NaN, Infinity, -1, 0.001]) {
+      expect(suggestFinalPrice(value, 18)).toBeNull();
+      expect(calculatePriceFromTotal(value, 18)).toBeNull();
+    }
+    expect(suggestFinalPrice(MAX_CATALOG_PRICE, 18)).toBeNull();
+    expect(calculatePriceFromTotal(100, 101)).toBeNull();
+  });
+  it('uses final price minus cost for potential gain and leaves unpriced variants pending', () => {
+    expect(potentialUnitProfit(100, 80, 18)).toMatchObject({ finalPrice: 118, profit: 38 });
+    expect(potentialUnitProfit(100, 130, 18)?.profit).toBe(-12);
+    expect(potentialUnitProfit(0, 80, 18)).toBeNull();
   });
 });

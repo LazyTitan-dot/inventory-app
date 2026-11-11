@@ -39,7 +39,7 @@ import {
 import { ProductImage } from '../components/ProductImage';
 import { ProductImagesEditor } from '../components/ProductImagesEditor';
 import { generateSku, MAX_SKU_LENGTH, normalizeSku, validateSkus } from '../lib/sku';
-import { calculateUnitPrice, isValidCatalogAmount, MAX_CATALOG_PRICE } from '../lib/pricing';
+import { calculatePriceFromTotal, calculateUnitPrice, isValidCatalogAmount, MAX_CATALOG_PRICE, potentialUnitProfit, suggestFinalPrice } from '../lib/pricing';
 import { BarcodeScanner } from '../components/BarcodeScanner';
 import {
   barcodeSvg,
@@ -65,6 +65,9 @@ interface VariantDraft {
   barcode: string;
   cost: number;
   price: number;
+  finalPrice: number;
+  autoPrice: boolean;
+  roundingAdjustment: number;
   min_stock: number;
   reorder_target: number;
   opening_quantity?: number;
@@ -80,6 +83,9 @@ function newVariant(brand: string, model: string, occupied: string[]): VariantDr
     barcode: generateInternalBarcode(draftId),
     cost: 0,
     price: 0,
+    finalPrice: 0,
+    autoPrice: true,
+    roundingAdjustment: 0,
     min_stock: 3,
     reorder_target: 10,
     opening_quantity: 0,
@@ -96,7 +102,7 @@ function PriceDetails({ price, taxRate }: { price: number; taxRate: number }) {
     return (
       <p className="catalog-price-notice">
         {price === 0
-          ? 'Precio pendiente: define el precio sin ITBIS para habilitar la venta.'
+          ? 'Precio pendiente: define el precio final para habilitar la venta.'
           : 'Ingresa un precio válido con un máximo de dos decimales.'}
       </p>
     );
@@ -132,8 +138,10 @@ function ProductEditor({
   onClose: () => void;
   onSaved?: (barcode: string) => void;
 }) {
-  const { data, notify } = useRetail();
-  const { run, busy, error } = useOperation();
+  const { data, notify, refresh, refreshing } = useRetail();
+  const [editorTaxRate, setEditorTaxRate] = useState(data.settings.tax_rate);
+  const taxRateChanged = data.settings.tax_rate !== editorTaxRate;
+  const { run, busy, error, clearError } = useOperation();
   const [brand, setBrand] = useState(product?.brand ?? '');
   const [model, setModel] = useState(product?.model ?? '');
   const [category, setCategory] = useState(product?.category ?? 'tv');
@@ -161,6 +169,9 @@ function ProductEditor({
             draftId: v.id,
             autoSku: false,
             cost: v.cost ?? 0,
+            finalPrice: calculateUnitPrice(v.price, editorTaxRate)?.total ?? 0,
+            autoPrice: false,
+            roundingAdjustment: 0,
             barcode: v.barcode ?? '',
           }))
       : [
@@ -195,6 +206,18 @@ function ProductEditor({
         if (i !== index) return v;
         const next = { ...v, ...patch };
         if (patch.name !== undefined && next.autoSku) next.sku = suggestedSku(next, rows);
+        if (next.autoPrice && (patch.cost !== undefined || patch.autoPrice === true)) {
+          const suggestion = suggestFinalPrice(next.cost, editorTaxRate);
+          if (suggestion) {
+            next.price = suggestion.base;
+            next.finalPrice = suggestion.total;
+            next.roundingAdjustment = suggestion.roundingAdjustment;
+          } else {
+            next.price = Number.NaN;
+            next.finalPrice = Number.NaN;
+            next.roundingAdjustment = 0;
+          }
+        }
         return next;
       }),
     );
@@ -214,7 +237,11 @@ function ProductEditor({
   async function save(event: FormEvent) {
     event.preventDefault();
     setValidation('');
-    if (uploading) return;
+    if (uploading || refreshing) return;
+    if (taxRateChanged) {
+      setValidation('La tasa de ITBIS cambió. Revisa y recalcula los precios antes de guardar.');
+      return;
+    }
     const urls = images;
     const prepared = variants.map((row) =>
       !row.id && !row.barcode.trim()
@@ -235,7 +262,7 @@ function ProductEditor({
     }
     if (variants.some((v) => !isValidCatalogAmount(v.price) || !isValidCatalogAmount(v.cost))) {
       setValidation(
-        `El costo y el precio deben estar entre 0 y ${money(MAX_CATALOG_PRICE)}, con un máximo de dos decimales.`,
+        'Revisa el costo y el precio final. Usa importes no negativos, con un máximo de dos decimales, dentro del límite mostrado.',
       );
       return;
     }
@@ -265,6 +292,7 @@ function ProductEditor({
           ? { expected_updated_at: openedVersion, expected_variants: expectedVariants }
           : {}),
         category,
+        expected_tax_rate: editorTaxRate,
         brand: brand.trim(),
         model: model.trim(),
         description: description.trim(),
@@ -301,6 +329,19 @@ function ProductEditor({
       wide
     >
       <form onSubmit={save} className="stack">
+        {taxRateChanged && <div className="warning-notice" role="alert">
+          <p>La tasa de ITBIS cambió de {taxRateLabel(editorTaxRate)} a {taxRateLabel(data.settings.tax_rate)}. Revisa los precios finales antes de guardar.</p>
+          <button type="button" className="button secondary" disabled={busy || uploading || refreshing} onClick={() => {
+            const rate = data.settings.tax_rate;
+            setVariants((rows) => rows.map((row) => {
+              const converted = row.autoPrice ? suggestFinalPrice(row.cost, rate) : calculatePriceFromTotal(row.finalPrice, rate);
+              return { ...row, price: converted?.base ?? Number.NaN, finalPrice: converted?.total ?? Number.NaN, roundingAdjustment: converted?.roundingAdjustment ?? 0 };
+            }));
+            setEditorTaxRate(rate);
+            setValidation('');
+            clearError();
+          }}>Recalcular con la tasa actual</button>
+        </div>}
         <div className="form-grid">
           <Field label="Marca">
             <input
@@ -466,20 +507,33 @@ function ProductEditor({
                   onChange={(e) => setVariant(index, { cost: e.target.valueAsNumber })}
                 />
               </Field>
-              <Field
-                label="Precio sin ITBIS (RD$)"
-                hint="0 indica precio pendiente; no habilita ventas gratis."
-              >
+              <Field label="Precio final con ITBIS (RD$)" hint="Sugerencia: costo + 25%, con ITBIS incluido. Puedes cambiarla.">
                 <input
                   required
                   type="number"
                   min={0}
-                  max={MAX_CATALOG_PRICE}
+                  max={calculateUnitPrice(MAX_CATALOG_PRICE, editorTaxRate)?.total ?? MAX_CATALOG_PRICE}
                   step="0.01"
-                  value={Number.isFinite(variant.price) ? variant.price : ''}
-                  onChange={(e) => setVariant(index, { price: e.target.valueAsNumber })}
+                  value={Number.isFinite(variant.finalPrice) ? variant.finalPrice : ''}
+                  onChange={(event) => {
+                    const total = event.target.valueAsNumber;
+                    const converted = calculatePriceFromTotal(total, editorTaxRate);
+                    setVariant(index, { finalPrice: total, price: converted?.base ?? Number.NaN, autoPrice: false, roundingAdjustment: converted?.roundingAdjustment ?? 0 });
+                  }}
+                  onBlur={() => {
+                    const converted = calculatePriceFromTotal(variant.finalPrice, editorTaxRate);
+                    if (converted) setVariant(index, { finalPrice: converted.total, price: converted.base });
+                  }}
                 />
               </Field>
+              <div className="catalog-price-suggestion">
+                <button type="button" className="button secondary" disabled={busy || !suggestFinalPrice(variant.cost, editorTaxRate)} aria-label={`Usar sugerencia del 25% para la variante ${index + 1}`} onClick={() => setVariant(index, { autoPrice: true })}>
+                  <RefreshCw size={14} /> Usar sugerencia del 25%
+                </button>
+                <small>{variant.autoPrice ? 'Se actualiza con el costo hasta que edites el precio.' : 'Precio manual; cambiar el costo no lo sobrescribe.'}</small>
+                {variant.autoPrice && isValidCatalogAmount(variant.cost) && !suggestFinalPrice(variant.cost, editorTaxRate) && <ErrorNotice message="La sugerencia supera el límite permitido. Escribe un precio final manual dentro del rango." />}
+                {variant.roundingAdjustment !== 0 && <small role="status">Ajuste por redondeo de ITBIS: {money(variant.roundingAdjustment)}. El desglose muestra el precio final que se guardará.</small>}
+              </div>
               <Field label="Stock mínimo">
                 <input
                   required
@@ -520,7 +574,7 @@ function ProductEditor({
                 </Field>
               )}
             </div>
-            <PriceDetails price={variant.price} taxRate={data.settings.tax_rate} />
+            <PriceDetails price={variant.price} taxRate={editorTaxRate} />
             {variants.length > 1 && (
               <button
                 className="button ghost danger-text"
@@ -548,6 +602,9 @@ function ProductEditor({
           Abrir la etiqueta de la primera variante al guardar
         </label>
         <ErrorNotice message={validation || error} />
+        {(validation || error).includes('ITBIS') && <button type="button" className="button secondary" disabled={busy || refreshing} onClick={() => {
+          void refresh().then(() => { setValidation(''); clearError(); }).catch(() => setValidation('No pudimos actualizar los datos. Vuelve a intentar.'));
+        }}>Actualizar tasa y datos</button>}
         <div className="modal-footer">
           <button
             className="button secondary"
@@ -557,7 +614,7 @@ function ProductEditor({
           >
             Cancelar
           </button>
-          <button className="button primary" disabled={busy || uploading}>
+          <button className="button primary" disabled={busy || uploading || refreshing || taxRateChanged}>
             {busy ? 'Guardando…' : 'Guardar producto'}
           </button>
         </div>
@@ -815,10 +872,10 @@ function InventoryDetails({
                   <dd>{money(variant.cost ?? 0)}</dd>
                 </div>
                 <div>
-                  <dt>Margen bruto</dt>
+                  <dt>Ganancia estimada por unidad</dt>
                   <dd>
-                    {variant.price > 0
-                      ? `${(((variant.price - (variant.cost ?? 0)) / variant.price) * 100).toFixed(1)} %`
+                    {potentialUnitProfit(variant.price, variant.cost ?? 0, data.settings.tax_rate)
+                      ? money(potentialUnitProfit(variant.price, variant.cost ?? 0, data.settings.tax_rate)!.profit)
                       : 'Precio pendiente'}
                   </dd>
                 </div>
@@ -1094,11 +1151,15 @@ export function CatalogPage() {
     0,
   );
   const revenue = activeRows.reduce(
-    (sum, row) => sum + (row.stock?.available ?? 0) * row.variant.price,
+    (sum, row) => sum + (row.stock?.available ?? 0) * (potentialUnitProfit(row.variant.price, row.variant.cost ?? 0, data.settings.tax_rate)?.finalPrice ?? 0),
+    0,
+  );
+  const potentialProfit = activeRows.reduce(
+    (sum, row) => sum + (row.stock?.available ?? 0) * (potentialUnitProfit(row.variant.price, row.variant.cost ?? 0, data.settings.tax_rate)?.profit ?? 0),
     0,
   );
   function exportRows() {
-    downloadCsv('inventario-smartliving.csv', [
+    downloadCsv('inventario-s-mart-living.csv', [
       [
         'SKU',
         'Código de barras',
@@ -1217,12 +1278,12 @@ export function CatalogPage() {
           <StatCard
             label="Ingreso potencial"
             value={money(revenue)}
-            hint={`Con ITBIS: ${money(revenue * (1 + data.settings.tax_rate / 100))}`}
+            hint="Precio final con ITBIS × unidades disponibles"
           />
           <StatCard
             label="Ganancia potencial"
-            value={money(revenue - value)}
-            hint={`Margen bruto estimado: ${revenue > 0 ? (((revenue - value) / revenue) * 100).toFixed(1) : '0.0'} %`}
+            value={money(potentialProfit)}
+            hint="(Precio final con ITBIS − costo) × unidades con precio"
           />
           <div className="catalog-financial-note">
             <strong>{integer(units)} unidades</strong>
@@ -1326,7 +1387,7 @@ export function CatalogPage() {
                     <th>Stock actual</th>
                     <th>Precio sin ITBIS</th>
                     <th>Precio con ITBIS</th>
-                    {data.permissions.view_costs && <th>Margen</th>}
+                    {data.permissions.view_costs && <th>Ganancia estimada</th>}
                     <th>
                       <span className="sr-only">Acciones</span>
                     </th>
@@ -1397,8 +1458,8 @@ export function CatalogPage() {
                         </td>
                         {data.permissions.view_costs && (
                           <td>
-                            {variant.price > 0
-                              ? `${(((variant.price - (variant.cost ?? 0)) / variant.price) * 100).toFixed(1)} %`
+                            {potentialUnitProfit(variant.price, variant.cost ?? 0, data.settings.tax_rate)
+                              ? money(potentialUnitProfit(variant.price, variant.cost ?? 0, data.settings.tax_rate)!.profit)
                               : '—'}
                           </td>
                         )}

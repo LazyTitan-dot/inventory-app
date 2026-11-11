@@ -1,5 +1,6 @@
 import { bootstrapSchema, type RetailData } from '../lib/contracts';
 import { supabase } from '../lib/supabase';
+import { displayBusinessName } from '../lib/brand';
 
 export interface RetailSnapshot {
   readonly data: RetailData | null;
@@ -83,7 +84,11 @@ export function createRetailStore(userId: string, loader: RetailLoader = loadRet
           'La sesión cambió y no coincide con la cuenta abierta. Inicia sesión nuevamente.',
           true,
         );
-      publish({ data: parsed.data, error: '', refreshing: false, lastUpdated: new Date() });
+      const data = {
+        ...parsed.data,
+        settings: { ...parsed.data.settings, business_name: displayBusinessName(parsed.data.settings.business_name) },
+      };
+      publish({ data, error: '', refreshing: false, lastUpdated: new Date() });
     } catch (cause) {
       if (request === generation) {
         const discardData = accessRevoked(cause);

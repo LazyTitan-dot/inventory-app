@@ -245,7 +245,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
     return (
       <>
         <PageHeader
-          eyebrow="S-MART LIVING / CAJA"
+          eyebrow="S-Mart Living / CAJA"
           title="Ventas"
           description="Busca o escanea productos, prepara el pedido y confirma el cobro en un solo lugar."
           actions={

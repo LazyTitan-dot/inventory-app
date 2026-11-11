@@ -1,7 +1,7 @@
 {
-  "name": "SmartLiving Home — Inventory & Sales",
-  "short_name": "SmartLiving",
-  "description": "Inventory management and point-of-sale app for SmartLiving Home appliance retail",
+  "name": "S-Mart Living — Inventario y operaciones",
+  "short_name": "S-Mart Living",
+  "description": "Inventario y operaciones para S-Mart Living.",
   "start_url": "/inventory-app.html",
   "scope": "/",
   "display": "standalone",

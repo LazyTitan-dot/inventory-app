@@ -126,7 +126,7 @@ describe('Phase 5 permission-aware application shell', () => {
   it('retains named controls, a keyboard content target, and the approved brand', () => {
     data = fixture('viewer');
     const html = renderShell();
-    expect(html).toContain('src="/brand/primary_dark.png" alt="S-mart Living"');
+    expect(html).toContain('src="/brand/primary_dark.png" alt="S-Mart Living"');
     expect(html).toContain('src="/brand/square_icon.png" alt=""');
     expect(html).toContain('Negocio de prueba');
     expect(html).toContain('href="#contenido"');

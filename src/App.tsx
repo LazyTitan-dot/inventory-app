@@ -36,6 +36,7 @@ import { AuthPage } from './pages/Auth';
 import { RetailProvider } from './state/RetailProvider';
 import { useRetail } from './state/useRetail';
 import { BUSINESS_TIMEZONE, roleLabels } from './lib/format';
+import { displayBusinessName } from './lib/brand';
 import { createAuthSessionStore } from './lib/authSession';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useMobileSidebar } from './design-system/useMobileSidebar';
@@ -157,7 +158,7 @@ export function Shell() {
         aria-label="Menú principal"
       >
         <Link to="/" className="brand sidebar-brand" onClick={() => setMenu(false)}>
-          <img src="/brand/primary_dark.png" alt="S-mart Living" />
+          <img src="/brand/primary_dark.png" alt="S-Mart Living" />
         </Link>
         <button
           className="mobile-sidebar-close icon-button"
@@ -171,7 +172,7 @@ export function Shell() {
             <img src="/brand/square_icon.png" alt="" />
           </span>
           <span>
-            <strong>{data.settings.business_name}</strong>
+            <strong>{displayBusinessName(data.settings.business_name)}</strong>
             <small>Tienda principal · RD$</small>
           </span>
           <ChevronRight size={15} />
@@ -360,7 +361,7 @@ export function Shell() {
           </Suspense>
         </main>
         <footer className="app-footer">
-          <span>S-mart Living · Operaciones con claridad</span>
+          <span>S-Mart Living · Operaciones con claridad</span>
           <span>Pesos dominicanos · Hora de Santo Domingo</span>
         </footer>
         <nav className="sl-bottom-dock" aria-label="Navegación móvil">
