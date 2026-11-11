@@ -45,6 +45,10 @@ test('preview output preserves static resources, security headers and cache rule
   assert.equal(global.continue, true);
   assert.equal(global.headers['X-Robots-Tag'], 'noindex, nofollow');
   assert.equal(global.headers['Content-Security-Policy'], originalCsp.replace(/connect-src[^;]+/, `connect-src 'self' ${origin} wss://${projectRef}.supabase.co`));
+  assert.deepEqual(global.transforms, [{
+    type: 'response.headers', op: 'set', target: { key: 'content-security-policy' },
+    args: global.headers['Content-Security-Policy'],
+  }], 'Set the final response policy after Vercel merges the source config headers');
   assert.ok(!JSON.stringify(config).includes(productionRef));
   for (const header of source.headers.filter(header => header.key !== 'Content-Security-Policy')) {
     assert.equal(global.headers[header.key], header.value);

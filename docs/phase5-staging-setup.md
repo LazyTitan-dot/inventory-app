@@ -171,6 +171,12 @@ detects v3 output after the build command and returns that final form before
 normal static handling. Verify the actual deployed response header and metadata
 SHA as well; successful generation alone is not hosted-response evidence.
 
+The first hosted build served the v3 assets and correct environment metadata,
+but Vercel's source-config header merge still replaced the ordinary generated
+CSP header. The generator therefore also sets the staging CSP through a final
+`response.headers` transform. The live header must be checked after this fix;
+v3 asset precedence alone does not establish response-header precedence.
+
 `npm run test:preview-output` passed all 15 local regressions, including staging
 origin guards, copied static assets, routing/cache/security headers, metadata,
 ordinary-build no-op behavior and preview-to-production owned-output cleanup.

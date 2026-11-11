@@ -72,7 +72,14 @@ export async function generatePreviewOutput({ root = process.cwd(), env = proces
       return [key, value];
     }));
     if (source === '/(.*)') mapped['X-Robots-Tag'] = 'noindex, nofollow';
-    return { src: headerPattern(source), headers: mapped, continue: true };
+    const route = { src: headerPattern(source), headers: mapped, continue: true };
+    const csp = Object.entries(mapped).find(([key]) => key.toLowerCase() === 'content-security-policy');
+    if (csp) {
+      // Vercel also merges vercel.json headers after Build Output headers.
+      // Apply the isolated policy as a final response transform as well.
+      route.transforms = [{ type: 'response.headers', op: 'set', target: { key: 'content-security-policy' }, args: csp[1] }];
+    }
+    return route;
   });
   if (cspHeaders !== 1) throw new Error('Preview output requires exactly one existing CSP header.');
   routes.push({ src: '^/preview-environment\\.json$', headers: { 'Cache-Control': 'no-store' }, continue: true });
