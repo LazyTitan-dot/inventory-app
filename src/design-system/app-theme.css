@@ -1,0 +1,390 @@
+/* Phase 5 / integration layer. Runs after src/styles.css so the existing
+   data/permissions flows are untouched. Uses S-mart Living v1 semantic tokens. */
+.app-layout {
+  --ink: var(--sl-ink);
+  --muted: var(--sl-muted);
+  --line: var(--sl-line);
+  --primary: var(--sl-accent);
+  --primary-dark: #084F97;
+  --mint: var(--sl-accent-soft);
+  --amber: var(--sl-warning);
+  --danger: var(--sl-danger);
+  --shadow: var(--sl-shadow-card);
+  --border: var(--sl-line);
+  --surface: var(--sl-surface);
+  --surface-subtle: var(--sl-surface-subtle);
+  --surface-soft: var(--sl-surface-subtle);
+  --accent: var(--sl-accent);
+  font-family: var(--sl-font);
+  color: var(--sl-ink);
+  background: var(--sl-glass-frame);
+  min-height: 100dvh;
+  align-items: flex-start;
+}
+.app-layout[data-theme="dark"] { --primary-dark: #5EBCEB; }
+.app-layout .app-main {
+  background: var(--sl-canvas);
+  color: var(--sl-ink);
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: var(--sl-frame-rim) var(--sl-frame-rim) var(--sl-frame-rim) 0;
+  min-height: calc(100dvh - var(--sl-frame-rim) * 2);
+  border-radius: 18px;
+  overflow: clip;
+}
+.app-layout .topbar {
+  background: var(--sl-surface);
+  border-bottom: 1px solid var(--sl-line);
+  border-radius: 18px 18px 0 0;
+  color: var(--sl-ink);
+}
+.app-layout .topbar .breadcrumb,
+.app-layout .topbar .sync-status { color: var(--sl-muted); }
+.app-layout .topbar .breadcrumb strong { color: var(--sl-ink); }
+.app-layout .topbar .sync-status > span { background: var(--sl-success); }
+.app-layout .page-content { max-width: var(--sl-content-max); background: var(--sl-canvas); }
+.app-layout .app-footer { color: var(--sl-muted); border-color: var(--sl-line); }
+
+/* Full-height persistent glass sidebar with a quiet full-row selection. */
+.app-layout .sidebar {
+  width: var(--sl-sidebar-width);
+  flex: 0 0 var(--sl-sidebar-width);
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 15px 12px 10px;
+  background: var(--sl-glass-frame);
+  border: 0;
+  box-shadow: none;
+  color: var(--sl-glass-foreground);
+  isolation: isolate;
+}
+.app-layout .sidebar-brand {
+  display: flex;
+  margin: 0 5px;
+  padding: 0;
+  min-height: 78px;
+  align-items: center;
+  color: #FFFFFF;
+}
+.app-layout .sidebar-brand img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  max-height: 78px;
+  border-radius: 11px;
+}
+.app-layout .business-switch {
+  margin: 6px 5px 18px;
+  padding: 9px;
+  gap: 9px;
+  background: rgba(235,247,255,.08);
+  border: 1px solid rgba(236,247,255,.14);
+  border-radius: 13px;
+  box-shadow: none;
+  color: #F4FAFF;
+  min-height: 53px;
+}
+.app-layout .business-switch strong { max-width: 137px; font-size: 12px; color: #F4FAFF; }
+.app-layout .business-switch small { color: var(--sl-glass-muted); font-size: 10px; }
+.app-layout .business-switch > svg { color: var(--sl-glass-muted); }
+.app-layout .business-avatar {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 9px;
+  background: #061734;
+}
+.app-layout .business-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.app-layout .sidebar nav {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding-bottom: 10px;
+}
+.app-layout .sidebar nav::-webkit-scrollbar { display: none; }
+.app-layout .nav-caption {
+  padding: 9px 12px 13px;
+  color: var(--sl-glass-muted);
+  font-size: 10px;
+  font-weight: 730;
+  letter-spacing: 1.1px;
+}
+.app-layout .nav-link {
+  min-height: 40px;
+  margin: 1px 0;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--sl-glass-muted);
+  font-size: 13px;
+  font-weight: 570;
+  transition: background var(--sl-duration) var(--sl-ease), color var(--sl-duration) var(--sl-ease);
+}
+.app-layout .nav-link svg { color: inherit; stroke-width: 1.8; }
+.app-layout .nav-link:hover { background: rgba(243,250,255,.07); color: #FFF; text-decoration: none; }
+.app-layout .nav-link.active {
+  background: var(--sl-glass-active);
+  color: #FFF;
+  box-shadow: inset 0 1px rgba(255,255,255,.08);
+  font-weight: 730;
+}
+.app-layout .nav-link.active svg { stroke-width: 2.05; }
+.app-layout .nav-count { background: transparent; color: #E5F3FF; font-size: 11px; }
+.app-layout .sidebar-user {
+  border-top: 1px solid rgba(236,247,255,.17);
+  padding: 13px 3px 4px;
+  margin-top: auto;
+  color: #F4F8FF;
+}
+.app-layout .sidebar-user strong { color: #F4F8FF; }
+.app-layout .sidebar-user small { color: var(--sl-glass-muted); }
+.app-layout .sidebar-user .icon-button { color: #EDF7FF; }
+.app-layout .sidebar-user .icon-button:hover { background: rgba(239,248,255,.13); }
+.app-layout .sidebar .user-avatar { background: #057EB9; color: #FFF; }
+
+/* Solid content surfaces, not translucent financial tables or forms. */
+.app-layout .panel,
+.app-layout .stat-card { background: var(--sl-surface); border-color: var(--sl-line); border-radius: var(--sl-radius-card); box-shadow: var(--sl-shadow-card); }
+.app-layout .stat-card { padding: 20px; }
+.app-layout .stat-card > strong { font-variant-numeric: tabular-nums; color: var(--sl-ink); }
+.app-layout .stat-card.warning > strong { color: var(--sl-warning); }
+.app-layout .stat-card > span,
+.app-layout .stat-card > small,
+.app-layout .section-heading p,
+.app-layout .page-header p,
+.app-layout .eyebrow { color: var(--sl-muted); }
+.app-layout .page-header h1,
+.app-layout .section-heading h2 { color: var(--sl-ink); }
+.app-layout .button,
+.app-layout .icon-button { border-radius: var(--sl-radius-control); }
+.app-layout .button.primary { background: var(--sl-accent); color: var(--sl-on-accent); border-color: var(--sl-accent); }
+.app-layout .button.secondary { background: var(--sl-surface); color: var(--sl-ink); border-color: var(--sl-line); }
+.app-layout .button.ghost { color: var(--sl-accent); }
+.app-layout .button.light { background: var(--sl-accent-soft); color: var(--sl-accent); border-color: var(--sl-line); }
+.app-layout .button.primary:hover { filter: brightness(.94); }
+.app-layout .button:focus-visible,
+.app-layout .nav-link:focus-visible,
+.app-layout .sl-bottom-dock :focus-visible { outline: 3px solid var(--sl-focus); outline-offset: 2px; }
+.app-layout .table-wrap { overscroll-behavior-inline: contain; }
+.app-layout .data-table th { color: var(--sl-muted); background: var(--sl-surface-subtle); border-color: var(--sl-line); }
+.app-layout .data-table td { color: var(--sl-ink); border-color: var(--sl-line); }
+.app-layout .data-table tr:hover td { background: var(--sl-surface-subtle); }
+.app-layout .page-header .eyebrow { color: var(--sl-accent); }
+.app-layout .badge.status-pending,
+.app-layout .badge.status-partial { color: var(--sl-warning); }
+.app-layout .badge.status-voided,
+.app-layout .badge.status-failed { color: var(--sl-danger); }
+.app-layout .badge.status-in_transit { color: var(--sl-accent); }
+.app-layout .sidebar .icon-button:focus-visible { outline-color: #ACEEFF; }
+.app-layout .icon-button:hover { background: var(--sl-accent-soft); color: var(--sl-accent); }
+.app-layout .sidebar .icon-button:hover { color:#FFF; }
+.app-layout .sl-bottom-dock { display:none; }
+.app-layout .sl-theme-toggle { min-width: 40px; min-height: 40px; }
+
+/* Bridge existing shared controls to the theme while feature layouts migrate.
+   Match foregrounds and surfaces together; legacy white surfaces cannot inherit
+   dark-mode ink safely. These rules do not change any transaction behavior. */
+.app-layout :is(input, select, textarea, .modal, .modal-heading) {
+  color: var(--sl-ink);
+  background: var(--sl-surface);
+  border-color: var(--sl-line);
+}
+.app-layout :is(input, select, textarea)::placeholder { color: var(--sl-muted); opacity: 1; }
+.app-layout :is(input, select, textarea):disabled {
+  color: var(--sl-muted);
+  background: var(--sl-surface-subtle);
+}
+.app-layout :is(input, select, textarea):focus {
+  border-color: var(--sl-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sl-focus) 18%, transparent);
+}
+.app-layout :is(a, button, summary):focus-visible {
+  outline: 3px solid var(--sl-focus);
+  outline-offset: 3px;
+}
+.app-layout .page-content :is(.muted, small, code, .table-meta, .empty-state p, .product-cell small,
+  .contact-detail p, .report-filters p, .bar-row > div:first-child,
+  .payment-list > div:not(.empty-state), .role-guide p,
+  .commerce-product > small, .commerce-line-controls label, .commerce-page-note,
+  .commerce-document-heading p, .commerce-document-heading small,
+  .commerce-document-eyebrow, .commerce-document-notes, .commerce-detail-list dt,
+  .variant-editor legend, .advanced-fields summary, .adjustment-preview > span,
+  .tabs > button, .commerce-convert-summary p, .commerce-return-total p) {
+  color: var(--sl-muted);
+}
+.app-layout :is(.product-cell strong, .stock-cell > strong, .data-table td > strong,
+  .data-table .numeric, .payment-list strong, .bar-row strong, .adjustment-preview strong) {
+  color: var(--sl-ink);
+}
+.app-layout :is(.catalog-price-preview, .note-box, .variant-editor,
+  .panel-footer-link, .product-image, .empty-icon, .commerce-product-visual,
+  .commerce-inline-note, .commerce-linked-note, .commerce-convert-summary,
+  .commerce-return-total, .role-guide, .adjustment-preview, .whatsapp-recipient, .whatsapp-hint) {
+  background: var(--sl-surface-subtle);
+  color: var(--sl-ink);
+  border-color: var(--sl-line);
+}
+.app-layout :is(.commerce-product, .commerce-category, .commerce-pick-sale,
+  .commerce-catalog-search, .search-field) {
+  background: var(--sl-surface);
+  color: var(--sl-ink);
+  border-color: var(--sl-line);
+}
+.app-layout .commerce-category.selected {
+  background: var(--sl-accent);
+  color: var(--sl-on-accent);
+  border-color: var(--sl-accent);
+}
+.app-layout .commerce-tabs button { color: var(--sl-muted); }
+.app-layout .commerce-tabs button.active { color: var(--sl-accent); border-color: var(--sl-accent); }
+.app-layout .panel.dark-panel {
+  background: var(--sl-brand-navy);
+  color: #F4F8FF;
+  border-color: var(--sl-brand-navy);
+}
+.app-layout .dark-panel :is(h2, .delivery-highlight > strong) { color: #F4F8FF; }
+.app-layout .dark-panel :is(.eyebrow, p, .delivery-note, .delivery-highlight > span) { color: #CCDDED; }
+.app-layout .badge { background: var(--sl-surface-subtle); color: var(--sl-muted); }
+.app-layout :is(.badge.success, .badge.status-completed, .badge.status-received,
+  .badge.status-delivered, .success-notice, .operations-promo-current, .warranty-active) {
+  color: var(--sl-success);
+  background: color-mix(in srgb, var(--sl-success) 10%, var(--sl-surface));
+}
+.app-layout :is(.badge.warning, .badge.status-pending, .badge.status-partial,
+  .badge.status-scheduled, .commerce-warning, .commerce-price-change, .warning-notice,
+  .operations-promo-expired, .warranty-expiring) {
+  color: var(--sl-warning);
+  background: color-mix(in srgb, var(--sl-warning) 10%, var(--sl-surface));
+}
+.app-layout :is(.badge.danger, .badge.status-voided, .badge.status-failed,
+  .error-notice, .warranty-expired) {
+  color: var(--sl-danger);
+  background: color-mix(in srgb, var(--sl-danger) 10%, var(--sl-surface));
+}
+.app-layout :is(.badge.status-in_transit, .badge.status-open, .operations-promo-upcoming) {
+  color: var(--sl-accent);
+  background: var(--sl-accent-soft);
+}
+.app-layout :is(.commerce-out, .commerce-error-text) { color: var(--sl-danger); }
+
+@media (min-width: 851px) and (max-height: 790px) {
+ .app-layout .sidebar { padding-top: 8px; padding-bottom: 7px; }
+ .app-layout .sidebar-brand { min-height: 62px; }
+ .app-layout .sidebar-brand img { max-height: 62px; }
+ .app-layout .business-switch { margin-bottom: 9px; min-height: 47px; padding: 6px 8px; }
+ .app-layout .nav-link { min-height: 35px; padding-top: 7px; padding-bottom: 7px; }
+ .app-layout .nav-caption { padding-top: 5px; padding-bottom: 5px; }
+ .app-layout .sidebar-user { padding-top: 7px; }
+}
+@media (max-width: 850px) {
+  .app-layout { background: var(--sl-canvas); display: block; }
+  .app-layout .app-main { margin: 0; min-height: 100dvh; border-radius: 0; overflow: visible; }
+  .app-layout .topbar { border-radius: 0; }
+  .app-layout .sidebar {
+    position: fixed; top: 0; bottom:0; left:0;
+    z-index: 65;
+    width: min(285px,calc(100vw - 42px)); flex-basis:auto;
+    visibility:hidden;
+    transform:translateX(-104%);
+    box-shadow: 14px 0 38px rgba(4,27,55,.22);
+    transition: transform var(--sl-duration) var(--sl-ease);
+  }
+  .app-layout .sidebar.open { visibility: visible; transform: translateX(0); }
+  .app-layout .nav-link { min-height: 44px; }
+  .app-layout .sidebar-backdrop { display: block; z-index: 64; background:rgba(7,24,44,.45); }
+  .app-layout .mobile-menu { display:none; }
+  .app-layout .page-content { padding: 22px 16px calc(124px + env(safe-area-inset-bottom,0px)); }
+  .app-layout .app-footer { padding-bottom: calc(104px + env(safe-area-inset-bottom,0px)); }
+  .app-layout .sl-bottom-dock {
+    display: flex;
+    position: fixed;
+    left: 50%;
+    bottom: calc(12px + env(safe-area-inset-bottom,0px));
+    transform: translateX(-50%);
+    z-index: 48;
+    width: min(440px, calc(100vw - 22px));
+    min-height: 72px;
+    gap: 4px;
+    padding: 6px;
+    border-radius: 27px;
+    border: 1px solid rgba(255,255,255,.85);
+    background: rgba(248,252,255,.91);
+    box-shadow: 0 10px 32px rgba(16,42,77,.15), inset 0 1px rgba(255,255,255,.9);
+    -webkit-backdrop-filter: blur(22px) saturate(145%);
+    backdrop-filter: blur(22px) saturate(145%);
+  }
+  .app-layout[data-theme="dark"] .sl-bottom-dock {
+    background: rgba(27,47,72,.93);
+    border-color: rgba(201,226,249,.24);
+    box-shadow: 0 12px 30px rgba(0,0,0,.3);
+  }
+  .app-layout .sl-bottom-tab {
+    flex:1 1 0; min-width:0; min-height:58px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1px; background:transparent; border:0; border-radius:21px;
+    text-decoration:none; text-align:center; font-size:11px; font-weight:600;
+    color: var(--sl-muted); padding:4px 2px;
+  }
+  .app-layout .sl-bottom-tab[aria-current="page"],
+  .app-layout .sl-bottom-tab.is-current { color: var(--sl-ink); font-weight:750; }
+  .app-layout .sl-bottom-lens { display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px solid transparent; }
+  .app-layout .sl-bottom-tab[aria-current="page"] .sl-bottom-lens {
+    border-color:rgba(82,138,183,.48);background:rgba(255,255,255,.86);
+    box-shadow:0 3px 10px rgba(25,72,126,.1);
+  }
+  .app-layout[data-theme="dark"] .sl-bottom-tab[aria-current="page"] .sl-bottom-lens {
+    border-color:rgba(221,236,255,.25);background:rgba(100,149,201,.27);box-shadow:none;
+  }
+  .app-layout .sl-bottom-tab:hover { background: rgba(67,122,172,.06); text-decoration:none; }
+  .app-layout[data-theme="dark"] .sl-bottom-tab { color:#CEDFF0; }
+  .app-layout[data-theme="dark"] .sl-bottom-tab[aria-current="page"] { color:#FFFFFF; }
+}
+@media (prefers-reduced-transparency:reduce) and (max-width:850px) {
+  .app-layout .sl-bottom-dock { background:#E8F0FA; backdrop-filter:none; -webkit-backdrop-filter:none; }
+  .app-layout[data-theme="dark"] .sl-bottom-dock { background:#1B314B; }
+}
+@media (forced-colors:active) {
+  .app-layout .sidebar {border-right:1px solid CanvasText;background:Canvas;color:CanvasText;}
+  .app-layout .sidebar :is(a,button,.nav-caption) {color:CanvasText;}
+  .app-layout .sl-bottom-dock {background:Canvas;border-color:CanvasText;box-shadow:none;}
+  .app-layout .sl-bottom-tab[aria-current="page"] {outline:2px solid Highlight;}
+}
+@media print {
+  .app-layout {background:transparent;}
+  .app-layout .sl-bottom-dock {display:none!important;}
+  .app-layout .app-main {margin:0;border:0;border-radius:0;min-height:0;}
+}
+@media (max-width:850px) {
+  /* RetailProvider renders notifications after the shell, as a sibling. */
+  .app-layout ~ .toast { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
+}
+@media print {
+  .app-layout[data-theme] {
+    color-scheme: light;
+    --sl-canvas: #FFFFFF;
+    --sl-surface: #FFFFFF;
+    --sl-surface-subtle: #F2F6FA;
+    --sl-ink: #152641;
+    --sl-muted: #586B82;
+    --sl-line: #DDE5EE;
+    --sl-accent: #0A64BB;
+    --sl-accent-soft: #E9F4FF;
+    --sl-on-accent: #FFFFFF;
+    --sl-success: #116A51;
+    --sl-warning: #8B5D12;
+    --sl-danger: #B52D42;
+    --sl-shadow-card: none;
+  }
+  .app-layout .page-content { padding: 0; }
+  .app-layout .app-main { overflow: visible; }
+}

@@ -10,3 +10,4 @@ test-results/
 .private/
 supabase/.temp/
 supabase/.branches/
+playwright-report/

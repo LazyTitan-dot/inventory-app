@@ -15,7 +15,9 @@
     "test": "npm run test:unit && npm run test:db",
     "test:unit": "vitest run",
     "test:db": "node --test supabase/tests/*.test.mjs",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "test:shell": "npm run test:shell:types && playwright test",
+    "test:shell:types": "tsc --project tests/tsconfig.json"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.117.1",
@@ -28,6 +30,8 @@
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.0",
+    "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.1",

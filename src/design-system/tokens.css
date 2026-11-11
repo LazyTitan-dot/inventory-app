@@ -1,0 +1,34 @@
+/* S-mart Living design tokens · v1.0.0-prototype
+   CSS translation of /tokens.json. Do not edit theme values in component styles.
+   This is a web interpretation; it is NOT Apple's native Liquid Glass API. */
+:root, [data-theme="light"] {
+  color-scheme: light;
+  --sl-brand-navy:#061734; --sl-brand-blue:#0A64BB; --sl-brand-cyan:#21BEE7;
+  --sl-canvas:#F5F7FB; --sl-surface:#FFFFFF; --sl-surface-subtle:#F2F6FA;
+  --sl-ink:#152641; --sl-muted:#586B82; --sl-line:#DDE5EE;
+  --sl-accent:#0A64BB; --sl-accent-soft:#E9F4FF; --sl-on-accent:#FFFFFF;
+  --sl-success:#116A51; --sl-warning:#8B5D12; --sl-danger:#B52D42; --sl-focus:#0A64BB;
+  --sl-radius-sm:9px; --sl-radius-control:12px; --sl-radius-card:18px; --sl-radius-panel:22px;
+  --sl-space-1:4px; --sl-space-2:8px; --sl-space-3:12px; --sl-space-4:16px;
+  --sl-space-5:20px; --sl-space-6:24px; --sl-space-8:32px; --sl-space-10:40px; --sl-space-12:48px;
+  --sl-height-sm:36px; --sl-height-default:44px; --sl-height-lg:48px;
+  --sl-shadow-card:0 10px 35px rgba(13,39,79,.045);
+  --sl-glass-frame:linear-gradient(150deg,#365E84 0%,#294D73 37%,#243F61 74%,#1B3553 100%);
+  --sl-glass-foreground:#EFF7FE; --sl-glass-muted:#CCDDED; --sl-glass-active:rgba(241,249,255,.15);
+  --sl-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+  --sl-sidebar-width:246px; --sl-frame-rim:6px; --sl-content-max:1480px;
+  --sl-ease:cubic-bezier(.2,.7,.2,1); --sl-duration-fast:120ms; --sl-duration:180ms;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --sl-canvas:#0B1526; --sl-surface:#12243C; --sl-surface-subtle:#172E49;
+  --sl-ink:#F4F8FF; --sl-muted:#B4C6DB; --sl-line:#2B4563;
+  --sl-accent:#76C9FF; --sl-accent-soft:#193B5B; --sl-on-accent:#0A233A;
+  --sl-success:#65E0B1; --sl-warning:#FFD38C; --sl-danger:#FF9FA9; --sl-focus:#8FDBFF;
+  --sl-shadow-card:none;
+  --sl-glass-frame:linear-gradient(150deg,#1D344F 0%,#172B45 54%,#15283F 100%);
+  --sl-glass-foreground:#F7FBFF; --sl-glass-muted:#BCD0E5; --sl-glass-active:rgba(216,235,255,.12);
+}
+@media(prefers-reduced-motion:reduce) {*,*::before,*::after {scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important;}}
+@media(prefers-reduced-transparency:reduce){:root,[data-theme="light"]{--sl-glass-frame:#2A4C70;}[data-theme="dark"]{--sl-glass-frame:#182B45;}}
+@media(forced-colors:active){:root{--sl-focus:Highlight;} }
