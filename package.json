@@ -8,16 +8,17 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/preview-output.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "npm run test:unit && npm run test:db",
+    "test": "npm run test:unit && npm run test:db && npm run test:preview-output",
     "test:unit": "vitest run",
     "test:db": "node --test supabase/tests/*.test.mjs",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "test:shell": "npm run test:shell:types && playwright test",
-    "test:shell:types": "tsc --project tests/tsconfig.json"
+    "test:shell:types": "tsc --project tests/tsconfig.json",
+    "test:preview-output": "node --test tests/preview-output.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.117.1",

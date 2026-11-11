@@ -125,7 +125,7 @@ existing PGlite suite validates SQL contracts in a synthetic local PostgreSQL
 engine. Full feature color/token adoption and comparison with the missing
 originals remain checklist items. Phase 6 advanced tracking remains deferred.
 
-## Preview configuration gate
+## Preview configuration and staging continuation
 
 The existing branch preview for `c10be10` (`dpl_BP68dbkdK4VyfxGE59dSMU3DG8Lj`)
 failed with `failed_config_load`: “Falta la configuración pública de Supabase
@@ -135,3 +135,19 @@ non-production Supabase project; its hostname also needs a preview-specific CSP.
 The production CSP and configuration guard are preserved. No production bindings
 were copied or changed, and no remote backend requests were used for QA.
 A generated preview URL alone does not establish a working or safely isolated app.
+
+The user subsequently authorized creating a separate staging project in
+**SmartLiving Home**. Project `wvegljmwszvywhngcitr` now has the seven existing
+retail migrations, and its public configuration is scoped only to Preview on
+`design/phase5-shell-v1`. `scripts/preview-output.mjs` generates a preview-only
+Build Output API bundle whose CSP permits only that staging backend; normal
+builds retain the checked-in production configuration. Fifteen focused generator
+tests cover routing, configuration mismatch rejection, metadata and cleanup of
+owned preview output before a later production build.
+
+Hosted SQL role/cost/bootstrap/command checks passed in a rollback-only
+transaction. No test users, products or memberships persisted. This is database
+permission evidence; it is not proof of real Auth sessions. Permanent test-account
+provisioning and authenticated hosted browser QA remain pending. The Cloud
+network policy blocks the staging/preview hosts, and computer control failed to
+initialize. See the [staging setup and verification record](phase5-staging-setup.md).
