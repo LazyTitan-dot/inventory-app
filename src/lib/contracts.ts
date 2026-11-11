@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Keep validation compatible with the app's strict script-src policy.
+z.config({ jitless: true });
+
 const id = z.string().uuid();
 const timestamp = z.string();
 const optionalText = z.string().nullable();
@@ -51,12 +54,31 @@ export const contactSchema = z.object({
   created_at: timestamp,
   updated_at: timestamp,
 });
+export const addressSnapshotSchema = z.object({
+  street: z.string(),
+  sector: z.string(),
+  city: z.string(),
+  province: z.string(),
+  phone: z.string(),
+  reference: z.string(),
+});
+export const customerAddressSchema = addressSnapshotSchema.extend({
+  id,
+  contact_id: id,
+  label: z.string(),
+  is_default: z.boolean(),
+  active: z.boolean(),
+  created_at: timestamp,
+  updated_at: timestamp,
+});
 export const documentSchema = z.object({
   id,
   number: z.string(),
   type: z.enum(['sale', 'purchase', 'quote', 'return']),
   status: z.string(),
   status_reason: z.string().optional(),
+  expected_at: z.string().nullable().optional(),
+  closed_short: z.boolean().optional(),
   contact_id: id.nullable(),
   contact_snapshot: z.record(z.string(), z.unknown()),
   subtotal: amount,
@@ -94,6 +116,7 @@ export const documentItemSchema = z.object({
   product_snapshot: productSnapshotSchema,
   quantity: z.number(),
   received_quantity: z.number(),
+  damaged_quantity: z.number().optional(),
   returned_quantity: z.number(),
   unit_price: amount,
   unit_cost: amount.optional(),
@@ -123,6 +146,9 @@ export const deliverySchema = z.object({
   address: z.string(),
   phone: z.string(),
   contact_name: z.string(),
+  customer_address_id: id.nullable().optional(),
+  address_snapshot: addressSnapshotSchema.nullable().optional(),
+  proof: z.string().optional(),
   scheduled_at: timestamp,
   assignee: optionalText,
   notes: optionalText,
@@ -130,10 +156,25 @@ export const deliverySchema = z.object({
   delivered_at: timestamp.nullable(),
   legacy: z.record(z.string(), z.unknown()).optional(),
   history: z.array(
-    z.object({ at: timestamp, actor: id.nullable(), status: z.string(), note: optionalText }),
+    z.object({ at: timestamp, actor: id.nullable(), status: z.string(), note: optionalText, received_by: z.string().optional(), proof: z.string().optional() }),
   ),
   created_at: timestamp,
   updated_at: timestamp,
+});
+export const purchaseReceiptSchema = z.object({
+  id,
+  purchase_id: id,
+  operation_id: id,
+  received_by: id,
+  notes: z.string(),
+  items: z.array(z.object({
+    item_id: id,
+    variant_id: id,
+    quantity: z.number(),
+    damaged_quantity: z.number(),
+    unit_cost: amount,
+  })),
+  created_at: timestamp,
 });
 export const promotionSchema = z.object({
   id,
@@ -199,6 +240,9 @@ export const bootstrapSchema = z.object({
   variants: z.array(variantSchema),
   stocks: z.array(stockSchema),
   contacts: z.array(contactSchema),
+  customer_addresses: z.array(customerAddressSchema).optional(),
+  purchase_receipts: z.array(purchaseReceiptSchema).optional(),
+  features: z.array(z.string()).optional(),
   documents: z.array(documentSchema),
   document_items: z.array(documentItemSchema),
   movements: z.array(movementSchema),
@@ -211,6 +255,9 @@ export type RetailData = z.infer<typeof bootstrapSchema>;
 export type Product = z.infer<typeof productSchema>;
 export type Variant = z.infer<typeof variantSchema>;
 export type Contact = z.infer<typeof contactSchema>;
+export type AddressSnapshot = z.infer<typeof addressSnapshotSchema>;
+export type CustomerAddress = z.infer<typeof customerAddressSchema>;
+export type PurchaseReceipt = z.infer<typeof purchaseReceiptSchema>;
 export type RetailDocument = z.infer<typeof documentSchema>;
 export type DocumentItem = z.infer<typeof documentItemSchema>;
 export type Delivery = z.infer<typeof deliverySchema>;
@@ -220,11 +267,15 @@ export type Action =
   | 'archive_product'
   | 'save_contact'
   | 'archive_contact'
+  | 'save_customer_address'
+  | 'archive_customer_address'
+  | 'set_default_address'
   | 'adjust_stock'
   | 'create_sale'
   | 'create_purchase'
   | 'receive_purchase'
   | 'cancel_purchase'
+  | 'close_purchase_short'
   | 'confirm_purchase_draft'
   | 'create_quote'
   | 'update_quote'

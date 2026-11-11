@@ -4,7 +4,32 @@ Prepared 11 November 2026 for the shared-shell preview on
 `design/phase5-shell-v1`. This document describes a non-production installation;
 it does not authorize a production database operation or import production data.
 
-## Recorded setup status — 11 November 2026
+## Current authenticated QA status — 11 November 2026
+
+The supplied checkpoint was restored before this continuation. In the refreshed
+Cloud environment, `PHASE5_QA_PASSWORD` is ready and the enforced policy permits
+the exact unique Preview and staging hosts. Real password login, JWT refresh,
+same-user owner bootstrap, and the authenticated hosted shell are now verified
+on Preview `dpl_EnHgC91YWVszLTvJyCxEat21X97n` at commit `61aff6c`.
+
+Owner shell QA passed five viewport widths in both themes, all 13 routes,
+mobile focus/navigation, refresh, print, real logout and logged-out reload.
+Logout invalidated the tested refresh token. Expired recovery rendering passed;
+recovery mail was not sent. Anonymous bootstrap and owner direct-table access
+were denied. The final staging baseline remains one Auth user, one active owner,
+zero products, zero documents and revision zero.
+
+See the [authenticated QA report](phase5-authenticated-qa.md) for evidence,
+harness corrections, browser diagnostics and remaining boundaries. Public signup
+and plain-text 404 CSP findings remain open; a caught Zod eval capability probe
+also generates a nonblocking CSP violation. Other-role/nonmember hosted sessions,
+recovery delivery and real Realtime/concurrency remain pending. No production,
+schema or business-data changes, merge, or new deployment occurred in this run.
+
+The sections below preserve earlier checkpoint history; their pending credential
+and owner-shell statements are superseded by this status.
+
+## Initial recorded setup status — 11 November 2026
 
 After explicit user selection of the **SmartLiving Home** organization, the
 dedicated staging project `wvegljmwszvywhngcitr` was created. The parent setup
@@ -26,6 +51,164 @@ fixtures inside a transaction that was rolled back. An authorized confirmed
 test account and initial membership are still needed for real Auth/browser
 shell QA. The synthetic owner in the PGlite rehearsal below exists only in
 that ephemeral local test.
+
+## QA continuation — 11 November 2026
+
+This continuation used PR #1's `design/phase5-shell-v1` branch at
+`61aff6c2e1bd78457aed515fec99f697e05db252`. The checks below supersede the initial
+network blocker record while preserving it as checkpoint history. No production
+configuration/data was changed, no schema migration was applied and the PR was
+not merged.
+
+### Network and deployment identity
+
+Network access was verified first. The enforced Cloud policy now permits
+GitHub, `wvegljmwszvywhngcitr.supabase.co` and
+`inventory-app-git-design-phase5-81c276-lazytitan-dots-projects.vercel.app`.
+All three were reachable; unauthenticated Auth health returned the expected
+missing-API-key response. The stable alias returned Vercel Authentication
+protection. The prior unique Preview hostname
+`inventory-56e5qjqkw-lazytitan-dots-projects.vercel.app` received proxy `403`.
+Unique deployment host access must be checked separately from branch-alias
+access.
+
+The stable branch alias initially resolved to
+`dpl_7B9i4F6iWBooPC7YJ6ventfCupKx`, reported with target `production` and
+production aliases. That deployment was not modified or used for authenticated
+QA. Alias naming therefore cannot establish the deployment's target or backend.
+
+After user approval, a fresh Preview rebuild was requested:
+
+| Identity | Recorded value |
+| --- | --- |
+| Source Preview | `dpl_nsBE3sg6MmVG2vDvCQW115Ej5Rf3` |
+| Source commit | `61aff6c2e1bd78457aed515fec99f697e05db252` |
+| New deployment | `dpl_EnHgC91YWVszLTvJyCxEat21X97n` |
+| Unique hostname | `inventory-3tvfe5snn-lazytitan-dots-projects.vercel.app` |
+| Target request | Target omitted, the documented Preview default; API target was `null` |
+| Final deployment state | `READY`, Preview (`target: null`) |
+| Stable branch alias | Now resolves to the new Preview deployment |
+| Production origin | `inventory-app-nine-navy.vercel.app` still resolves to the original `dpl_7B9i4F6iWBooPC7YJ6ventfCupKx`, unmodified |
+
+The user explicitly approved temporary sharing for this new Preview only. The
+unique deployment access operation reused an expiring share link with about
+23 hours remaining. No share token or link is recorded here. Authorized connector
+requests to that unique Preview produced the following hosted-response evidence:
+
+| Hosted request | Result |
+| --- | --- |
+| `/preview-environment.json` | HTTP `200`, JSON `environment: preview`, project ref `wvegljmwszvywhngcitr`, SHA `61aff6c2e1bd78457aed515fec99f697e05db252`; `Cache-Control: no-store`; `X-Robots-Tag: noindex, nofollow` |
+| Live metadata CSP | `connect-src` permits only `'self'`, staging HTTPS and staging WSS |
+| `/`, `/inventario`, `/recuperar`, both used brand PNGs, main CSS and main JavaScript | HTTP `200` with the expected HTML/PNG/CSS/JavaScript content types and staging-only CSP |
+| `/sw.js` | HTTP `200`, JavaScript, `Cache-Control: no-store`, staging-only CSP |
+| Main JavaScript backend references | Staging project only |
+| `/assets/phase5-missing.js`, `/brand/phase5-missing.png` | HTTP `404`, `text/plain`, not SPA HTML |
+
+The platform-generated `404` responses retain the checked-in production
+`connect-src` header. This is a narrow Preview error-response CSP inconsistency:
+the tested missing resources returned no executable response and no production
+request occurred, but the evidence does not establish staging-only CSP on every
+response. Record and resolve that error-response behavior before claiming
+uniform Preview header isolation.
+
+Direct requests to the new unique hostname still received proxy `403`; an
+actual headless browser navigation to its approved share link failed with
+`net::ERR_TUNNEL_CONNECTION_FAILED`. The user agreed to add and apply that exact
+hostname; the latest observed policy still contained only the staging API and
+stable branch alias. The
+successful connector requests above do not replace authenticated
+hosted browser QA.
+
+Automatic approval review rejected the Vercel fetch operation because its access
+mechanism creates or reuses a temporary share link that expands deployment
+access. That rejected request was not retried. The later unique-Preview access
+was a separate operation after explicit approval for that deployment. A later
+access request through the stable alias was
+rejected because automatic review treated that alias as production; it was not
+retried or bypassed indirectly. Only the explicitly approved unique Preview
+share was used for the successful connector checks.
+
+### Real browser and staging read-only checks
+
+Shared computer-use initialization again failed with
+`gaas-browser node_repl sandbox cannot be disabled`, but independent headless
+Chromium launched. The actual local Vite/React app at
+`http://127.0.0.1:4180` used the staging project URL/public key and displayed an
+enabled login form. Browser fetches used real CORS and real staging responses,
+with no mocked Auth/bootstrap and no logged-in session:
+
+| Check | Result |
+| --- | --- |
+| Auth health with public API key | HTTP `200`, GoTrue `v2.197.0` |
+| Anonymous `retail_bootstrap` | HTTP `401`, SQLSTATE `42501`, permission denied for function |
+| Anonymous `retail_products` read | HTTP `401`, permission denied for table |
+| Browser exceptions / unexpected request origins | None |
+| Inherited Google Fonts request | Failed proxy tunnel; fallback fonts used |
+
+This is browser-to-staging connectivity and anonymous-denial evidence from a
+local origin. It is not hosted Preview QA, a real Auth login, JWT refresh,
+authenticated bootstrap, recovery delivery or Realtime-delivery evidence. No
+business commands or persistent test records were created by these checks.
+
+The earlier read-only staging checkpoint confirmed all seven migrations and zero
+Auth users, retail memberships and products. `public.retail_revision` was the
+only member of the `supabase_realtime` publication; membership alone does not prove
+subscription delivery. Security advisors reported zero warnings/errors and seven
+informational private-table no-policy findings. Performance advisors reported
+one informational unindexed `legacy_issues` foreign key and twelve informational
+unused-index findings on the empty staging project.
+
+The public Auth settings response reported `disable_signup=false`,
+`anonymous_users=false` and `mailer_autoconfirm=false`. Public signup is therefore
+enabled, contrary to the intended setup below. This is an open staging
+configuration gap; it was not silently changed as part of read-only QA.
+
+### Credentials and remaining authenticated gate
+
+At the initial continuation checkpoint the controlled account and owner
+membership had not yet been provisioned. The requested environment secret names are `PHASE5_QA_EMAIL` and
+`PHASE5_QA_PASSWORD`; no ready credentials existed at this checkpoint. Keep values
+out of chat, source, screenshots and reports. Do not handcraft Auth rows or send
+unsolicited invitations/recovery emails.
+
+The user subsequently created the controlled staging Auth user
+`ff90df83-254e-4bdc-8a57-565a406d42c9`, verified as confirmed and unbanned.
+Automatic approval review initially rejected the first-owner grant because the
+account-creation instruction did not explicitly approve that privilege grant.
+After the user expressly approved the owner membership, a guarded insert for
+that exact account succeeded. A follow-up read confirmed one active `owner`
+membership and zero products.
+
+A rollback-only SQL session used `SET LOCAL ROLE authenticated` and that exact
+user's `request.jwt.claim.sub` to call `retail_bootstrap`. Its full result parsed
+against the current `bootstrapSchema`: matching user UUID, `owner` role, DOP,
+empty commercial arrays and one team member. This is SQL role-impersonation
+evidence, not a real Auth API login, JWT/session or browser-authentication check.
+No commercial records were created by the rehearsal.
+
+The owner/account gate is complete. The test email is known from the controlled
+account; `PHASE5_QA_PASSWORD` is still required through environment secrets
+(`PHASE5_QA_EMAIL` can optionally override the known test email). The applied
+custom hostname additions still contain only
+the staging API and original stable branch alias; the unique Preview hostname
+has not been added.
+
+Authenticated hosted QA remains pending direct browser access to the unique
+Preview hostname and those controlled credentials. Resume with real login,
+same-user `bootstrapSchema` validation,
+empty-shell rendering, reload/manual refresh/logout, then controlled role/cost
+and route checks. Recovery delivery, two-session Realtime/concurrency, media and
+printer/device checks retain their separate evidence requirements.
+
+### Repeated local regressions
+
+After `npm ci`, `npm run test:shell` passed its dedicated TypeScript check and all
+28 actual-app Chromium cases in 55.8 seconds. `npm run test:preview-output` passed
+15/15 and `git diff --check` passed. Versions: Node `24.22.1`, Playwright `1.65.0`,
+Chromium `156.0.8078.79` on Debian 13. The generated report is
+`/workspace/inventory-app/playwright-report/index.html`. These local fixtures
+continue to intercept Auth/bootstrap and do not replace authenticated staging
+evidence.
 
 ## What an empty project can show
 
@@ -188,25 +371,26 @@ QA must use only the staging project and controlled users. Existing local
 browser fixtures remain useful for shell regression, but they intercept Auth
 and bootstrap and are not evidence of hosted-service behavior.
 
-## Hosted browser verification blockers
+## Initial hosted browser verification blockers
 
-The Cloud network policy currently blocks direct requests to the staging
-hostname and stable branch preview alias. Requested host additions have not yet
-been applied by the user:
+At the initial setup checkpoint the Cloud network policy blocked direct requests
+to the staging hostname and stable branch preview alias. Requested host additions
+had not yet been applied by the user:
 
 - `wvegljmwszvywhngcitr.supabase.co`
 - `inventory-app-git-design-phase5-81c276-lazytitan-dots-projects.vercel.app`
 - The exact new deployment hostname, once returned by Vercel.
 
-The attempted computer-use initialization also failed with
+The initial attempted computer-use initialization also failed with
 `gaas-browser node_repl sandbox cannot be disabled`. No available environment
 change tool resolved that failure. Deployment status, generated files and
 response headers can be inspected through the Vercel connector, but this does
 not replace a real browser/Auth session.
 
-Hosted login, recovery delivery, role-specific shell rendering and transaction
-QA remain pending both access to the preview/staging hosts and a controlled
-confirmed staging account. Do not present connector metadata, an accessible
+At that checkpoint hosted login, recovery delivery, role-specific shell rendering
+and transaction QA remained pending access to the preview/staging hosts and a
+controlled confirmed staging account. See the continuation above for the updated
+access and credential status. Do not present connector metadata, an accessible
 login page or the local fixture suite as completed authenticated hosted QA.
 
 ## Hosted staging SQL smoke and advisory review

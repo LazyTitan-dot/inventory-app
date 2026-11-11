@@ -23,6 +23,7 @@ import {
   Sun,
   Package,
   RefreshCw,
+  Search,
   Settings2,
   ShoppingBag,
   Truck,
@@ -38,6 +39,7 @@ import { BUSINESS_TIMEZONE, roleLabels } from './lib/format';
 import { createAuthSessionStore } from './lib/authSession';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useMobileSidebar } from './design-system/useMobileSidebar';
+import { CommandPalette } from './components/CommandPalette';
 
 const Dashboard = lazy(() =>
   import('./pages/Dashboard').then((m) => ({ default: m.DashboardPage })),
@@ -61,6 +63,30 @@ const Audit = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Au
 export function Shell() {
   const { data, refresh, refreshing, lastUpdated, notify } = useRetail();
   const [menu, setMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const openSearch = () => { setMenu(false); setSearchOpen(true); };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'k') {
+        const dialog = document.querySelector<HTMLDialogElement>('dialog[open]');
+        if (dialog) {
+          if (dialog.getAttribute('aria-label') === 'Buscar en el negocio') {
+            event.preventDefault();
+            dialog.querySelector<HTMLInputElement>('[role=combobox]')?.focus();
+          }
+          return;
+        }
+        event.preventDefault();
+        openSearch();
+      }
+    };
+    window.addEventListener('smartliving:search', openSearch);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('smartliving:search', openSearch);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
   const { sidebar, openSidebar } = useMobileSidebar(menu, setMenu);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
@@ -188,6 +214,7 @@ export function Shell() {
           </button>
         </div>
       </aside>
+      {searchOpen && <CommandPalette onClose={() => setSearchOpen(false)} />}
       <div className="app-main" inert={menu}>
         <header className="topbar">
           <div className="toolbar">
@@ -212,6 +239,15 @@ export function Shell() {
                 ? 'Actualizando…'
                 : `Actualizado ${lastUpdated.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', timeZone: BUSINESS_TIMEZONE })}`}
             </span>
+            <button
+              type="button"
+              className="icon-button sl-global-search"
+              aria-label="Buscar en el negocio"
+              title="Buscar (Ctrl / ⌘ K)"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search size={18} />
+            </button>
             <button
               type="button"
               className="icon-button sl-theme-toggle"

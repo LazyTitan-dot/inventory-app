@@ -1,5 +1,14 @@
 # Phase 5 integration checklist
 
+The later full-application adaptation of the supplied
+`smartliving_customer_addresses_tracking.html` is recorded in
+[the current implementation and verification report](prototype-adaptation.md).
+It implements the attachment's inventory, cashier, purchasing/receiving,
+customer-address, tracking and dashboard workflows. The audit below preserves
+the initial shared-shell checkpoint and is not the current feature-completion
+record. Release authorization was subsequently expanded by the user to direct
+production application; PR #1 remains unmerged.
+
 Date: 11 November 2026. Repository: `LazyTitan-dot/inventory-app`.
 Baseline: `origin/master` at `44e82d1dc6c83ab392814abc40fe7a173487457d`.
 Working branch: `design/phase5-shell-v1`.

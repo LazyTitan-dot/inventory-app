@@ -27,6 +27,27 @@ Moneda DOP; importes decimales RD$ (sin conversión de datos existentes). Todos 
 
 ## Payloads
 
+### Extensión de direcciones, recepciones y seguimiento
+
+La migración `20261111080543_customer_addresses_receipts_tracking.sql` amplía el
+contrato sin importar ni sustituir registros existentes. Bootstrap anuncia
+`features: ['customer_addresses_v1','purchase_receipts_v1']`. Los clientes previos
+pueden ignorar los campos adicionales; la UI nueva activa las escrituras ampliadas
+solo cuando el servidor anuncia su capacidad.
+
+- `customer_addresses`: `id,contact_id,label,street,sector,city,province,phone,reference,is_default,active,created_at,updated_at`. Solo owner/admin/sales reciben esta colección. El primer destino queda preferido; como máximo uno activo por cliente. Cambios y preferencia se serializan bloqueando primero el cliente. Crear/reactivar conserva el límite de 100 direcciones activas.
+- `save_customer_address`: `{contact_id,label,street,sector?,city,province,phone,reference?,is_default?,id?,expected_updated_at?}`. Editar exige la versión y conserva el cliente original. `set_default_address`: `{id,expected_updated_at}`. `archive_customer_address`: `{id,active,expected_updated_at}`; admite reactivar y selecciona otra preferida cuando corresponde.
+- Las entregas añaden `customer_address_id?,address_snapshot?,proof`. `address_snapshot={street,sector,city,province,phone,reference}` guarda una copia; cambiar/archivar la dirección del perfil no la reescribe. `save_delivery` acepta esa copia, una dirección guardada del cliente de la venta, y `save_to_customer/address_label` optativos. Editar manualmente la copia elimina la selección de dirección guardada. Guardar también en perfil es una operación explícita, atómica y solo de owner/admin/sales. Las direcciones históricas de texto se conservan.
+- `status_delivery` acepta `proof` con `received_by`. Las entregas estructuradas exigen destino válido y responsable antes de despachar, y receptor más constancia para entregar. El historial conserva las instantáneas de receptor/constancia y los intentos fallidos. Entregar no descuenta inventario nuevamente.
+- Los documentos de compra añaden `expected_at` (fecha, opcional) y `closed_short`. `create_purchase` acepta `expected_at`. `receive_purchase` ampliado exige `expected_updated_at` y partidas `{item_id,quantity,damaged_quantity?}`: `quantity` son unidades conformes; conformes más dañadas no pueden superar el saldo. `received_quantity` acumula ambas; `damaged_quantity` conserva las dañadas acumuladas. Conformes entran en `available` y su costo ponderado; dañadas entran en `quarantine` sin aumentar existencias vendibles ni su costo ponderado.
+- `purchase_receipts`: solo owner/admin/inventory; `{id,purchase_id,operation_id,received_by,notes,items:[{item_id,variant_id,quantity,damaged_quantity,unit_cost}],created_at}`. Una recepción por operación, con instantáneas y auditada en la misma transacción.
+- `close_purchase_short`: `{id,expected_updated_at,reason}`. Solo compras pending/partial con saldo; queda `status: closed_short,closed_short:true`, conserva unidades/stock recibidos y no admite nuevas recepciones.
+
+Las tablas nuevas tienen RLS y privilegios directos revocados. Los comandos
+mantienen autorización viva, guardas de versión, reintentos idempotentes y
+auditoría/revisión. Para revertir una publicación se restaura la aplicación
+anterior; se conservan tablas y registros nuevos, sin borrado destructivo.
+
 Campos `id` opcionales en altas, obligatorios en edición; UUID nuevo generado por servidor si se omite.
 
 - `save_product`: `{id?,category,brand,model,description?,warranty_months,images?:string[],variants:[{id?,name,sku,barcode?,cost,price,min_stock,reorder_target,active?,opening_quantity?}]}`. Variantes existentes omitidas se archivan, nunca eliminan; `opening_quantity` solo al crear. Producto activo por defecto. Validar mínimo una variante activa. Variantes con existencias o pedidos pendientes no se archivan.

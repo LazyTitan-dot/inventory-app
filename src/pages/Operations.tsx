@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, Check, Clock3, MessageCircle, Pencil, Plus, Tag, Truck } from 'lucide-react';
+import { CalendarDays, Check, Clock3, Copy, MapPin, MessageCircle, Pencil, Plus, Tag, Truck } from 'lucide-react';
 import {
   EmptyState,
   ErrorNotice,
@@ -27,6 +27,9 @@ import { useOperation } from '../state/useOperation';
 import { useRetail } from '../state/useRetail';
 import { WhatsAppComposer } from '../components/WhatsAppComposer';
 import { buildDeliveryWhatsAppMessage } from '../lib/whatsapp';
+import { AddressFields } from '../components/AddressFields';
+import { addressText, addressValidation, emptyAddress } from '../lib/addresses';
+import { buildDeliveryTrackingSummary, deliveryMapsUrl, trackingSteps } from '../lib/deliveryTracking';
 import './operations.css';
 
 type DeliveryStatus = Delivery['status'];
@@ -140,8 +143,15 @@ export function DeliveriesPage() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [date, setDate] = useState('');
-  const [creating, setCreating] = useState(params.get('nuevo') === '1' && data.permissions.sell);
-  const [selectedId, setSelectedId] = useState<string | null>(params.get('documento'));
+  const [creatingLocal, setCreating] = useState(false);
+  const creating = creatingLocal || (params.get('nuevo') === '1' && data.permissions.sell);
+  const selectedId = params.get('documento');
+  const setSelectedId = (id: string | null) => setParams((previous) => {
+    const next = new URLSearchParams(previous);
+    if (id) next.set('documento', id);
+    else next.delete('documento');
+    return next;
+  });
   const closeContext = () => setParams({}, { replace: true });
   const today = businessDate(new Date(now));
   const canManage = canManageDeliveries(data);
@@ -299,7 +309,17 @@ export function DeliveriesPage() {
                 action={!deliveries.length && availableSales.length ? createButton : undefined}
               />
             ) : (
-              <div className="table-wrap">
+              <><div className="delivery-card-list">
+                {filtered.map((delivery) => {
+                  const sale = saleMap.get(delivery.sale_id);
+                  return <button className="delivery-list-card" key={delivery.id} onClick={() => setSelectedId(delivery.id)} aria-label={`Ver entrega a ${delivery.contact_name}`}>
+                    <span className="delivery-card-top"><strong>{delivery.contact_name}</strong><StatusBadge status={delivery.status} /></span>
+                    <span className="operations-table-meta">{sale ? documentNumber(sale) : 'Venta vinculada'} · {dateTime(delivery.scheduled_at)}</span>
+                    <span className="delivery-card-address"><MapPin size={15} />{delivery.address}</span>
+                    <span className="delivery-card-bottom"><span><Truck size={15} /> {delivery.assignee || 'Sin asignar'}</span><strong>Ver seguimiento →</strong></span>
+                  </button>;
+                })}
+              </div><div className="table-wrap delivery-desktop-table">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -348,7 +368,7 @@ export function DeliveriesPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </div></>
             )}
           </section>
         </>
@@ -392,6 +412,13 @@ function DeliveryEditor({
     (sale) => sale.id === initialSaleId && saleIsCurrent(sale),
   );
   const initialCustomer = data.contacts.find((contact) => contact.id === initialSale?.contact_id);
+  const structuredEnabled = (data.features ?? []).includes('customer_addresses_v1') || Boolean(delivery?.address_snapshot);
+  const initialSavedAddress = (data.customer_addresses ?? []).find(
+    (item) => item.active && (delivery
+      ? item.id === delivery.customer_address_id && Boolean(delivery.address_snapshot) &&
+        JSON.stringify(emptyAddress(item)) === JSON.stringify(emptyAddress(delivery.address_snapshot ?? {}))
+      : item.contact_id === initialSale?.contact_id && item.is_default),
+  );
   const [saleId, setSaleId] = useState(delivery?.sale_id ?? initialSale?.id ?? '');
   const [contact, setContact] = useState(
     delivery?.contact_name ?? (textSnapshot(initialSale, 'name') || initialCustomer?.name || ''),
@@ -402,6 +429,15 @@ function DeliveryEditor({
   const [phone, setPhone] = useState(
     delivery?.phone ?? (textSnapshot(initialSale, 'phone') || initialCustomer?.phone || ''),
   );
+  const [destination, setDestination] = useState(() => emptyAddress(
+    delivery?.address_snapshot ?? initialSavedAddress ?? {
+      street: delivery?.address ?? (textSnapshot(initialSale, 'address') || initialCustomer?.address || ''),
+      phone: delivery?.phone ?? (textSnapshot(initialSale, 'phone') || initialCustomer?.phone || ''),
+    },
+  ));
+  const [savedAddressId, setSavedAddressId] = useState(initialSavedAddress?.id ?? '');
+  const [saveToCustomer, setSaveToCustomer] = useState(false);
+  const [addressLabel, setAddressLabel] = useState('');
   const [scheduled, setScheduled] = useState(() =>
     businessInput(delivery?.scheduled_at ?? Date.now() + 2 * 3600000),
   );
@@ -420,6 +456,9 @@ function DeliveryEditor({
     )
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
   const selectedSale = data.documents.find((sale) => sale.id === saleId);
+  const savedAddresses = (data.customer_addresses ?? []).filter(
+    (item) => item.active && item.contact_id === selectedSale?.contact_id,
+  );
   const latest = delivery && data.deliveries.find((item) => item.id === delivery.id);
   const changed = delivery && (!latest || latest.updated_at !== openedVersion);
 
@@ -430,6 +469,15 @@ function DeliveryEditor({
     setContact(textSnapshot(sale, 'name') || customer?.name || '');
     setAddress(textSnapshot(sale, 'address') || customer?.address || '');
     setPhone(textSnapshot(sale, 'phone') || customer?.phone || '');
+    const preferred = (data.customer_addresses ?? []).find(
+      (item) => item.active && item.contact_id === sale?.contact_id && item.is_default,
+    );
+    setDestination(emptyAddress(preferred ?? {
+      street: textSnapshot(sale, 'address') || customer?.address || '',
+      phone: textSnapshot(sale, 'phone') || customer?.phone || '',
+    }));
+    setSavedAddressId(preferred?.id ?? '');
+    setSaveToCustomer(false);
     setValidation('');
     clearError();
   }
@@ -455,7 +503,15 @@ function DeliveryEditor({
       setValidation('Selecciona una venta vigente que no tenga otra entrega registrada.');
       return;
     }
-    if (!contact.trim() || !address.trim() || !phone.trim()) {
+    if (structuredEnabled && addressValidation(destination)) {
+      setValidation(addressValidation(destination));
+      return;
+    }
+    if (saveToCustomer && !addressLabel.trim()) {
+      setValidation('Escribe una etiqueta para guardar esta dirección en el cliente.');
+      return;
+    }
+    if (!contact.trim() || (!structuredEnabled && (!address.trim() || !phone.trim()))) {
       setValidation('Completa el contacto, el teléfono y la dirección de entrega.');
       return;
     }
@@ -475,8 +531,14 @@ function DeliveryEditor({
         ...(delivery ? { id: delivery.id, expected_updated_at: openedVersion } : {}),
         sale_id: saleId,
         contact_name: contact.trim(),
-        address: address.trim(),
-        phone: phone.trim(),
+        address: structuredEnabled ? addressText(destination) : address.trim(),
+        phone: structuredEnabled ? destination.phone.trim() : phone.trim(),
+        ...(structuredEnabled ? {
+          address_snapshot: destination,
+          customer_address_id: savedAddressId || null,
+          save_to_customer: saveToCustomer,
+          address_label: addressLabel.trim(),
+        } : {}),
         scheduled_at: instant,
         assignee: assignee.trim(),
         notes: notes.trim(),
@@ -494,6 +556,7 @@ function DeliveryEditor({
         if (!busy) onClose();
       }}
       wide
+      variant="drawer"
     >
       <form className="stack" onSubmit={submit}>
         <fieldset className="operations-fields stack" disabled={busy}>
@@ -528,7 +591,7 @@ function DeliveryEditor({
                 onChange={(event) => setContact(event.target.value)}
               />
             </Field>
-            <Field label="Teléfono">
+            {!structuredEnabled && <Field label="Teléfono">
               <input
                 required
                 type="tel"
@@ -537,9 +600,37 @@ function DeliveryEditor({
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
               />
-            </Field>
+            </Field>}
           </div>
-          <Field label="Dirección y referencia">
+          {structuredEnabled ? (
+            <section className="stack delivery-destination" aria-label="Destino de la entrega">
+              {savedAddresses.length > 0 && <Field label="Dirección guardada del cliente">
+                <select value={savedAddressId} onChange={(event) => {
+                  const selected = savedAddresses.find((item) => item.id === event.target.value);
+                  setSavedAddressId(selected?.id ?? '');
+                  setSaveToCustomer(false);
+                  if (selected) setDestination(emptyAddress(selected));
+                }}>
+                  <option value="">Dirección nueva / ingreso manual</option>
+                  {savedAddresses.map((item) => <option key={item.id} value={item.id}>
+                    {item.label} · {item.street}{item.is_default ? ' (preferida)' : ''}
+                  </option>)}
+                </select>
+              </Field>}
+              <AddressFields value={destination} onChange={(next) => {
+                setDestination(next);
+                setSavedAddressId('');
+              }} disabled={busy} />
+              <p className="operations-callout">La entrega conserva una copia de este destino. Editar después el perfil del cliente no cambia esta entrega.</p>
+              {data.permissions.sell && selectedSale?.contact_id && !savedAddressId && <>
+                <label className="operations-checkbox">
+                  <input type="checkbox" checked={saveToCustomer} onChange={(event) => setSaveToCustomer(event.target.checked)} />
+                  <span><strong>Guardar también en el perfil del cliente</strong><small>Opcional. Agrega una dirección; no sobrescribe las anteriores.</small></span>
+                </label>
+                {saveToCustomer && <Field label="Etiqueta de la dirección"><input required maxLength={45} value={addressLabel} onChange={(event) => setAddressLabel(event.target.value)} placeholder="Casa, trabajo, oficina…" /></Field>}
+              </>}
+            </section>
+          ) : <Field label="Dirección y referencia">
             <textarea
               required
               autoComplete="street-address"
@@ -549,7 +640,7 @@ function DeliveryEditor({
               value={address}
               onChange={(event) => setAddress(event.target.value)}
             />
-          </Field>
+          </Field>}
           <div className="form-grid">
             <Field label="Fecha y hora de entrega" hint="Hora de República Dominicana (UTC−04:00).">
               <input
@@ -604,7 +695,21 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
   const [mode, setMode] = useState<'detail' | 'edit'>('detail');
   const [transition, setTransition] = useState<DeliveryStatus | null>(null);
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
+  const [copyFallback, setCopyFallback] = useState('');
+  const { notify } = useRetail();
   const sale = data.documents.find((item) => item.id === delivery.sale_id);
+  const steps = trackingSteps(delivery);
+  const mapUrl = deliveryMapsUrl(delivery);
+  async function copyDetails(text: string, message: string) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(text);
+      setCopyFallback('');
+      notify(message);
+    } catch {
+      setCopyFallback(text);
+    }
+  }
   const canManage = canManageDeliveries(data) && (!sale || saleIsCurrent(sale));
   const actorName = (id: string | null) =>
     id === data.profile.id
@@ -642,6 +747,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
       title={sale ? `Entrega · ${documentNumber(sale)}` : 'Detalle de entrega'}
       onClose={onClose}
       wide
+      variant="drawer"
     >
       <div className="stack">
         <div className="operations-detail-heading">
@@ -650,6 +756,27 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
             <CalendarDays size={16} /> {dateTime(delivery.scheduled_at)} · hora de RD
           </span>
         </div>
+        <section className="delivery-tracking" aria-label="Seguimiento operativo de la entrega">
+          <div className="delivery-track-heading">
+            <div><span className="eyebrow">SEGUIMIENTO DEL PEDIDO</span><h3>Tu entrega, paso a paso</h3></div>
+            <span className="badge">{delivery.history.filter((event) => event.status === 'failed').length} intentos fallidos</span>
+          </div>
+          <ol className="delivery-progress">
+            {steps.map((step, index) => <li key={step.label} className={`delivery-step ${step.state}`} aria-current={step.state === 'current' ? 'step' : undefined}>
+              <span aria-hidden="true">{step.state === 'done' ? <Check size={16} /> : index + 1}</span><strong>{step.label}</strong>
+            </li>)}
+          </ol>
+          <p className={delivery.status === 'failed' ? 'error-notice' : 'muted'}>
+            {delivery.status === 'delivered' ? 'Recepción confirmada en el registro.' : delivery.status === 'in_transit' ? 'Salida registrada por el equipo de entrega.' : delivery.status === 'failed' ? 'La entrega requiere seguimiento. Revisa el intento fallido y acuerda una nueva programación.' : delivery.status === 'cancelled' ? 'Esta entrega fue cancelada. Se conserva su historial.' : 'La entrega está programada; el equipo aún no ha registrado la salida.'}
+          </p>
+          <div className="operations-actions">
+            {mapUrl && <a className="button secondary" href={mapUrl} target="_blank" rel="noopener noreferrer"><MapPin size={16} /> Ver destino en Maps</a>}
+            <button className="button secondary" onClick={() => void copyDetails(buildDeliveryTrackingSummary(delivery, data.settings.business_name, sale?.number), 'Resumen de seguimiento copiado.')}><Copy size={16} /> Copiar seguimiento</button>
+            <button className="button ghost" onClick={() => void copyDetails([delivery.address, delivery.address_snapshot?.reference, delivery.phone].filter(Boolean).join('\n'), 'Dirección copiada.')}><Copy size={16} /> Copiar dirección</button>
+          </div>
+          <small>Eventos registrados por el equipo. Esta vista no muestra GPS, velocidad, distancias ni una hora estimada de llegada.</small>
+          {copyFallback && <Field label="Texto para copiar" hint="El navegador no permitió copiar automáticamente. Selecciona este texto para copiarlo."><textarea readOnly value={copyFallback} rows={6} onFocus={(event) => event.currentTarget.select()} /></Field>}
+        </section>
         <dl className="operations-detail-grid">
           <div>
             <dt>Contacto</dt>
@@ -663,6 +790,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
             <dt>Dirección</dt>
             <dd>{delivery.address}</dd>
           </div>
+          {delivery.address_snapshot?.reference && <div className="operations-full"><dt>Referencia para llegar</dt><dd>{delivery.address_snapshot.reference}</dd></div>}
           <div>
             <dt>Responsable</dt>
             <dd>{delivery.assignee || 'Sin asignar'}</dd>
@@ -689,6 +817,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
               <dd>{dateTime(delivery.delivered_at)}</dd>
             </div>
           )}
+          {delivery.proof && <div className="operations-full"><dt>Constancia de recepción</dt><dd>{delivery.proof}</dd></div>}
         </dl>
         {sale && !saleIsCurrent(sale) && (
           <p className="operations-callout">
@@ -735,6 +864,8 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
                       <time dateTime={event.at}>{dateTime(event.at)}</time>
                     </div>
                     {event.note && <p>{event.note}</p>}
+                    {event.received_by && <p>Recibió: {event.received_by}</p>}
+                    {event.proof && <p>Constancia: {event.proof}</p>}
                     <small>{actorName(event.actor)}</small>
                   </li>
                 ))}
@@ -773,6 +904,7 @@ function DeliveryTransition({
   const { run, busy, error, clearError } = useOperation();
   const [note, setNote] = useState('');
   const [receiver, setReceiver] = useState('');
+  const [proof, setProof] = useState('');
   const [validation, setValidation] = useState('');
   const [openedStatus] = useState(delivery.status);
   const [openedVersion] = useState(delivery.updated_at);
@@ -789,6 +921,7 @@ function DeliveryTransition({
     }
     if (
       !latest ||
+      latest.updated_at !== openedVersion ||
       latest.status !== openedStatus ||
       !deliveryActions[latest.status].includes(status) ||
       (sale && !saleIsCurrent(sale))
@@ -806,17 +939,29 @@ function DeliveryTransition({
       setValidation('Indica el nombre de la persona que recibió la mercancía.');
       return;
     }
+    if (status === 'in_transit' && !delivery.assignee?.trim()) {
+      setValidation('Asigna un responsable en la programación antes de iniciar la entrega.');
+      return;
+    }
+    if (delivery.address_snapshot && ['in_transit', 'delivered'].includes(status) && addressValidation(delivery.address_snapshot)) {
+      setValidation('Completa el destino en la programación antes de despachar o confirmar.');
+      return;
+    }
+    if (status === 'delivered' && delivery.address_snapshot && !proof.trim()) {
+      setValidation('Registra la constancia de recepción para confirmar la entrega.');
+      return;
+    }
     try {
       await run('status_delivery', {
         id: delivery.id,
         expected_updated_at: openedVersion,
         status,
         note: note.trim(),
-        ...(status === 'delivered' ? { received_by: receiver.trim() } : {}),
+        ...(status === 'delivered' ? { received_by: receiver.trim(), proof: proof.trim() } : {}),
       });
       notify(
         status === 'delivered'
-          ? 'Entrega confirmada con el nombre de quien recibió.'
+          ? 'Entrega confirmada con su constancia de recepción.'
           : `Entrega actualizada: ${statusLabels[status]?.toLowerCase()}.`,
       );
       onClose();
@@ -837,7 +982,7 @@ function DeliveryTransition({
         </p>
         <fieldset disabled={busy} className="operations-fields stack">
           {status === 'delivered' && (
-            <Field label="Nombre de quien recibió">
+            <><Field label="Nombre de quien recibió">
               <input
                 required
                 maxLength={200}
@@ -847,6 +992,9 @@ function DeliveryTransition({
                 placeholder="Nombre completo"
               />
             </Field>
+            <Field label="Constancia de recepción" hint="Describe la recepción o la verificación de la mercancía. No adjuntes documentos de identidad.">
+              <textarea required={Boolean(delivery.address_snapshot)} maxLength={1000} value={proof} onChange={(event) => setProof(event.target.value)} placeholder="Ej. Recibido en recepción; caja verificada sin daños." />
+            </Field></>
           )}
           <Field
             label={reasonRequired ? 'Motivo del cambio' : 'Observación (opcional)'}

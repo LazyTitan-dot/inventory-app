@@ -1,6 +1,6 @@
-import { ArrowDownToLine, ArrowRight, PackageCheck, Plus, Truck } from 'lucide-react';
+import { ArrowDownToLine, ArrowRight, Bell, ClipboardList, PackageCheck, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useRetail } from '../state/useRetail';
 import {
   businessDate,
@@ -15,6 +15,9 @@ import {
   statusLabels,
 } from '../lib/format';
 import { reportForPeriod, stockOverview } from '../lib/reports';
+import { dashboardActivity, dashboardTasks, salesTrend } from '../lib/dashboard';
+import type { RetailData } from '../lib/contracts';
+import './dashboard.css';
 import {
   EmptyState,
   ErrorNotice,
@@ -33,9 +36,79 @@ function useBusinessDay() {
   return { today: businessDate(now), now };
 }
 
+function SalesTrendChart({ data, today }: { data: RetailData; today: string }) {
+  const [days, setDays] = useState<7 | 30>(7);
+  const gradientId = useId();
+  const points = salesTrend(data.documents, today, days);
+  const min = Math.min(0, ...points.map((point) => point.amount));
+  const max = Math.max(1, ...points.map((point) => point.amount));
+  const range = max - min;
+  const y = (amount: number) => 148 - ((amount - min) / range) * 126;
+  const coordinates = points.map((point, index) => ({ x: 12 + (index / (days - 1)) * 636, y: y(point.amount) }));
+  const line = coordinates.map((point, index) => `${index ? 'L' : 'M'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ');
+  const area = `${line} L 648 ${y(0).toFixed(2)} L 12 ${y(0).toFixed(2)} Z`;
+  const total = points.reduce((sum, point) => sum + point.amount, 0);
+  return (
+    <article className="panel sl-insight-card sl-sales-insight">
+      <div className="sl-insight-heading">
+        <div><span className="eyebrow">TENDENCIA DE VENTAS</span><h2>Ventas registradas</h2><p>Con ITBIS · neto de devoluciones</p></div>
+        <div className="sl-period-toggle" role="group" aria-label="Período de ventas">
+          {([7, 30] as const).map((period) => <button key={period} type="button" aria-pressed={days === period} onClick={() => setDays(period)}>{period} días</button>)}
+        </div>
+      </div>
+      <div className="sl-sales-total"><div><span>Total del período</span><strong>{money(total)}</strong></div><div><span>Hoy</span><strong>{money(points.at(-1)!.amount)}</strong></div></div>
+      <svg className="sl-sales-chart" viewBox="0 0 660 170" role="img" aria-label={`Ventas netas de los últimos ${days} días: ${money(total)}. Hoy: ${money(points.at(-1)!.amount)}.`}>
+        <title>Ventas netas registradas, últimos {days} días</title>
+        <desc>Se descuentan las devoluciones en la fecha de su registro. Los días sin operaciones muestran cero. Las cifras diarias están disponibles debajo del gráfico.</desc>
+        <defs><linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity="0.18" /><stop offset="100%" stopColor="currentColor" stopOpacity="0.01" /></linearGradient></defs>
+        {[22, 85, 148].map((gridY) => <path key={gridY} d={`M 12 ${gridY} H 648`} className="sl-chart-grid" />)}
+        {min < 0 && <path d={`M 12 ${y(0)} H 648`} className="sl-chart-zero" />}
+        <path d={area} fill={`url(#${gradientId})`} />
+        <path d={line} fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={coordinates.at(-1)!.x} cy={coordinates.at(-1)!.y} r="4" fill="currentColor" />
+      </svg>
+      <div className="sl-plot-dates"><span>{shortDate(`${points[0]!.day}T12:00:00-04:00`)}</span><span>Hoy</span></div>
+      <details className="sl-chart-data"><summary>Ver importes diarios</summary><div className="table-wrap"><table className="data-table"><thead><tr><th>Fecha</th><th>Ventas netas RD$</th></tr></thead><tbody>{points.map((point) => <tr key={point.day}><td>{shortDate(`${point.day}T12:00:00-04:00`)}</td><td>{money(point.amount)}</td></tr>)}</tbody></table></div></details>
+      <div className="sl-insight-footer"><span>Fechas de República Dominicana</span>{data.permissions.manage_business && <Link className="text-link" to="/reportes">Ver reportes <ArrowRight size={14} /></Link>}</div>
+    </article>
+  );
+}
+
+function StockHealth({ data }: { data: RetailData }) {
+  const inventory = stockOverview(data);
+  const out = inventory.filter((row) => row.available === 0).length;
+  const low = inventory.filter((row) => row.available > 0 && row.available <= row.variant.min_stock).length;
+  const groups = [
+    { name: 'Disponibles', count: inventory.length - low - out, color: 'var(--sl-success)', filter: 'available' },
+    { name: 'Bajo stock', count: low, color: 'var(--sl-warning)', filter: 'low' },
+    { name: 'Agotadas', count: out, color: 'var(--sl-danger)', filter: 'out' },
+  ];
+  const circumference = 2 * Math.PI * 58;
+  let offset = 0;
+  const arcs = groups.map((group) => {
+    const length = inventory.length ? (group.count / inventory.length) * circumference : 0;
+    const arc = { ...group, length, offset };
+    offset += length;
+    return arc;
+  });
+  return (
+    <article className="panel sl-insight-card">
+      <div className="sl-insight-heading"><div><span className="eyebrow">SALUD DEL INVENTARIO</span><h2>Estado de las existencias</h2><p>Variantes activas y necesidad de reposición</p></div></div>
+      <div className="sl-stock-visual">
+        <div className="sl-stock-donut"><svg viewBox="0 0 160 160" role="img" aria-label={`${inventory.length} variantes activas: ${groups[0]!.count} disponibles, ${low} con bajo stock y ${out} agotadas.`}><circle cx="80" cy="80" r="58" fill="none" stroke="var(--sl-line)" strokeWidth="14" />{arcs.filter((arc) => arc.length > 0).map((arc) => <circle key={arc.name} cx="80" cy="80" r="58" fill="none" stroke={arc.color} strokeWidth="14" strokeDasharray={`${Math.max(0, arc.length - 2)} ${circumference}`} strokeDashoffset={-arc.offset} transform="rotate(-90 80 80)" />)}</svg><div><strong>{integer(inventory.length)}</strong><span>variantes</span></div></div>
+        <ul className="sl-stock-legend">{groups.map((group) => <li key={group.name}><Link to={`/inventario?estado=${group.filter}`}><span className="sl-legend-dot" style={{ background: group.color }} /><span>{group.name}</span><strong>{integer(group.count)}</strong></Link></li>)}</ul>
+      </div>
+      <div className="sl-stock-summary"><strong>{integer(low + out)} requieren atención</strong><span>{out} agotadas · {low} por reponer</span></div>
+      <div className="sl-insight-footer"><span>Existencias actuales del negocio</span><Link className="text-link" to="/inventario">Ver inventario <ArrowRight size={14} /></Link></div>
+    </article>
+  );
+}
+
 export function DashboardPage() {
   const { data } = useRetail();
   const { today, now } = useBusinessDay();
+  const tasks = dashboardTasks(data, now);
+  const activity = dashboardActivity(data);
   const commerce = data.permissions.sell || data.permissions.manage_business;
   const purchasing = data.permissions.purchase;
   const deliveryAccess = commerce || purchasing;
@@ -62,7 +135,7 @@ export function DashboardPage() {
     <>
       <PageHeader
         eyebrow={`${shortDate(now.toISOString())} · REPÚBLICA DOMINICANA`}
-        title={`Hola, ${data.profile.display_name.trim().split(' ')[0] || 'equipo'}`}
+        title="Lo importante, primero."
         description={
           commerce
             ? 'Tu negocio de un vistazo. Esto es lo que necesita tu atención hoy.'
@@ -70,18 +143,13 @@ export function DashboardPage() {
               ? 'Existencias, compras y entregas disponibles para tu rol.'
               : 'Consulta las existencias y el estado del inventario.'
         }
-        actions={
-          data.permissions.sell ? (
-            <Link className="button primary" to="/ventas?nuevo=1">
-              <Plus size={18} /> Nueva venta
-            </Link>
-          ) : purchasing ? (
-            <Link className="button primary" to="/compras?nuevo=1">
-              <Plus size={18} /> Nueva compra
-            </Link>
-          ) : undefined
-        }
+        actions={<button type="button" className="button secondary sl-dashboard-search" onClick={() => window.dispatchEvent(new Event('smartliving:search'))}><Search size={18} /> Buscar cualquier cosa <kbd>⌘ / Ctrl K</kbd></button>}
       />
+      <section className="sl-attention-banner" aria-label="Prioridades del negocio">
+        <span className="sl-attention-icon"><Bell size={22} /></span>
+        <div><span className="eyebrow">HOY EN TU TIENDA</span><h2>{tasks.length ? `Tienes ${tasks.length} asuntos por atender.` : 'Tu operación está al día.'}</h2><p>Hola, {data.profile.display_name.trim().split(' ')[0] || 'equipo'}. {tasks.some((task) => task.level === 'urgent') ? 'Empieza por las tareas que necesitan atención.' : 'Todo listo para continuar con tu próxima operación.'}</p></div>
+        {data.permissions.sell ? <Link className="button primary" to="/ventas?nuevo=1"><Plus size={18} /> Nueva venta</Link> : purchasing ? <Link className="button primary" to="/compras?nuevo=1"><Plus size={18} /> Nueva compra</Link> : null}
+      </section>
       <div className="stats-grid">
         {commerce && (
           <StatCard
@@ -128,54 +196,34 @@ export function DashboardPage() {
           />
         )}
       </div>
+      <section className="sl-dashboard-insights" aria-label="Rendimiento y existencias">
+        {commerce && <SalesTrendChart data={data} today={today} />}
+        <StockHealth data={data} />
+      </section>
       <div className="dashboard-grid">
         <section className="panel">
           <div className="section-heading">
             <div>
               <span className="eyebrow">PRIORIDADES</span>
-              <h2>Atención al inventario</h2>
+              <h2>Pendientes de hoy</h2>
             </div>
             <Link className="text-link" to="/inventario?estado=low">
               Ver todos <ArrowRight size={15} />
             </Link>
           </div>
-          {low.length ? (
-            <div className="alert-list">
-              {low.slice(0, 5).map((row) => (
-                <div className="inventory-alert" key={row.variant.id}>
-                  <div className={`alert-marker ${row.available === 0 ? 'danger' : ''}`}>
-                    <PackageCheck size={19} />
-                  </div>
-                  <div>
-                    <strong>
-                      {row.product.brand} {row.product.model}
-                    </strong>
-                    <small>
-                      {row.variant.name} · {row.variant.sku}
-                    </small>
-                  </div>
-                  <div className="alert-quantity">
-                    <strong>
-                      {row.available} <span>disp.</span>
-                    </strong>
-                    <small>
-                      {purchasing && row.incoming
-                        ? `${row.incoming} en camino`
-                        : `Mínimo ${row.variant.min_stock}`}
-                    </small>
-                  </div>
+          {tasks.length ? (
+            <div className="sl-work-list">
+              {tasks.slice(0, 6).map((task) => (
+                <div className="sl-work-item" key={task.id}>
+                  <span className={`sl-work-status ${task.level}`}>{task.kind === 'stock' ? <PackageCheck size={19} /> : task.kind === 'purchase' ? <ClipboardList size={19} /> : <Truck size={19} />}</span>
+                  <div><span>{task.title}</span><strong>{task.detail}</strong><small>{task.context}</small></div>
+                  <Link className="text-link" to={task.to}>Revisar <ArrowRight size={14} /></Link>
                 </div>
               ))}
+              {tasks.length > 6 && <p className="sl-task-note">Mostrando las 6 prioridades más urgentes de {tasks.length}. Revisa las secciones para ver el detalle completo.</p>}
             </div>
           ) : (
-            <EmptyState
-              title={inventory.length ? 'Inventario al día' : 'Aún no hay inventario activo'}
-              description={
-                inventory.length
-                  ? 'No hay productos en el mínimo o por debajo.'
-                  : 'Los productos registrados aparecerán aquí cuando estén disponibles.'
-              }
-            />
+            <EmptyState title={inventory.length ? 'Inventario al día' : 'Aún no hay inventario activo'} description={inventory.length ? 'No hay existencias ni operaciones pendientes que requieran atención.' : 'Los productos registrados aparecerán aquí cuando estén disponibles.'} />
           )}
           {purchasing && low.some((row) => row.suggested > 0) && (
             <Link className="panel-footer-link" to="/compras?nuevo=1">
@@ -227,6 +275,19 @@ export function DashboardPage() {
           </section>
         )}
       </div>
+      <section className="panel sl-quick-actions" aria-label="Accesos rápidos">
+        <div><span className="eyebrow">A TU ALCANCE</span><h2>¿Qué quieres hacer?</h2></div>
+        <div className="sl-quick-grid">
+          {data.permissions.sell && <Link to="/ventas?nuevo=1"><ShoppingBag size={21} /><span><strong>Registrar una venta</strong><small>Cliente, productos y cobro</small></span><ArrowRight size={16} /></Link>}
+          {data.permissions.manage_catalog && <Link to="/inventario?nuevo=1"><Plus size={21} /><span><strong>Agregar producto</strong><small>Crear producto y variantes</small></span><ArrowRight size={16} /></Link>}
+          {purchasing && <Link to="/compras?nuevo=1"><ClipboardList size={21} /><span><strong>Registrar compra</strong><small>Ordenar y recibir productos</small></span><ArrowRight size={16} /></Link>}
+          <button type="button" onClick={() => window.dispatchEvent(new Event('smartliving:search'))}><Search size={21} /><span><strong>Encontrar algo</strong><small>Productos, contactos y operaciones</small></span><ArrowRight size={16} /></button>
+        </div>
+      </section>
+      <section className="panel sl-recent-activity">
+        <div className="section-heading"><div><span className="eyebrow">LO QUE HA PASADO</span><h2>Actividad reciente</h2></div>{data.permissions.view_audit && <Link className="text-link" to="/auditoria">Ver actividad <ArrowRight size={15} /></Link>}</div>
+        {activity.length ? <ul>{activity.map((item) => <li key={item.id}><Link to={item.to}><span><strong>{item.title}</strong><small>{item.detail} · {dateTime(item.at)}</small></span>{item.amount !== null ? <b>{money(item.amount)}</b> : item.quantity !== null ? <b>{item.quantity > 0 ? '+' : ''}{integer(item.quantity)} un.</b> : <ArrowRight size={15} />}</Link></li>)}</ul> : <EmptyState title="Sin actividad registrada" description="Las operaciones y ajustes autorizados para tu rol aparecerán aquí." />}
+      </section>
       {(commerce || purchasing) && (
         <section className="panel">
           <div className="section-heading">

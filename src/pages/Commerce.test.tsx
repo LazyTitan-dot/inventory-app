@@ -259,3 +259,34 @@ describe('Commerce lifecycle controls', () => {
     expect(html).not.toContain('Recibir mercancía');
   });
 });
+
+describe('Production cashier and purchasing adaptation', () => {
+  it('opens a real inline cashier with scanner and one form while retaining a history action', () => {
+    const html = markup('sale', '');
+    expect(html).toContain('Caja de ventas');
+    expect(html).toContain('Historial de ventas');
+    expect(html).toContain('Escanear código de barras');
+    expect(html.match(/<form\b/g)).toHaveLength(1);
+    expect(html).not.toContain('<dialog');
+  });
+  it('prefills the exact quick-sale variant and quantity without modifying the catalogue data', () => {
+    const html = markup('sale', '?nuevo=1&variante=variant&cantidad=2');
+    expect(html).toContain('value="2"');
+    expect(html).toContain('SKU-1');
+    expect(html).toContain('Completar venta');
+    expect(data.stocks[0]!.available).toBe(10);
+  });
+  it('does not create a cashier from a direct URL when sales permission is absent', () => {
+    data.permissions.sell = false;
+    expect(markup('sale', '?nuevo=1&variante=variant')).not.toContain('Caja de ventas');
+    expect(markup('sale', '?nuevo=1&variante=variant')).not.toContain('<form');
+  });
+  it('gates purchase ETA and shortage controls on backend capability', () => {
+    data.documents = [document('purchase', 'partial')];
+    expect(markup('purchase')).not.toContain('Cerrar con faltantes');
+    data.features = ['purchase_receipts_v1'];
+    expect(markup('purchase')).toContain('Cerrar con faltantes');
+    expect(markup('purchase', '?nuevo=1')).toContain('Fecha esperada de recepción');
+    expect(markup('purchase', '')).toContain('Filtrar compras por proveedor');
+  });
+});

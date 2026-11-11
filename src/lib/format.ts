@@ -52,6 +52,7 @@ export const statusLabels: Record<string, string> = {
   pending: 'Pendiente',
   partial: 'Recibida parcialmente',
   received: 'Recibida',
+  closed_short: 'Cerrada con faltantes',
   cancelled: 'Cancelada',
   open: 'Vigente',
   converted: 'Convertida',

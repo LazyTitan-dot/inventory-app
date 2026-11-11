@@ -15,6 +15,23 @@ safe-area viewport, brand rewrite exclusion and complementary compatibility
 styles are retained. The approved local mobile-focus hook and browser regression
 harness are preserved in the reconciliation.
 
+## Latest authenticated hosted QA — 11 November 2026
+
+The refreshed environment has the ready QA credential and direct access to the
+verified unique Preview. Real staging password login/JWT refresh and the
+same-user owner bootstrap contract passed. Hosted owner shell QA now covers
+320/390/768/1024/1440px in light/dark, all 13 routes, mobile focus/navigation,
+appearance persistence, refresh, print, logout/token invalidation and the
+expired-recovery screen. No business command, schema change, new deployment,
+production operation or merge was performed.
+
+The [authenticated QA report](phase5-authenticated-qa.md) records screenshots,
+sanitized run evidence, harness-only corrections and remaining gates. Signup and
+404 CSP findings remain open; the validation bundle's caught Zod eval capability
+probe also generates nonblocking CSP reports. Real other-role/nonmember sessions,
+recovery delivery and Realtime/concurrency remain separate pending evidence.
+Earlier continuation sections below retain the prior checkpoint history.
+
 ## Shell diff
 
 | Files | Change |
@@ -133,7 +150,8 @@ para compilar producción.” This Vite build mode is also used for preview bund
 The missing Preview public URL/key must be supplied from a dedicated
 non-production Supabase project; its hostname also needs a preview-specific CSP.
 The production CSP and configuration guard are preserved. No production bindings
-were copied or changed, and no remote backend requests were used for QA.
+were copied or changed. At the original shell checkpoint, no remote backend
+requests were used for QA.
 A generated preview URL alone does not establish a working or safely isolated app.
 
 The user subsequently authorized creating a separate staging project in
@@ -145,9 +163,71 @@ builds retain the checked-in production configuration. Fifteen focused generator
 tests cover routing, configuration mismatch rejection, metadata and cleanup of
 owned preview output before a later production build.
 
-Hosted SQL role/cost/bootstrap/command checks passed in a rollback-only
-transaction. No test users, products or memberships persisted. This is database
-permission evidence; it is not proof of real Auth sessions. Permanent test-account
-provisioning and authenticated hosted browser QA remain pending. The Cloud
-network policy blocks the staging/preview hosts, and computer control failed to
-initialize. See the [staging setup and verification record](phase5-staging-setup.md).
+At the initial staging checkpoint, hosted SQL role/cost/bootstrap/command checks
+passed in a rollback-only transaction. No test users, products or memberships
+persisted. This is database permission evidence; it is not proof of real Auth
+sessions. Permanent test-account provisioning and authenticated hosted browser QA
+were pending, the Cloud network policy blocked the staging/preview hosts, and
+computer control failed to initialize.
+
+### QA continuation — 11 November 2026
+
+The continuation checked out PR #1's branch at
+`61aff6c2e1bd78457aed515fec99f697e05db252` and verified network access before
+backend checks. GitHub, the stable branch alias and staging project
+`wvegljmwszvywhngcitr` are now permitted and reachable. The prior unique Preview
+hostname still received a proxy `403`; permitting the branch alias does not
+permit every unique deployment hostname.
+
+The stable alias initially resolved to deployment
+`dpl_7B9i4F6iWBooPC7YJ6ventfCupKx`, whose target was production and whose aliases
+included production names. It was not modified or used for authenticated QA.
+After user approval, a separate Preview rebuild was requested from the source
+Preview at the branch SHA and reached `READY` as
+`dpl_EnHgC91YWVszLTvJyCxEat21X97n` (Preview, `target: null`). The stable branch
+alias now resolves to that Preview; the production origin still resolves to the
+original production deployment, unmodified. Its identity and response evidence
+are recorded in the
+[staging setup and verification record](phase5-staging-setup.md#qa-continuation--11-november-2026).
+
+With the user's explicit approval for temporary sharing of the new unique
+Preview, connector requests verified current staging metadata/SHA, a staging-only
+`connect-src` on the metadata response and correct HTML/PNG/CSS/JavaScript
+responses. Main JavaScript referenced only staging. Missing brand/assets returned
+`404 text/plain`, not SPA HTML, but their platform-generated error responses
+retained the checked-in production `connect-src`. This narrow error-response CSP
+inconsistency remains open; no executable error response or production request
+was observed. Direct browser access to the new unique hostname still received
+proxy `403`, and the user requested its policy addition. Connector response
+checks do not establish authenticated hosted browser behavior.
+
+Independent headless Chromium launched successfully despite the shared
+computer-use initialization error. The actual local app on
+`http://127.0.0.1:4180`, configured with the staging URL and public key, rendered
+an enabled login form. Real browser CORS requests to staging returned Auth
+health `200` and permission-denied responses for anonymous bootstrap and direct
+product reads. No Auth/bootstrap response was mocked, no account logged in and
+no business command executed. This proves browser-to-staging connectivity and
+anonymous denials from a local origin; it does not prove authenticated or hosted
+Preview behavior. The inherited Google Fonts request failed at the proxy;
+there were no uncaught browser exceptions or unexpected request origins.
+
+After `npm ci`, the local shell TypeScript check and all 28 Chromium regression
+cases passed in 55.8 seconds; all 15 preview-output tests and `git diff --check`
+also passed. Versions were Node 24.22.1, Playwright 1.65.0 and Chromium
+156.0.8078.79 on Debian 13. These remain local fixture and generator results.
+
+At the earlier read-only checkpoint staging had zero Auth users, memberships and
+products. The user then created a confirmed, unbanned controlled staging account
+and explicitly approved its first active owner membership, which was provisioned
+and verified. A rollback-only SQL role-impersonation bootstrap parsed against
+the current contract with the same UUID, owner role, DOP, empty commercial arrays
+and one team member; it does not establish real Auth/JWT/browser login. The
+[account checkpoint](phase5-staging-setup.md#credentials-and-remaining-authenticated-gate)
+records the grant and evidence boundary. The known test account still needs
+`PHASE5_QA_PASSWORD` supplied through environment secrets, and the unique Preview hostname is still
+missing from the applied network policy. Public signup was found enabled
+(`disable_signup=false`), contrary to the intended staging setup, while
+anonymous users and email autoconfirm were disabled. This configuration gap and
+the authenticated Preview, role, recovery and Realtime-delivery checks remain
+open. No production configuration/data was changed and PR #1 was not merged.

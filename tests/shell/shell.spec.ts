@@ -137,9 +137,8 @@ test('dark inventory and sale dialogs retain opaque readable controls', async ({
   await expectReadable(dialog.getByRole('combobox', { name: 'Categoría', exact: true }));
   await page.keyboard.press('Escape');
   await page.goto('/ventas?nuevo=1');
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await expectReadable(page.getByRole('dialog').getByRole('textbox', { name: 'Buscar productos para agregar' }));
-  await page.keyboard.press('Escape');
+  await expect(page.getByRole('region', { name: 'Caja de ventas' })).toBeVisible();
+  await expectReadable(page.getByRole('textbox', { name: 'Buscar productos para agregar' }));
 });
 
 test('print excludes shell chrome without hiding page content', async ({ page }) => {

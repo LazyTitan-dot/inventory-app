@@ -8,11 +8,20 @@ Publicada en [inventory-app-nine-navy.vercel.app](https://inventory-app-nine-nav
 
 - Resumen operativo, catálogo por variantes, SKU, código de barras, imágenes privadas, costos, precios y reposición.
 - Existencias disponibles y en revisión, conteos físicos con motivo e historial de movimientos.
-- Clientes, proveedores, órdenes de compra y recepciones parciales.
+- Clientes con múltiples direcciones de entrega y una preferida; proveedores, órdenes con fecha prevista y recepciones parciales.
 - Ventas, medios de pago registrados, descuentos, promociones, cotizaciones y recibos imprimibles.
 - Devoluciones parciales con límite de cantidades e importes, anulación controlada y consulta de garantías conservadas al vender.
 - Entregas con responsable, reprogramación, intentos fallidos y constancia de recepción.
 - Reportes, exportación CSV, configuración comercial, roles y auditoría.
+
+La adaptación completa del prototipo añade caja dedicada con pedido móvil,
+búsqueda global con Ctrl/⌘+K, gráficos basados en ventas reales, fichas de inventario
+contextuales, escaneo con alternativas manual/lector, etiquetas Code 128 y
+recepciones separadas de unidades conformes y dañadas. Las dañadas entran en
+cuarentena; el cierre con faltantes conserva lo recibido. Cada entrega guarda una
+copia independiente de su destino y conserva receptor, constancia e historial.
+El seguimiento muestra eventos operativos registrados, sin GPS ni ETA calculada.
+Véase [adaptación y verificación](docs/prototype-adaptation.md).
 
 Las variantes nuevas reciben un **SKU automático y editable**, generado a partir de la marca, el modelo y la variante. Los SKU existentes se conservan; el formulario comprueba duplicados y permite generar un código. El catálogo, la ficha y la exportación muestran el **precio sin ITBIS, el impuesto y el precio con ITBIS por unidad**, según la tasa configurada del negocio y antes de descuentos. Un precio de cero se identifica como pendiente. Estos cálculos no modifican los importes de documentos históricos.
 
@@ -79,7 +88,7 @@ El primer propietario se provisiona administrativamente contra una cuenta Auth c
 
 ## Migraciones y conservación del legado
 
-Las migraciones `supabase/migrations/*_retail_*.sql` amplían el esquema existente. Las versiones locales corresponden a las aplicadas mediante el conector de Supabase. Las cuatro migraciones históricas de abril de 2026 ya existían remotamente y no deben repetirse. Los SQL originales en `docs/legacy` se conservan solo como referencia, no como un procedimiento de actualización recomendado.
+Las migraciones `supabase/migrations/*.sql` amplían el esquema existente. Las versiones locales corresponden a las aplicadas mediante el conector de Supabase. Las cuatro migraciones históricas de abril de 2026 ya existían remotamente y no deben repetirse. Los SQL originales en `docs/legacy` se conservan solo como referencia, no como un procedimiento de actualización recomendado.
 
 Consultar `docs/database-contract.md` antes de modificar los comandos o el modelo. En una base nueva debe prepararse explícitamente el esquema base o ejecutar una instalación adaptada; no ejecutar las migraciones históricas destructivas sobre datos existentes.
 

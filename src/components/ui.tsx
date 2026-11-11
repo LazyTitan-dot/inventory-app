@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, Inbox, Search, X } from 'lucide-react';
 import { statusLabels } from '../lib/format';
+import './drawer.css';
+
+// Nested native dialogs (for example, a scanner over an editor) share one lock.
+let openDialogCount = 0;
+let bodyOverflowBeforeDialogs = '';
 
 export function PageHeader({
   eyebrow,
@@ -118,26 +123,35 @@ export function Modal({
   children,
   onClose,
   wide,
+  variant = 'dialog',
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  variant?: 'dialog' | 'drawer';
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const node = dialog.current;
     const active = document.activeElement;
+    if (openDialogCount === 0) {
+      bodyOverflowBeforeDialogs = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
+    openDialogCount++;
     node?.showModal();
     return () => {
       node?.close();
+      openDialogCount = Math.max(0, openDialogCount - 1);
+      if (openDialogCount === 0) document.body.style.overflow = bodyOverflowBeforeDialogs;
       if (active instanceof HTMLElement) active.focus();
     };
   }, []);
   return (
     <dialog
       ref={dialog}
-      className={`modal ${wide ? 'wide' : ''}`}
+      className={`modal ${wide ? 'wide' : ''} ${variant === 'drawer' ? 'detail-drawer' : ''}`}
       aria-label={title}
       onCancel={(e) => {
         e.preventDefault();

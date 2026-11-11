@@ -1,0 +1,65 @@
+.contacts-directory { padding-top: 18px; }
+.customer-directory-list { display: grid; gap: 0; }
+.customer-directory-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 20px 0; border-top: 1px solid var(--line);
+}
+.customer-profile-trigger {
+  display: flex; align-items: flex-start; gap: 15px; text-align: left;
+  border: 0; padding: 0; background: transparent; color: var(--ink); min-width: 0; flex: 1;
+}
+.customer-profile-trigger > span:last-child { display: grid; gap: 5px; min-width: 0; }
+.customer-profile-trigger strong { font-size: 1rem; }
+.customer-profile-trigger small { color: var(--muted); line-height: 1.45; }
+.customer-profile-trigger .contact-avatar,
+.customer-profile-summary .contact-avatar { flex-shrink: 0; background: var(--mint); color: var(--primary); }
+.customer-preferred-address { display: flex; align-items: flex-start; gap: 5px; font-size: .8rem; color: var(--muted); line-height: 1.6; overflow-wrap: anywhere; }
+.customer-preferred-address svg { flex-shrink: 0; margin-top: 3px; }
+.customer-directory-actions { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+.contact-profile-content { display: grid; gap: 20px; }
+.customer-profile-summary { display: flex; align-items: flex-start; gap: 14px; }
+.customer-profile-summary p { margin: 6px 0; overflow-wrap: anywhere; }
+.customer-profile-summary small { color: var(--muted); }
+.contact-profile-content > p { margin: 0; display: flex; align-items: flex-start; gap: 7px; }
+.contact-profile-actions { padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.contacts-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
+.contacts-section-heading h3 { margin: 0 0 7px; color: var(--ink); font-size: 1rem; }
+.contacts-section-heading p { margin: 0; color: var(--muted); font-size: .82rem; line-height: 1.6; }
+.contacts-section-heading .button { flex-shrink: 0; }
+.customer-address-list { display: grid; gap: 12px; }
+.customer-address-card { border: 1px solid var(--line); border-radius: 16px; padding: 17px; background: var(--surface); }
+.customer-address-card.archived { background: var(--surface-subtle); }
+.customer-address-heading { display: flex; gap: 10px; align-items: flex-start; }
+.customer-address-icon { display: grid; place-items: center; width: 35px; height: 35px; flex-shrink: 0; border-radius: 12px; background: var(--mint); color: var(--primary); }
+.customer-address-heading strong { overflow-wrap: anywhere; }
+.customer-address-badges { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+.customer-address-badges .badge { display: inline-flex; align-items: center; gap: 4px; }
+.customer-address-card > p { margin: 11px 0 0; font-size: .86rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.customer-address-card .toolbar { margin-top: 14px; flex-wrap: wrap; }
+.customer-address-reference { border-left: 2px solid var(--line); padding-left: 10px; color: var(--muted); }
+.customer-address-form { margin-top: 20px; padding: 19px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-subtle); }
+.customer-address-form > h3 { margin: 0; }
+.contacts-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.contacts-checkbox { display: flex; align-items: flex-start; gap: 9px; margin: 12px 0; font-size: .85rem; line-height: 1.6; }
+.contacts-checkbox input { width: 17px; height: 17px; flex-shrink: 0; margin: 3px 0 0; accent-color: var(--primary); }
+.contacts-inline-confirm { border: 1px solid var(--line); padding: 16px; border-radius: 12px; background: var(--surface-subtle); margin-top: 14px; }
+.contacts-inline-confirm p { margin: 0 0 13px; line-height: 1.6; }
+.contacts-empty-address { display: grid; justify-items: center; text-align: center; gap: 11px; padding: 25px 15px; border: 1px dashed var(--line); border-radius: 15px; color: var(--muted); }
+.contacts-empty-address strong { color: var(--ink); }
+.contacts-empty-address p { margin: 0; font-size: .83rem; line-height: 1.6; max-width: 360px; }
+.contacts-disabled-link { opacity: .6; cursor: wait; }
+.contact-history { border-top: 1px solid var(--line); padding-top: 22px; }
+.contact-history .empty-state { padding: 25px 10px; }
+@media (max-width: 700px) {
+  .customer-directory-card { align-items: stretch; flex-direction: column; gap: 14px; }
+  .customer-directory-actions { padding-left: 55px; }
+  .contacts-section-heading { flex-wrap: wrap; }
+  .contacts-section-heading .button { width: 100%; }
+  .customer-address-card { padding: 14px; }
+  .customer-address-form { padding: 14px; }
+  .customer-address-card .toolbar { gap: 4px; }
+}
+@media print {
+  .customer-directory-actions, .customer-address-form, .customer-address-card .toolbar,
+  .contact-profile-actions, .contacts-checkbox { display: none !important; }
+}

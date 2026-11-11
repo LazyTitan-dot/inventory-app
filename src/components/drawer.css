@@ -1,0 +1,39 @@
+.modal.detail-drawer, .app-layout .modal.detail-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(680px, calc(100vw - 32px));
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  border-radius: 24px 0 0 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.detail-drawer .modal-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--sl-surface, var(--surface, #fff));
+}
+@media (max-width: 640px) {
+  .modal.detail-drawer, .app-layout .modal.detail-drawer {
+    inset: auto 0 0;
+    width: 100%;
+    max-height: calc(100dvh - 18px);
+    height: auto;
+    margin: 0;
+    border-radius: 24px 24px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+@media print {
+  .modal.detail-drawer, .app-layout .modal.detail-drawer {
+    position: static;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    border-radius: 0;
+  }
+}

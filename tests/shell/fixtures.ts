@@ -6,7 +6,7 @@ const productId = '10000000-0000-4000-8000-000000000002';
 const variantId = '10000000-0000-4000-8000-000000000003';
 const timestamp = '2026-11-11T12:00:00Z';
 
-function retailFixture(role: Role): RetailData {
+export function retailFixture(role: Role): RetailData {
   const admin = role === 'owner' || role === 'admin';
   const sales = admin || role === 'sales';
   const inventory = admin || role === 'inventory';

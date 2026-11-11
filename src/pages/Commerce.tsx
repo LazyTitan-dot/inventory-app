@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Check,
+  Barcode,
+  ChevronDown,
+  Minus,
+  ScanLine,
   ClipboardList,
   FileText,
   MessageCircle,
@@ -43,6 +47,13 @@ import {
 import { ProductImage } from '../components/ProductImage';
 import { WhatsAppComposer } from '../components/WhatsAppComposer';
 import { buildDocumentWhatsAppMessage } from '../lib/whatsapp';
+import { BarcodeScanner } from '../components/BarcodeScanner';
+import {
+  ReceivePurchase,
+  ClosePurchaseShort,
+  PurchaseReceiptHistory,
+} from '../components/PurchaseReceiving';
+import { cashierPrefill, exactCashierMatches } from '../lib/cashier';
 import './commerce.css';
 
 type Kind = 'sale' | 'purchase' | 'quote';
@@ -50,6 +61,7 @@ type CartLine = { variantId: string; quantity: number; expectedPrice: number; un
 type DetailMode =
   | 'detail'
   | 'receive'
+  | 'close_short'
   | 'convert'
   | 'cancel'
   | 'void'
@@ -104,6 +116,8 @@ export function CommercePage({ kind }: { kind: Kind }) {
   const now = useNow();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
+  const [supplierFilter, setSupplierFilter] = useState('all');
+  const [purchaseDate, setPurchaseDate] = useState('');
   const [params, setParams] = useSearchParams();
   const creating = params.get('nuevo') === '1';
   const selectedId = params.get('documento');
@@ -111,11 +125,14 @@ export function CommercePage({ kind }: { kind: Kind }) {
     const next = new URLSearchParams(params);
     next.delete('editar');
     if (open) {
+      if (kind === 'sale') next.delete('vista');
       next.set('nuevo', '1');
       next.delete('documento');
     } else {
       next.delete('nuevo');
       next.delete('contacto');
+      next.delete('variante');
+      next.delete('cantidad');
     }
     setParams(next);
   };
@@ -123,6 +140,8 @@ export function CommercePage({ kind }: { kind: Kind }) {
     const next = new URLSearchParams(params);
     next.delete('nuevo');
     next.delete('contacto');
+    next.delete('variante');
+    next.delete('cantidad');
     next.delete('editar');
     if (id) next.set('documento', id);
     else next.delete('documento');
@@ -135,9 +154,18 @@ export function CommercePage({ kind }: { kind: Kind }) {
   const statuses = [
     ...new Set(documents.map((doc) => (quoteExpired(doc, now) ? 'expired' : doc.status))),
   ];
+  const purchaseLate = (doc: RetailDocument) =>
+    doc.type === 'purchase' &&
+    ['pending', 'partial'].includes(doc.status) &&
+    Boolean(doc.expected_at && doc.expected_at < businessDate(new Date(now)));
   const filtered = documents.filter(
     (doc) =>
-      (status === 'all' || (quoteExpired(doc, now) ? 'expired' : doc.status) === status) &&
+      (status === 'all' ||
+        (status === 'overdue'
+          ? purchaseLate(doc)
+          : (quoteExpired(doc, now) ? 'expired' : doc.status) === status)) &&
+      (kind !== 'purchase' || supplierFilter === 'all' || doc.contact_id === supplierFilter) &&
+      (kind !== 'purchase' || !purchaseDate || doc.expected_at === purchaseDate) &&
       matches(query, documentNumber(doc), contactName(doc), doc.notes),
   );
   const selected = data.documents.find((doc) => doc.id === selectedId);
@@ -166,6 +194,79 @@ export function CommercePage({ kind }: { kind: Kind }) {
         ? ['completed', 'partially_returned', 'returned'].includes(doc.status)
         : !['draft', 'cancelled', 'voided'].includes(doc.status)),
   );
+
+  const purchaseEnhanced = data.features?.includes('purchase_receipts_v1') ?? false;
+  const purchaseSuppliers = data.contacts.filter((contact) => contact.kind === 'supplier');
+  const incomingValue = data.document_items
+    .filter((item) => pending.some((doc) => doc.id === item.document_id))
+    .reduce(
+      (sum, item) =>
+        sum +
+        Math.max(0, item.quantity - item.received_quantity) * (item.unit_cost ?? item.unit_price),
+      0,
+    );
+  const replenishments =
+    kind === 'purchase'
+      ? data.variants
+          .filter(
+            (variant) =>
+              variant.active &&
+              data.products.some((product) => product.id === variant.product_id && product.active),
+          )
+          .map((variant) => {
+            const product = data.products.find((item) => item.id === variant.product_id)!;
+            const available =
+              data.stocks.find((stock) => stock.variant_id === variant.id)?.available ?? 0;
+            const inTransit = data.document_items
+              .filter(
+                (item) =>
+                  item.variant_id === variant.id &&
+                  pending.some((doc) => doc.id === item.document_id),
+              )
+              .reduce((sum, item) => sum + Math.max(0, item.quantity - item.received_quantity), 0);
+            const target = Math.max(variant.reorder_target, variant.min_stock);
+            return {
+              variant,
+              product,
+              available,
+              inTransit,
+              quantity: Math.max(0, target - available - inTransit),
+            };
+          })
+          .filter((row) => row.available <= row.variant.min_stock && row.quantity > 0)
+      : [];
+
+  const cashier =
+    kind === 'sale' &&
+    permittedCreate(data, kind) &&
+    !selectedId &&
+    params.get('vista') !== 'historial';
+  if (cashier)
+    return (
+      <>
+        <PageHeader
+          eyebrow="S-MART LIVING / CAJA"
+          title="Ventas"
+          description="Busca o escanea productos, prepara el pedido y confirma el cobro en un solo lugar."
+          actions={
+            <button className="button secondary" onClick={() => setParams({ vista: 'historial' })}>
+              <ClipboardList size={17} />
+              Historial de ventas
+            </button>
+          }
+        />
+        <CreateDocument
+          key={`cashier-${params.get('variante') ?? ''}-${params.get('cantidad') ?? ''}-${params.get('contacto') ?? ''}`}
+          inline
+          kind="sale"
+          initialContactId={params.get('contacto') ?? ''}
+          initialVariantId={params.get('variante') ?? ''}
+          initialQuantity={params.get('cantidad') ?? '1'}
+          onClose={() => setParams({ vista: 'historial' })}
+          onCreated={setSelectedId}
+        />
+      </>
+    );
 
   return (
     <>
@@ -226,11 +327,58 @@ export function CommercePage({ kind }: { kind: Kind }) {
           }
         />
         <StatCard
-          label="Documentos registrados"
-          value={documents.length}
-          hint="Historial conservado"
+          label={kind === 'purchase' ? 'Compras atrasadas' : 'Documentos registrados'}
+          value={kind === 'purchase' ? documents.filter(purchaseLate).length : documents.length}
+          hint={
+            kind === 'purchase'
+              ? 'Fecha esperada vencida y mercancía pendiente'
+              : 'Historial conservado'
+          }
         />
+        {kind === 'purchase' && (
+          <StatCard
+            label="Valor pendiente de recepción"
+            value={money(incomingValue)}
+            hint="Costo de unidades que faltan por recibir"
+          />
+        )}
       </div>
+      {kind === 'purchase' && data.permissions.purchase && replenishments.length > 0 && (
+        <details className="panel commerce-replenishment">
+          <summary>
+            <Package size={18} />
+            <strong>Sugerencias de reposición</strong>
+            <span>{replenishments.length} variantes</span>
+          </summary>
+          <p>
+            Se descuenta la mercancía que ya está en órdenes abiertas. Revisa el proveedor y las
+            cantidades antes de confirmar.
+          </p>
+          <div className="commerce-replenishment-list">
+            {replenishments.map(({ variant, product, available, inTransit, quantity }) => (
+              <div key={variant.id}>
+                <div>
+                  <strong>
+                    {product.brand} {product.model} · {variant.name}
+                  </strong>
+                  <small>
+                    {variant.sku} · {available} disponibles · {inTransit} por recibir
+                  </small>
+                </div>
+                <button
+                  className="button secondary"
+                  onClick={() =>
+                    setParams({ nuevo: '1', variante: variant.id, cantidad: String(quantity) })
+                  }
+                >
+                  <Plus size={15} />
+                  Pedir {quantity}
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
       <section className="panel">
         <div className="toolbar commerce-toolbar">
           <SearchInput
@@ -244,12 +392,37 @@ export function CommercePage({ kind }: { kind: Kind }) {
             onChange={(event) => setStatus(event.target.value)}
           >
             <option value="all">Todos los estados</option>
+            {kind === 'purchase' && purchaseEnhanced && <option value="overdue">Atrasadas</option>}
             {statuses.map((value) => (
               <option key={value} value={value}>
                 {value === 'expired' ? 'Vencida' : statusLabels[value] || value}
               </option>
             ))}
           </select>
+          {kind === 'purchase' && (
+            <select
+              aria-label="Filtrar compras por proveedor"
+              value={supplierFilter}
+              onChange={(event) => setSupplierFilter(event.target.value)}
+            >
+              <option value="all">Todos los proveedores</option>
+              {purchaseSuppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {kind === 'purchase' && purchaseEnhanced && (
+            <label className="commerce-date-filter">
+              Fecha esperada
+              <input
+                type="date"
+                value={purchaseDate}
+                onChange={(event) => setPurchaseDate(event.target.value)}
+              />
+            </label>
+          )}
           <span className="muted commerce-result-count">
             {filtered.length} {filtered.length === 1 ? 'documento' : 'documentos'}
           </span>
@@ -273,6 +446,8 @@ export function CommercePage({ kind }: { kind: Kind }) {
                   onClick={() => {
                     setQuery('');
                     setStatus('all');
+                    setSupplierFilter('all');
+                    setPurchaseDate('');
                   }}
                 >
                   Limpiar filtros
@@ -311,7 +486,17 @@ export function CommercePage({ kind }: { kind: Kind }) {
                       )}
                     </td>
                     <td>{contactName(doc)}</td>
-                    <td>{shortDate(doc.created_at)}</td>
+                    <td>
+                      {shortDate(doc.created_at)}
+                      {kind === 'purchase' && doc.expected_at && (
+                        <small
+                          className={`commerce-table-meta ${purchaseLate(doc) ? 'commerce-error-text' : ''}`}
+                        >
+                          Esperada: {shortDate(`${doc.expected_at}T12:00:00-04:00`)}
+                          {purchaseLate(doc) ? ' · Atrasada' : ''}
+                        </small>
+                      )}
+                    </td>
                     <td>
                       {quoteExpired(doc, now) ? (
                         <span className="badge commerce-warning">Vencida</span>
@@ -341,6 +526,8 @@ export function CommercePage({ kind }: { kind: Kind }) {
           key={kind}
           kind={kind}
           initialContactId={params.get('contacto') ?? ''}
+          initialVariantId={params.get('variante') ?? ''}
+          initialQuantity={params.get('cantidad') ?? '1'}
           onClose={() => setCreating(false)}
           onCreated={(id) => setSelectedId(id)}
         />
@@ -376,12 +563,18 @@ export function CommercePage({ kind }: { kind: Kind }) {
 
 function CreateDocument({
   kind,
+  inline = false,
+  initialVariantId = '',
+  initialQuantity = '1',
   initialContactId,
   editingDocument,
   onClose,
   onCreated,
 }: {
   kind: Kind;
+  inline?: boolean;
+  initialVariantId?: string;
+  initialQuantity?: string;
   initialContactId: string;
   editingDocument?: RetailDocument;
   onClose: () => void;
@@ -390,6 +583,25 @@ function CreateDocument({
   const { data, notify, refresh } = useRetail();
   const { run, busy, error, clearError } = useOperation();
   const now = useNow();
+  const formId = useId();
+  const searchInput = useRef<HTMLInputElement>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [clearRequested, setClearRequested] = useState(false);
+  const [scanMessage, setScanMessage] = useState('');
+  const [compact, setCompact] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 800px)').matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 800px)');
+    const update = () => {
+      setCompact(media.matches);
+      if (!media.matches) setCheckoutOpen(false);
+    };
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  const [prefill] = useState(() => cashierPrefill(data, kind, initialVariantId, initialQuantity));
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
@@ -403,7 +615,9 @@ function CreateDocument({
             expectedPrice: item.unit_price,
             unitCost: item.unit_cost ?? 0,
           }))
-      : [],
+      : prefill.line
+        ? [prefill.line]
+        : [],
   );
   const [openedVersion] = useState(editingDocument?.updated_at);
   const [taxRate, setTaxRate] = useState(editingDocument?.tax_rate ?? data.settings.tax_rate);
@@ -411,16 +625,19 @@ function CreateDocument({
   const [payment, setPayment] = useState('cash');
   const [tendered, setTendered] = useState('');
   const [discount, setDiscount] = useState(String(editingDocument?.discount ?? 0));
+  const [discountMode, setDiscountMode] = useState<'amount' | 'percent'>('amount');
   const [coupon, setCoupon] = useState(
     () =>
       data.promotions.find((promotion) => promotion.id === editingDocument?.promotion_id)?.code ??
       '',
   );
   const [notes, setNotes] = useState(editingDocument?.notes ?? '');
+  const [expectedAt, setExpectedAt] = useState('');
+  const purchaseEnhanced = data.features?.includes('purchase_receipts_v1') ?? false;
   const [expires, setExpires] = useState(() =>
     businessDate(new Date(editingDocument?.expires_at ?? Date.now() + 15 * 86400000)),
   );
-  const [validation, setValidation] = useState('');
+  const [validation, setValidation] = useState(prefill.message);
   const stock = new Map(data.stocks.map((item) => [item.variant_id, item.available]));
   const products = new Map(data.products.map((product) => [product.id, product]));
   const variants = data.variants.filter(
@@ -436,6 +653,15 @@ function CreateDocument({
       matches(query, variant.sku, variant.barcode, variant.name, product?.brand, product?.model)
     );
   });
+  if (kind === 'sale')
+    filtered.sort(
+      (a, b) =>
+        Number((stock.get(a.id) ?? 0) <= 0) - Number((stock.get(b.id) ?? 0) <= 0) ||
+        `${products.get(a.product_id)?.brand} ${products.get(a.product_id)?.model} ${a.name}`.localeCompare(
+          `${products.get(b.product_id)?.brand} ${products.get(b.product_id)?.model} ${b.name}`,
+          'es',
+        ),
+    );
   const contacts = data.contacts.filter(
     (contact) => contact.active && contact.kind === (kind === 'purchase' ? 'supplier' : 'customer'),
   );
@@ -468,6 +694,8 @@ function CreateDocument({
         }, 0),
       )
     : 0;
+  const manualDiscount =
+    discountMode === 'percent' ? round((subtotal * Number(discount)) / 100) : Number(discount);
   const discountAmount =
     kind === 'purchase'
       ? 0
@@ -477,7 +705,7 @@ function CreateDocument({
               ? (eligible * promotion.value) / 100
               : Math.min(eligible, promotion.value),
           )
-        : Math.min(subtotal, Math.max(0, Number(discount) || 0));
+        : Math.min(subtotal, Math.max(0, manualDiscount || 0));
   const tax =
     kind === 'purchase' ? 0 : round((Math.max(0, subtotal - discountAmount) * taxRate) / 100);
   const total = round(subtotal - discountAmount + tax);
@@ -538,7 +766,56 @@ function CreateDocument({
           ],
     );
     setValidation('');
+    const product = products.get(variant.product_id);
+    setScanMessage(`Agregado: ${product?.brand ?? ''} ${product?.model ?? ''} · ${variant.name}`);
     return true;
+  }
+
+  function scanCode(value: string) {
+    const ids = exactCashierMatches(variants, value);
+    setScannerOpen(false);
+    if (ids.length === 1 && ids[0]) {
+      if (addVariant(ids[0])) setQuery('');
+    } else {
+      setQuery(value);
+      setCategory('all');
+      setValidation(
+        ids.length > 1
+          ? 'El código coincide con varias variantes. Selecciona la correcta.'
+          : 'Código no encontrado. Busca por nombre o SKU para seleccionar el artículo correcto.',
+      );
+    }
+  }
+  function changeQuantity(id: string, delta: number) {
+    const current = cart.find((line) => line.variantId === id);
+    if (!current) return;
+    const next = current.quantity + delta;
+    if (kind === 'sale' && next > (stock.get(id) ?? 0)) {
+      setValidation('No quedan más unidades disponibles de esta variante.');
+      return;
+    }
+    setCart((lines) =>
+      next <= 0
+        ? lines.filter((line) => line.variantId !== id)
+        : lines.map((line) => (line.variantId === id ? { ...line, quantity: next } : line)),
+    );
+    setValidation('');
+  }
+  function clearCart() {
+    setCart([]);
+    setContactId('');
+    setPayment('cash');
+    setTendered('');
+    setDiscount('0');
+    setDiscountMode('amount');
+    setCoupon('');
+    setNotes('');
+    setValidation('');
+    clearError();
+    setScanMessage('Pedido vaciado.');
+    setClearRequested(false);
+    setCheckoutOpen(false);
+    searchInput.current?.focus();
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -610,7 +887,10 @@ function CreateDocument({
     if (
       kind !== 'purchase' &&
       !coupon.trim() &&
-      (!Number.isFinite(Number(discount)) || Number(discount) < 0 || Number(discount) > maxDiscount)
+      (!Number.isFinite(Number(discount)) ||
+        Number(discount) < 0 ||
+        manualDiscount > maxDiscount ||
+        (discountMode === 'percent' && Number(discount) > 100))
     ) {
       setValidation(`El descuento permitido es de hasta ${money(maxDiscount)}.`);
       return;
@@ -661,6 +941,7 @@ function CreateDocument({
         payment_method: payment,
         ...(payment === 'cash' ? { tendered: Number(tendered) } : {}),
       });
+    if (kind === 'purchase' && purchaseEnhanced) payload.expected_at = expectedAt || null;
     if (kind === 'quote') payload.expires_at = `${expires}T23:59:59-04:00`;
     if (editingDocument)
       Object.assign(payload, { id: editingDocument.id, expected_updated_at: openedVersion });
@@ -696,441 +977,588 @@ function CreateDocument({
     }
   }
 
-  return (
-    <Modal
-      title={editingDocument ? `Editar ${documentNumber(editingDocument)}` : labels[kind].create}
-      onClose={busy ? () => undefined : onClose}
-      wide
-    >
-      <form onSubmit={submit} className="commerce-editor">
-        {editingDocument && (
-          <p className="commerce-inline-note">
-            Revisa las cantidades, la vigencia y el total antes de guardar. Se aplicarán los precios
-            del catálogo y las promociones vigentes que confirmes aquí. Se conserva el número de
-            cotización.
-          </p>
-        )}
-        {changedDocument && (
-          <ErrorNotice message="Esta cotización cambió. Vuelve al documento para revisar la versión actual; tus cambios no se guardarán encima." />
-        )}
-        {changedTax && (
-          <div className="commerce-price-change">
-            <p>La tasa vigente es {data.settings.tax_rate}%. Revisa el total antes de guardar.</p>
-            <button
-              type="button"
-              className="button secondary"
-              disabled={busy}
-              onClick={() => setTaxRate(data.settings.tax_rate)}
-            >
-              Usar tasa vigente
+  const cartContent = (
+    <>
+      {changedPrices && (
+        <div className="commerce-price-change">
+          <p>El precio de una variante cambió. Revisa el nuevo total antes de continuar.</p>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() =>
+              setCart((lines) =>
+                lines.map((line) => ({
+                  ...line,
+                  expectedPrice:
+                    data.variants.find((variant) => variant.id === line.variantId)?.price ??
+                    line.expectedPrice,
+                })),
+              )
+            }
+          >
+            Aceptar precios actualizados
+          </button>
+        </div>
+      )}
+      <div className="commerce-cart-heading">
+        <h3>
+          {kind === 'purchase' ? 'Tu orden' : kind === 'quote' ? 'Tu propuesta' : 'Venta actual'}
+        </h3>
+        <div className="commerce-cart-actions">
+          <span className="badge">{cart.reduce((sum, line) => sum + line.quantity, 0)} uds.</span>
+          {inline && cart.length > 0 && (
+            <button type="button" className="text-button" onClick={() => setClearRequested(true)}>
+              Vaciar pedido
             </button>
-          </div>
-        )}
-        <fieldset disabled={busy || refreshing} className="commerce-fieldset">
-          <div className="commerce-workbench">
-            <section className="commerce-catalog" aria-label="Catálogo de variantes">
-              <button
-                type="button"
-                className="button ghost commerce-refresh"
-                onClick={() => void refreshCatalog()}
-              >
-                {refreshing ? 'Actualizando…' : 'Actualizar catálogo y existencias'}
-              </button>
-              <div className="commerce-catalog-search">
-                <Search size={18} />
-                <input
-                  autoFocus
-                  value={query}
-                  placeholder="Nombre, SKU o código de barras…"
-                  aria-label="Buscar productos para agregar"
-                  onChange={(event) => setQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter') return;
-                    event.preventDefault();
-                    const exact = variants.filter(
-                      (variant) =>
-                        variant.barcode === query.trim() ||
-                        variant.sku.toLowerCase() === query.trim().toLowerCase(),
-                    );
-                    if (exact.length === 1 && exact[0]) {
-                      if (addVariant(exact[0].id)) setQuery('');
-                    } else if (exact.length > 1)
-                      setValidation(
-                        'El código coincide con más de una variante. Selecciona el artículo correcto de los resultados.',
-                      );
-                    else if (filtered.length === 1 && filtered[0]) {
-                      if (addVariant(filtered[0].id)) setQuery('');
-                    } else setValidation('Selecciona una variante de los resultados.');
-                  }}
-                />
-              </div>
-              <div className="commerce-category-row">
+          )}
+        </div>
+      </div>
+      <Field label={kind === 'purchase' ? 'Proveedor' : 'Cliente'}>
+        <select
+          value={contactId}
+          onChange={(event) => setContactId(event.target.value)}
+          required={kind === 'purchase'}
+        >
+          <option value="">
+            {kind === 'purchase' ? 'Selecciona un proveedor' : 'Cliente de mostrador'}
+          </option>
+          {contactId && !contacts.some((contact) => contact.id === contactId) && (
+            <option value={contactId} disabled>
+              Contacto original no disponible
+            </option>
+          )}
+          {contacts.map((contact) => (
+            <option key={contact.id} value={contact.id}>
+              {contact.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {kind === 'purchase' && !contacts.length && (
+        <p className="commerce-inline-note">
+          Agrega un proveedor en Proveedores antes de crear la orden.
+        </p>
+      )}
+      <div className="commerce-cart-lines">
+        {cart.map((line) => {
+          const variant = data.variants.find((v) => v.id === line.variantId);
+          const product = variant && products.get(variant.product_id);
+          return (
+            <div key={line.variantId} className="commerce-cart-line">
+              <div className="commerce-line-name">
+                <strong>
+                  {product?.brand} {product?.model}
+                </strong>
                 <button
                   type="button"
-                  className={
-                    category === 'all' ? 'commerce-category selected' : 'commerce-category'
+                  className="button ghost commerce-icon-button"
+                  aria-label={`Quitar ${product?.model} ${variant?.name}`}
+                  onClick={() =>
+                    setCart((lines) => lines.filter((item) => item.variantId !== line.variantId))
                   }
-                  onClick={() => setCategory('all')}
                 >
-                  Todos
+                  <Trash2 size={16} />
                 </button>
-                {categories.map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={
-                      category === value ? 'commerce-category selected' : 'commerce-category'
-                    }
-                    onClick={() => setCategory(value)}
-                  >
-                    {categoryName(value)}
-                  </button>
-                ))}
               </div>
-              <div className="commerce-product-grid">
-                {filtered.map((variant) => {
-                  const product = products.get(variant.product_id);
-                  const available = stock.get(variant.id) || 0;
-                  const quantityInCart =
-                    cart.find((line) => line.variantId === variant.id)?.quantity || 0;
-                  return (
-                    <button
-                      type="button"
-                      key={variant.id}
-                      className="commerce-product"
-                      disabled={
-                        (kind !== 'purchase' && variant.price <= 0) ||
-                        (kind === 'sale' && available <= quantityInCart)
-                      }
-                      onClick={() => addVariant(variant.id)}
-                    >
-                      <span className="commerce-product-visual">
-                        {product ? (
-                          <ProductImage productId={product.id} source={product.images[0]} alt="" />
-                        ) : (
-                          <Package size={28} />
-                        )}
-                        {quantityInCart > 0 && (
-                          <span className="commerce-cart-count">{quantityInCart}</span>
-                        )}
-                      </span>
-                      <strong>
-                        {product?.brand} {product?.model}
-                      </strong>
-                      <span className="muted">{variant.name}</span>
-                      <small>{variant.sku}</small>
-                      <span className="commerce-product-bottom">
-                        <b>
-                          {kind !== 'purchase' && variant.price <= 0
-                            ? 'Precio pendiente'
-                            : money(kind === 'purchase' ? (variant.cost ?? 0) : variant.price)}
-                        </b>
-                        <span className={available ? 'muted' : 'commerce-out'}>
-                          {available ? `${available} disp.` : 'Agotado'}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {!filtered.length && (
-                <div className="commerce-catalog-empty">
-                  <Package size={30} />
-                  <strong>No encontramos variantes</strong>
-                  <p>Prueba con otro nombre, SKU o código.</p>
-                </div>
-              )}
-            </section>
-            <section className="commerce-cart" aria-label="Documento actual">
-              {changedPrices && (
-                <div className="commerce-price-change">
-                  <p>El precio de una variante cambió. Revisa el nuevo total antes de continuar.</p>
-                  <button
-                    type="button"
-                    className="button secondary"
-                    onClick={() =>
-                      setCart((lines) =>
-                        lines.map((line) => ({
-                          ...line,
-                          expectedPrice:
-                            data.variants.find((variant) => variant.id === line.variantId)?.price ??
-                            line.expectedPrice,
-                        })),
-                      )
-                    }
-                  >
-                    Aceptar precios actualizados
-                  </button>
-                </div>
-              )}
-              <div className="commerce-cart-heading">
-                <h3>
-                  {kind === 'purchase'
-                    ? 'Tu orden'
-                    : kind === 'quote'
-                      ? 'Tu propuesta'
-                      : 'Venta actual'}
-                </h3>
-                <span className="badge">
-                  {cart.reduce((sum, line) => sum + line.quantity, 0)} uds.
-                </span>
-              </div>
-              <Field label={kind === 'purchase' ? 'Proveedor' : 'Cliente'}>
-                <select
-                  value={contactId}
-                  onChange={(event) => setContactId(event.target.value)}
-                  required={kind === 'purchase'}
+              <small className="muted">
+                {variant?.name} · {variant?.sku}
+              </small>
+              <div className="commerce-line-controls">
+                <div
+                  className="commerce-quantity"
+                  role="group"
+                  aria-label={`Cantidad de ${product?.model} ${variant?.name}`}
                 >
-                  <option value="">
-                    {kind === 'purchase' ? 'Selecciona un proveedor' : 'Cliente de mostrador'}
-                  </option>
-                  {contactId && !contacts.some((contact) => contact.id === contactId) && (
-                    <option value={contactId} disabled>
-                      Contacto original no disponible
-                    </option>
-                  )}
-                  {contacts.map((contact) => (
-                    <option key={contact.id} value={contact.id}>
-                      {contact.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              {kind === 'purchase' && !contacts.length && (
-                <p className="commerce-inline-note">
-                  Agrega un proveedor en Proveedores antes de crear la orden.
-                </p>
-              )}
-              <div className="commerce-cart-lines">
-                {cart.map((line) => {
-                  const variant = data.variants.find((v) => v.id === line.variantId);
-                  const product = variant && products.get(variant.product_id);
-                  return (
-                    <div key={line.variantId} className="commerce-cart-line">
-                      <div className="commerce-line-name">
-                        <strong>
-                          {product?.brand} {product?.model}
-                        </strong>
-                        <button
-                          type="button"
-                          className="button ghost commerce-icon-button"
-                          aria-label={`Quitar ${product?.model} ${variant?.name}`}
-                          onClick={() =>
-                            setCart((lines) =>
-                              lines.filter((item) => item.variantId !== line.variantId),
-                            )
-                          }
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                      <small className="muted">
-                        {variant?.name} · {variant?.sku}
-                      </small>
-                      <div className="commerce-line-controls">
-                        <label>
-                          Cantidad
-                          <input
-                            aria-label={`Cantidad de ${product?.model} ${variant?.name}`}
-                            type="number"
-                            min="1"
-                            step="1"
-                            max={kind === 'sale' ? stock.get(line.variantId) || 0 : undefined}
-                            required
-                            value={line.quantity || ''}
-                            onChange={(event) =>
-                              setCart((lines) =>
-                                lines.map((item) =>
-                                  item.variantId === line.variantId
-                                    ? { ...item, quantity: Number(event.target.value) }
-                                    : item,
-                                ),
-                              )
-                            }
-                          />
-                        </label>
-                        {kind === 'purchase' ? (
-                          <label>
-                            Costo unitario RD$
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              required
-                              value={line.unitCost}
-                              onChange={(event) =>
-                                setCart((lines) =>
-                                  lines.map((item) =>
-                                    item.variantId === line.variantId
-                                      ? { ...item, unitCost: Number(event.target.value) }
-                                      : item,
-                                  ),
-                                )
-                              }
-                            />
-                          </label>
-                        ) : (
-                          <span className="muted">× {money(line.expectedPrice)}</span>
-                        )}
-                        <strong>
-                          {money(
-                            line.quantity *
-                              (kind === 'purchase' ? line.unitCost : line.expectedPrice),
-                          )}
-                        </strong>
-                      </div>
-                      {kind === 'sale' && line.quantity > (stock.get(line.variantId) || 0) && (
-                        <p className="commerce-error-text">
-                          Solo quedan {stock.get(line.variantId) || 0} disponibles.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-                {!cart.length && (
-                  <div className="commerce-cart-empty">
-                    <ShoppingBag size={28} />
-                    <p>Agrega productos para comenzar.</p>
-                  </div>
-                )}
-              </div>
-              {kind !== 'purchase' && (
-                <div className="form-grid commerce-small-grid">
-                  <Field
-                    label="Descuento RD$"
-                    hint={
-                      coupon.trim()
-                        ? 'El cupón reemplaza el descuento manual.'
-                        : `Hasta ${money(maxDiscount)}`
-                    }
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Reducir ${product?.model} ${variant?.name}`}
+                    onClick={() => changeQuantity(line.variantId, -1)}
                   >
+                    <Minus size={15} />
+                  </button>
+                  <label>
+                    Cantidad
+                    <input
+                      aria-label={`Cantidad de ${product?.model} ${variant?.name}`}
+                      type="number"
+                      min="1"
+                      step="1"
+                      max={kind === 'sale' ? stock.get(line.variantId) || 0 : undefined}
+                      required
+                      value={line.quantity || ''}
+                      onChange={(event) =>
+                        setCart((lines) =>
+                          lines.map((item) =>
+                            item.variantId === line.variantId
+                              ? { ...item, quantity: Number(event.target.value) }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Aumentar ${product?.model} ${variant?.name}`}
+                    disabled={kind === 'sale' && line.quantity >= (stock.get(line.variantId) ?? 0)}
+                    onClick={() => changeQuantity(line.variantId, 1)}
+                  >
+                    <Plus size={15} />
+                  </button>
+                </div>
+                {kind === 'purchase' ? (
+                  <label>
+                    Costo unitario RD$
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      max={maxDiscount}
-                      value={discount}
-                      disabled={Boolean(coupon.trim())}
-                      onChange={(event) => setDiscount(event.target.value)}
+                      required
+                      value={line.unitCost}
+                      onChange={(event) =>
+                        setCart((lines) =>
+                          lines.map((item) =>
+                            item.variantId === line.variantId
+                              ? { ...item, unitCost: Number(event.target.value) }
+                              : item,
+                          ),
+                        )
+                      }
                     />
-                  </Field>
-                  <Field
-                    label="Cupón"
-                    hint={
-                      coupon.trim()
-                        ? promotion && eligible > 0
-                          ? `${promotion.name}: ${money(discountAmount)}`
-                          : 'No aplicable a este carrito'
-                        : 'Opcional'
-                    }
-                  >
-                    <input
-                      value={coupon}
-                      onChange={(event) => setCoupon(event.target.value)}
-                      placeholder="Código"
-                      maxLength={60}
-                    />
-                  </Field>
-                </div>
-              )}
-              {kind === 'quote' && (
-                <Field label="Válida hasta">
-                  <input
-                    type="date"
-                    min={businessDate(new Date(now))}
-                    max={businessDate(new Date(now + 365 * 86400000))}
-                    required
-                    value={expires}
-                    onChange={(event) => setExpires(event.target.value)}
-                  />
-                </Field>
-              )}
-              <Field label="Nota" hint="Opcional">
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  maxLength={4000}
-                  placeholder={
-                    kind === 'purchase'
-                      ? 'Condiciones o referencia del proveedor'
-                      : 'Información adicional del documento'
-                  }
-                />
-              </Field>
-              <div className="commerce-totals">
-                <div>
-                  <span>Subtotal</span>
-                  <span>{money(subtotal)}</span>
-                </div>
-                {kind !== 'purchase' && (
-                  <>
-                    <div>
-                      <span>Descuento</span>
-                      <span>−{money(discountAmount)}</span>
-                    </div>
-                    <div>
-                      <span>Impuestos ({taxRate}%)</span>
-                      <span>{money(tax)}</span>
-                    </div>
-                  </>
+                  </label>
+                ) : (
+                  <span className="muted">× {money(line.expectedPrice)}</span>
                 )}
-                <div className="commerce-grand-total">
-                  <strong>Total</strong>
-                  <strong>{money(total)}</strong>
-                </div>
-              </div>
-              {kind === 'sale' && (
-                <>
-                  <Field label="Medio de pago">
-                    <select value={payment} onChange={(event) => setPayment(event.target.value)}>
-                      {Object.entries(paymentLabels).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  {payment === 'cash' ? (
-                    <div className="commerce-cash">
-                      <Field label="Efectivo recibido RD$">
-                        <input
-                          type="number"
-                          min={total}
-                          step="0.01"
-                          required
-                          value={tendered}
-                          onChange={(event) => setTendered(event.target.value)}
-                        />
-                      </Field>
-                      <button
-                        type="button"
-                        className="button ghost"
-                        onClick={() => setTendered(total.toFixed(2))}
-                      >
-                        Monto exacto
-                      </button>
-                      <div>
-                        Cambio <strong>{money(change)}</strong>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="commerce-inline-note">
-                      Confirma el cobro en tu terminal o cuenta antes de registrar la venta. Esta
-                      aplicación registra el medio de pago.
-                    </p>
+                <strong>
+                  {money(
+                    line.quantity * (kind === 'purchase' ? line.unitCost : line.expectedPrice),
                   )}
-                </>
-              )}
-              {kind === 'quote' && (
-                <p className="commerce-inline-note">
-                  La cotización no reserva ni descuenta existencias.
+                </strong>
+              </div>
+              {kind === 'sale' && line.quantity > (stock.get(line.variantId) || 0) && (
+                <p className="commerce-error-text">
+                  Solo quedan {stock.get(line.variantId) || 0} disponibles.
                 </p>
               )}
-            </section>
+            </div>
+          );
+        })}
+        {!cart.length && (
+          <div className="commerce-cart-empty">
+            <ShoppingBag size={28} />
+            <p>Agrega productos para comenzar.</p>
           </div>
-        </fieldset>
-        <ErrorNotice message={validation || error} />
+        )}
+      </div>
+      {kind !== 'purchase' && (
+        <div className="form-grid commerce-small-grid">
+          <div className="commerce-discount-mode" role="group" aria-label="Tipo de descuento">
+            <button
+              type="button"
+              aria-pressed={discountMode === 'amount'}
+              onClick={() => {
+                setDiscountMode('amount');
+                setDiscount('0');
+              }}
+            >
+              Importe RD$
+            </button>
+            <button
+              type="button"
+              aria-pressed={discountMode === 'percent'}
+              onClick={() => {
+                setDiscountMode('percent');
+                setDiscount('0');
+              }}
+            >
+              Porcentaje %
+            </button>
+          </div>
+          <Field
+            label={discountMode === 'percent' ? 'Descuento %' : 'Descuento RD$'}
+            hint={
+              coupon.trim()
+                ? 'El cupón reemplaza el descuento manual.'
+                : `Hasta ${money(maxDiscount)}`
+            }
+          >
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              max={
+                discountMode === 'percent'
+                  ? data.permissions.manage_business
+                    ? 100
+                    : data.settings.max_sale_discount_percent
+                  : maxDiscount
+              }
+              value={discount}
+              disabled={Boolean(coupon.trim())}
+              onChange={(event) => setDiscount(event.target.value)}
+            />
+          </Field>
+          <Field
+            label="Cupón"
+            hint={
+              coupon.trim()
+                ? promotion && eligible > 0
+                  ? `${promotion.name}: ${money(discountAmount)}`
+                  : 'No aplicable a este carrito'
+                : 'Opcional'
+            }
+          >
+            <input
+              value={coupon}
+              onChange={(event) => setCoupon(event.target.value)}
+              placeholder="Código"
+              maxLength={60}
+            />
+          </Field>
+        </div>
+      )}
+      {kind === 'quote' && (
+        <Field label="Válida hasta">
+          <input
+            type="date"
+            min={businessDate(new Date(now))}
+            max={businessDate(new Date(now + 365 * 86400000))}
+            required
+            value={expires}
+            onChange={(event) => setExpires(event.target.value)}
+          />
+        </Field>
+      )}
+      {kind === 'purchase' && purchaseEnhanced && (
+        <Field
+          label="Fecha esperada de recepción"
+          hint="Opcional; permite identificar compras atrasadas."
+        >
+          <input
+            type="date"
+            value={expectedAt}
+            onChange={(event) => setExpectedAt(event.target.value)}
+          />
+        </Field>
+      )}
+      <Field label="Nota" hint="Opcional">
+        <textarea
+          rows={2}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          maxLength={4000}
+          placeholder={
+            kind === 'purchase'
+              ? 'Condiciones o referencia del proveedor'
+              : 'Información adicional del documento'
+          }
+        />
+      </Field>
+      <div className="commerce-totals">
+        <div>
+          <span>Subtotal</span>
+          <span>{money(subtotal)}</span>
+        </div>
+        {kind !== 'purchase' && (
+          <>
+            <div>
+              <span>Descuento</span>
+              <span>−{money(discountAmount)}</span>
+            </div>
+            <div>
+              <span>Impuestos ({taxRate}%)</span>
+              <span>{money(tax)}</span>
+            </div>
+          </>
+        )}
+        <div className="commerce-grand-total">
+          <strong>Total</strong>
+          <strong>{money(total)}</strong>
+        </div>
+      </div>
+      {kind === 'sale' && (
+        <>
+          <Field label="Medio de pago">
+            <select value={payment} onChange={(event) => setPayment(event.target.value)}>
+              {Object.entries(paymentLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {payment === 'cash' ? (
+            <div className="commerce-cash">
+              <Field label="Efectivo recibido RD$">
+                <input
+                  type="number"
+                  min={total}
+                  step="0.01"
+                  required
+                  value={tendered}
+                  onChange={(event) => setTendered(event.target.value)}
+                />
+              </Field>
+              <button
+                type="button"
+                className="button ghost"
+                onClick={() => setTendered(total.toFixed(2))}
+              >
+                Monto exacto
+              </button>
+              <div>
+                Cambio <strong>{money(change)}</strong>
+              </div>
+            </div>
+          ) : (
+            <p className="commerce-inline-note">
+              Confirma el cobro en tu terminal o cuenta antes de registrar la venta. Esta aplicación
+              registra el medio de pago.
+            </p>
+          )}
+        </>
+      )}
+      {kind === 'quote' && (
+        <p className="commerce-inline-note">La cotización no reserva ni descuenta existencias.</p>
+      )}
+    </>
+  );
+  const editor = (
+    <form
+      id={formId}
+      onSubmit={submit}
+      className={`commerce-editor ${inline ? 'commerce-cashier-editor' : ''}`}
+    >
+      {inline && (
+        <div className="commerce-cashier-status">
+          <span>
+            <Barcode size={16} />
+            Lector USB/Bluetooth · Enter para agregar
+          </span>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() =>
+              cart.length || notes || tendered ? setClearRequested(true) : clearCart()
+            }
+          >
+            <Plus size={16} />
+            Nueva venta
+          </button>
+        </div>
+      )}
+      {editingDocument && (
+        <p className="commerce-inline-note">
+          Revisa las cantidades, la vigencia y el total antes de guardar. Se aplicarán los precios
+          del catálogo y las promociones vigentes que confirmes aquí. Se conserva el número de
+          cotización.
+        </p>
+      )}
+      {changedDocument && (
+        <ErrorNotice message="Esta cotización cambió. Vuelve al documento para revisar la versión actual; tus cambios no se guardarán encima." />
+      )}
+      {changedTax && (
+        <div className="commerce-price-change">
+          <p>La tasa vigente es {data.settings.tax_rate}%. Revisa el total antes de guardar.</p>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() => setTaxRate(data.settings.tax_rate)}
+          >
+            Usar tasa vigente
+          </button>
+        </div>
+      )}
+      <fieldset disabled={busy || refreshing} className="commerce-fieldset">
+        <div className="commerce-workbench">
+          <section className="commerce-catalog" aria-label="Catálogo de variantes">
+            <button
+              type="button"
+              className="button ghost commerce-refresh"
+              onClick={() => void refreshCatalog()}
+            >
+              {refreshing ? 'Actualizando…' : 'Actualizar catálogo y existencias'}
+            </button>
+            <div className="commerce-catalog-search">
+              <Search size={18} />
+              <input
+                autoFocus
+                ref={searchInput}
+                value={query}
+                placeholder="Nombre, SKU o código de barras…"
+                aria-label="Buscar productos para agregar"
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  const exact = exactCashierMatches(variants, query);
+                  if (exact.length === 1 && exact[0]) {
+                    if (addVariant(exact[0])) setQuery('');
+                  } else if (exact.length > 1)
+                    setValidation(
+                      'El código coincide con más de una variante. Selecciona el artículo correcto de los resultados.',
+                    );
+                  else if (filtered.length === 1 && filtered[0]) {
+                    if (addVariant(filtered[0].id)) setQuery('');
+                  } else setValidation('Selecciona una variante de los resultados.');
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              className="button secondary commerce-scan-button"
+              onClick={() => setScannerOpen(true)}
+            >
+              <ScanLine size={17} />
+              Escanear código de barras
+            </button>
+            <div className="commerce-category-row" role="group" aria-label="Filtrar categoría">
+              <button
+                type="button"
+                className={category === 'all' ? 'commerce-category selected' : 'commerce-category'}
+                aria-pressed={category === 'all'}
+                onClick={() => setCategory('all')}
+              >
+                Todos
+              </button>
+              {categories.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={
+                    category === value ? 'commerce-category selected' : 'commerce-category'
+                  }
+                  aria-pressed={category === value}
+                  onClick={() => setCategory(value)}
+                >
+                  {categoryName(value)}
+                </button>
+              ))}
+            </div>
+            <div className="commerce-product-grid">
+              {filtered.map((variant) => {
+                const product = products.get(variant.product_id);
+                const available = stock.get(variant.id) || 0;
+                const quantityInCart =
+                  cart.find((line) => line.variantId === variant.id)?.quantity || 0;
+                return (
+                  <button
+                    type="button"
+                    key={variant.id}
+                    className="commerce-product"
+                    disabled={
+                      (kind !== 'purchase' && variant.price <= 0) ||
+                      (kind === 'sale' && available <= quantityInCart)
+                    }
+                    onClick={() => addVariant(variant.id)}
+                  >
+                    <span className="commerce-product-visual">
+                      {product ? (
+                        <ProductImage productId={product.id} source={product.images[0]} alt="" />
+                      ) : (
+                        <Package size={28} />
+                      )}
+                      {quantityInCart > 0 && (
+                        <span className="commerce-cart-count">{quantityInCart}</span>
+                      )}
+                    </span>
+                    <strong>
+                      {product?.brand} {product?.model}
+                    </strong>
+                    <span className="muted">{variant.name}</span>
+                    <small>{variant.sku}</small>
+                    <span className="commerce-product-bottom">
+                      <b>
+                        {kind !== 'purchase' && variant.price <= 0
+                          ? 'Precio pendiente'
+                          : money(
+                              kind === 'purchase'
+                                ? (variant.cost ?? 0)
+                                : round(variant.price * (1 + taxRate / 100)),
+                            )}
+                      </b>
+                      <span className={available ? 'muted' : 'commerce-out'}>
+                        {Math.max(0, available - quantityInCart) > 0
+                          ? `${Math.max(0, available - quantityInCart)} disp.`
+                          : 'Agotado'}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="commerce-scan-feedback" role="status" aria-live="polite">
+              {scanMessage ||
+                `${filtered.length} variantes · ${kind === 'purchase' ? 'Costos unitarios' : 'Precios finales con ITBIS'}`}
+            </p>
+            {!filtered.length && (
+              <div className="commerce-catalog-empty">
+                <Package size={30} />
+                <strong>No encontramos variantes</strong>
+                <p>Prueba con otro nombre, SKU o código.</p>
+              </div>
+            )}
+          </section>
+          {inline && compact ? (
+            checkoutOpen && (
+              <Modal
+                title="Pedido y cobro"
+                variant="drawer"
+                onClose={busy ? () => undefined : () => setCheckoutOpen(false)}
+              >
+                <fieldset disabled={busy || refreshing} className="commerce-fieldset commerce-cart">
+                  {cartContent}
+                </fieldset>
+                <ErrorNotice message={validation || error} />
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy}
+                    onClick={() => setCheckoutOpen(false)}
+                  >
+                    Seguir agregando
+                  </button>
+                  <button
+                    type="submit"
+                    form={formId}
+                    className="button primary"
+                    disabled={busy || refreshing || !cart.length}
+                  >
+                    <Check size={17} />
+                    {busy ? 'Guardando…' : `Completar venta · ${money(total)}`}
+                  </button>
+                </div>
+              </Modal>
+            )
+          ) : (
+            <section className="commerce-cart" aria-label="Documento actual">
+              {cartContent}
+            </section>
+          )}
+        </div>
+      </fieldset>
+      <ErrorNotice message={validation || error} />
+      {inline && compact && (
+        <div className="commerce-mobile-checkout">
+          <div>
+            <strong>{money(total)}</strong>
+            <small>
+              {cart.reduce((sum, line) => sum + line.quantity, 0)} unidades en el pedido
+            </small>
+          </div>
+          <button type="button" className="button primary" onClick={() => setCheckoutOpen(true)}>
+            <ShoppingBag size={17} />
+            Ver pedido
+            <ChevronDown size={16} />
+          </button>
+        </div>
+      )}
+      {!(inline && compact) && (
         <div className="modal-footer">
           <button type="button" className="button secondary" disabled={busy} onClick={onClose}>
             Cancelar
@@ -1158,8 +1586,53 @@ function CreateDocument({
                     : 'Guardar cotización'}
           </button>
         </div>
-      </form>
+      )}
+    </form>
+  );
+  const content: ReactNode = inline ? (
+    <section className="commerce-cashier" aria-label="Caja de ventas">
+      {editor}
+    </section>
+  ) : (
+    <Modal
+      title={editingDocument ? `Editar ${documentNumber(editingDocument)}` : labels[kind].create}
+      onClose={busy ? () => undefined : onClose}
+      wide
+    >
+      {editor}
     </Modal>
+  );
+  return (
+    <>
+      {content}
+      {scannerOpen && (
+        <BarcodeScanner
+          title="Escanear producto para el pedido"
+          onDetected={scanCode}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
+      {clearRequested && (
+        <Modal title="Vaciar pedido" onClose={() => setClearRequested(false)}>
+          <p>
+            Se quitarán los artículos y los datos del cobro de este pedido. Todavía no se ha
+            registrado ninguna venta.
+          </p>
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => setClearRequested(false)}
+            >
+              Conservar pedido
+            </button>
+            <button type="button" className="button primary" onClick={clearCart}>
+              Vaciar pedido
+            </button>
+          </div>
+        </Modal>
+      )}
+    </>
   );
 }
 
@@ -1287,7 +1760,7 @@ function DocumentDetail({
     (contact) => contact.id === doc.contact_id && contact.kind === 'customer',
   );
   const recipientPhone = customer
-    ? customer.phone ?? ''
+    ? (customer.phone ?? '')
     : typeof doc.contact_snapshot.phone === 'string'
       ? doc.contact_snapshot.phone
       : '';
@@ -1368,6 +1841,12 @@ function DocumentDetail({
                     <strong>{paymentLabels[doc.payment_method] || doc.payment_method}</strong>
                   </>
                 )}
+                {doc.type === 'purchase' && doc.expected_at && (
+                  <>
+                    <span className="muted">Recepción esperada</span>
+                    <strong>{shortDate(`${doc.expected_at}T12:00:00-04:00`)}</strong>
+                  </>
+                )}
                 {doc.expires_at && (
                   <>
                     <span className="muted">Válida hasta</span>
@@ -1417,6 +1896,11 @@ function DocumentDetail({
                       {doc.type === 'purchase' && (
                         <td className="number">
                           {item.received_quantity} / {item.quantity}
+                          {(item.damaged_quantity ?? 0) > 0 && (
+                            <small className="commerce-table-meta commerce-error-text">
+                              {item.damaged_quantity} en cuarentena
+                            </small>
+                          )}
                         </td>
                       )}
                       <td className="number">{money(item.unit_price)}</td>
@@ -1480,6 +1964,7 @@ function DocumentDetail({
               </div>
             </div>
           </article>
+          {doc.type === 'purchase' && <PurchaseReceiptHistory purchaseId={doc.id} />}
           {data.permissions.manage_business &&
             Boolean(doc.legacy?.source) &&
             items
@@ -1604,6 +2089,11 @@ function DocumentDetail({
                   <button className="button ghost danger" onClick={() => setMode('cancel')}>
                     Cancelar pendiente
                   </button>
+                  {data.features?.includes('purchase_receipts_v1') && (
+                    <button className="button secondary" onClick={() => setMode('close_short')}>
+                      Cerrar con faltantes
+                    </button>
+                  )}
                   <button
                     className="button primary"
                     disabled={!canReceive}
@@ -1651,6 +2141,19 @@ function DocumentDetail({
             onSelect(id);
           }}
         />
+      ) : mode === 'close_short' ? (
+        data.permissions.purchase &&
+        data.features?.includes('purchase_receipts_v1') &&
+        ['pending', 'partial'].includes(doc.status) ? (
+          <ClosePurchaseShort
+            document={doc}
+            items={items}
+            operation={operation}
+            onDone={() => setMode('detail')}
+          />
+        ) : (
+          <ErrorNotice message="Esta orden ya no permite cerrar cantidades pendientes." />
+        )
       ) : mode === 'confirm_draft' ? (
         <ConfirmPurchaseDraft
           document={doc}
@@ -1679,142 +2182,6 @@ function DocumentDetail({
         />
       )}
     </Modal>
-  );
-}
-
-function ReceivePurchase({
-  document: doc,
-  items,
-  operation,
-  onDone,
-}: {
-  document: RetailDocument;
-  items: DocumentItem[];
-  operation: ReturnType<typeof useOperation>;
-  onDone: () => void;
-}) {
-  const { notify } = useRetail();
-  const { run, busy, error } = operation;
-  const [quantities, setQuantities] = useState<Record<string, string>>({});
-  const [notes, setNotes] = useState('');
-  const [validation, setValidation] = useState('');
-  const pending = items.filter((item) => item.quantity > item.received_quantity);
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setValidation('');
-    const lines = pending.map((item) => ({
-      item_id: item.id,
-      quantity: Number(quantities[item.id] || 0),
-    }));
-    if (
-      lines.some(
-        (line) =>
-          !Number.isSafeInteger(line.quantity) ||
-          line.quantity < 0 ||
-          line.quantity >
-            (pending.find((item) => item.id === line.item_id)?.quantity || 0) -
-              (pending.find((item) => item.id === line.item_id)?.received_quantity || 0),
-      )
-    ) {
-      setValidation('Revisa las cantidades: no pueden superar lo pendiente.');
-      return;
-    }
-    if (!lines.some((line) => line.quantity > 0)) {
-      setValidation('Indica al menos una unidad recibida.');
-      return;
-    }
-    if (
-      lines.some(
-        (line) =>
-          line.quantity > 0 && !pending.find((item) => item.id === line.item_id)?.variant_id,
-      )
-    ) {
-      setValidation(
-        'Los artículos sin vínculo con el inventario requieren revisión antes de recibirlos.',
-      );
-      return;
-    }
-    try {
-      await run('receive_purchase', {
-        id: doc.id,
-        items: lines.filter((line) => line.quantity > 0),
-        notes,
-      });
-      notify('Recepción registrada. Las existencias ya están actualizadas.');
-      onDone();
-    } catch {
-      /* El formulario se conserva. */
-    }
-  }
-  return (
-    <form onSubmit={submit} className="stack">
-      <div>
-        <h3>Recibir mercancía</h3>
-        <p className="muted">
-          Registra únicamente lo que llegó en esta entrega. El resto queda pendiente.
-        </p>
-      </div>
-      <fieldset disabled={busy} className="commerce-fieldset">
-        <div className="commerce-receive-list">
-          {pending.map((item) => (
-            <div className="commerce-receive-line" key={item.id}>
-              <Package size={24} />
-              <div>
-                <strong>{itemTitle(item)}</strong>
-                <p className="muted">
-                  {item.product_snapshot.name} · {item.product_snapshot.sku}
-                </p>
-                <small>
-                  {item.received_quantity} recibidas de {item.quantity} ·{' '}
-                  {item.quantity - item.received_quantity} pendientes
-                </small>
-              </div>
-              {!item.variant_id && (
-                <p className="commerce-inline-note">
-                  Sin vínculo con el inventario. Pendiente de revisión.
-                </p>
-              )}
-              <Field label="Recibidas hoy">
-                <input
-                  type="number"
-                  disabled={!item.variant_id}
-                  min="0"
-                  max={item.quantity - item.received_quantity}
-                  step="1"
-                  value={quantities[item.id] ?? '0'}
-                  onChange={(event) =>
-                    setQuantities((current) => ({ ...current, [item.id]: event.target.value }))
-                  }
-                  aria-label={`Recibir ${itemTitle(item)} ${item.product_snapshot.name}`}
-                />
-              </Field>
-            </div>
-          ))}
-        </div>
-        <Field label="Nota de recepción" hint="Opcional">
-          <textarea
-            rows={2}
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            maxLength={1000}
-            placeholder="Referencia de entrega o revisión de mercancía"
-          />
-        </Field>
-      </fieldset>
-      <ErrorNotice message={validation || error} />
-      <div className="modal-footer">
-        <button type="button" className="button secondary" disabled={busy} onClick={onDone}>
-          Cancelar
-        </button>
-        <button
-          className="button primary"
-          disabled={busy || !pending.some((item) => item.variant_id)}
-        >
-          <Check size={17} />
-          {busy ? 'Registrando…' : 'Confirmar recepción'}
-        </button>
-      </div>
-    </form>
   );
 }
 
