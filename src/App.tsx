@@ -58,7 +58,7 @@ const Promotions = lazy(() =>
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
 const Audit = lazy(() => import('./pages/Settings').then((m) => ({ default: m.AuditPage })));
 
-function Shell() {
+export function Shell() {
   const { data, refresh, refreshing, lastUpdated, notify } = useRetail();
   const [menu, setMenu] = useState(false);
   const { sidebar, openSidebar } = useMobileSidebar(menu, setMenu);
@@ -115,6 +115,7 @@ function Shell() {
       </a>
       {menu && (
         <button
+          type="button"
           className="sidebar-backdrop"
           aria-label="Cerrar menú"
           tabIndex={-1}
@@ -230,7 +231,7 @@ function Shell() {
             </button>
           </div>
         </header>
-        <main id="contenido" className="page-content" key={location.pathname}>
+        <main id="contenido" tabIndex={-1} className="page-content" key={location.pathname}>
           <Suspense
             fallback={
               <div className="page-skeleton" role="status" aria-label="Cargando pantalla">

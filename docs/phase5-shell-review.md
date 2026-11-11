@@ -4,19 +4,27 @@
 `origin/master` at `44e82d1dc6c83ab392814abc40fe7a173487457d`.
 
 The user-authorized slice is the shared app shell and an integration audit.
-The starter ZIP's proposed PR and Vercel preview are reference instructions for
-a later stage. This work stops locally for review, before push, merge,
-deployment, or any production Supabase operation.
+The initial local review checkpoint was completed before push or deployment.
+On 11 November 2026 the user approved proceeding with the branch and draft PR.
+The starter ZIP remains reference material; approval does not extend this slice
+to feature migrations, merging, a production release or production Supabase work.
+
+Before publication, the existing remote branch was found at `c10be10` with an
+earlier shell implementation. Its ancestry, role unit tests, review evidence,
+safe-area viewport, brand rewrite exclusion and complementary compatibility
+styles are retained. The approved local mobile-focus hook and browser regression
+harness are preserved in the reconciliation.
 
 ## Shell diff
 
 | Files | Change |
 | --- | --- |
-| `src/App.tsx` | Approved primary/business logos, exact S-mart Living footer, shell-scoped light/dark preference and appearance toggle, permission-bound mobile dock, modal mobile-navigation semantics and inert background. |
+| `src/App.tsx`, `src/App.test.tsx` | Retained five-role and permission-flag unit coverage; approved primary/business logos, exact S-mart Living footer, shell-scoped light/dark preference and appearance toggle, permission-bound mobile dock, modal mobile-navigation semantics and inert background. |
 | `src/design-system/useMobileSidebar.ts` | Move focus into mobile navigation, trap Tab/Shift+Tab, close on Escape, restore trigger focus, lock background scrolling and clear the modal on desktop resize. |
 | `src/main.tsx` | Import tokens, reusable primitives CSS and the shell adapter after the existing stylesheet. |
 | `src/design-system/tokens.css`, `components.css`, `SuiPrimitives.tsx` | Supplied Phase 4 foundations. Feature forms still use the existing shared components; wholesale primitive adoption is a later slice. |
 | `src/design-system/app-theme.css` | Persistent Cool Glass sidebar and 6px desktop frame, full-row active state, solid work surfaces, mobile Quiet Glass Dock and safe-area spacing. Bridge existing controls/dialogs/text/status surfaces to semantic colors; preserve dashboard highlight contrast; keep notifications above the dock; reset print to light tokens and remove shell padding/chrome. Includes reduced-motion/transparency and forced-color fallbacks. |
+| `index.html`, `vercel.json` | Retained safe-area viewport support and `/brand/` exclusion from the SPA rewrite. |
 | `public/brand/*.png` | All four original supplied assets, byte-identical to the ZIP. Primary and square assets are used by the shell; alternate and badge are retained for later adoption. |
 | `playwright.config.ts`, `tests/shell/*`, package manifests, `.gitignore` | Pinned Playwright development dependency, `npm run test:shell`, actual-app browser fixtures, ignored generated reports. No runtime dependency upgrades. |
 | `docs/roadmap_phase5.md`, `docs/phase5-integration-checklist.md` | Unmodified roadmap copied from the ZIP and source-backed Phase 1–4 comparison, including missing originals and remaining gates. |
@@ -44,9 +52,9 @@ with PGlite.
 | --- | --- |
 | Starter source-anchor preflight and Python patch test | Pass before application. |
 | Clean dependency installation | `npm ci --no-audit --no-fund` passed; existing dependency versions unchanged. |
-| `npm run check` | Pass: ESLint, app TypeScript, 193 Vitest tests in 12 files, local SQL tests and Vite production build. Build used a synthetic URL/key, not a production resource. |
+| `npm run check` | Pass: ESLint, app TypeScript, 201 Vitest tests in 13 files, local SQL tests and Vite production build. Build used a synthetic URL/key, not a production resource. |
 | Local SQL detail | 310 assertions (99 lifecycle + 55 legacy + 53 version + 103 retail); 6 Node test cases passed, 1 optional sanitized-profile rehearsal skipped because no profile was supplied. No remote SQL executed. |
-| `npm run test:shell` | Pass: dedicated harness TypeScript check and 28/28 actual-app Chromium tests; 46.1 seconds. Chromium 156.0.8078.79, Playwright 1.65.0. |
+| `npm run test:shell` | Pass: dedicated harness TypeScript check and 28/28 actual-app Chromium tests; 1.1 minutes after branch reconciliation. Chromium 156.0.8078.79, Playwright 1.65.0. |
 | Harness types after clean install | `npm run test:shell:types` passed again. |
 | Source and asset comparison | Auth wrapper, logout and route guards unchanged; all four brand assets match the supplied bytes. |
 | Diff whitespace | `git diff --check` passed. |
@@ -82,7 +90,11 @@ npm run test:shell
 git diff --check
 ```
 
-Review screenshots are copied outside the generated test directory:
+Current reconciliation screenshots are included in the branch:
+[desktop light](design/phase5-shell-current-desktop-light.png) and
+[mobile dark](design/phase5-shell-current-mobile-dark.png).
+
+Additional local review screenshots are copied outside the generated test directory:
 [desktop light](/workspace/phase5-review/shell-desktop-light.png),
 [desktop dark](/workspace/phase5-review/shell-desktop-dark.png),
 [mobile light](/workspace/phase5-review/shell-mobile-light.png),
@@ -112,3 +124,14 @@ Safari/iPhone behavior, assistive technology or full WCAG conformance. The
 existing PGlite suite validates SQL contracts in a synthetic local PostgreSQL
 engine. Full feature color/token adoption and comparison with the missing
 originals remain checklist items. Phase 6 advanced tracking remains deferred.
+
+## Preview configuration gate
+
+The existing branch preview for `c10be10` (`dpl_BP68dbkdK4VyfxGE59dSMU3DG8Lj`)
+failed with `failed_config_load`: “Falta la configuración pública de Supabase
+para compilar producción.” This Vite build mode is also used for preview bundles.
+The missing Preview public URL/key must be supplied from a dedicated
+non-production Supabase project; its hostname also needs a preview-specific CSP.
+The production CSP and configuration guard are preserved. No production bindings
+were copied or changed, and no remote backend requests were used for QA.
+A generated preview URL alone does not establish a working or safely isolated app.

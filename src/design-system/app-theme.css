@@ -150,7 +150,7 @@
 .app-layout .sidebar-user small { color: var(--sl-glass-muted); }
 .app-layout .sidebar-user .icon-button { color: #EDF7FF; }
 .app-layout .sidebar-user .icon-button:hover { background: rgba(239,248,255,.13); }
-.app-layout .sidebar .user-avatar { background: #057EB9; color: #FFF; }
+.app-layout .sidebar .user-avatar { background: var(--sl-brand-blue); color: #FFF; }
 
 /* Solid content surfaces, not translucent financial tables or forms. */
 .app-layout .panel,
@@ -199,6 +199,7 @@
   background: var(--sl-surface);
   border-color: var(--sl-line);
 }
+.app-layout :is(input, select, textarea) { border-radius: var(--sl-radius-control); }
 .app-layout :is(input, select, textarea)::placeholder { color: var(--sl-muted); opacity: 1; }
 .app-layout :is(input, select, textarea):disabled {
   color: var(--sl-muted);
@@ -208,43 +209,75 @@
   border-color: var(--sl-focus);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--sl-focus) 18%, transparent);
 }
-.app-layout :is(a, button, summary):focus-visible {
+.app-layout :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 3px solid var(--sl-focus);
   outline-offset: 3px;
 }
+.app-layout .sidebar :focus-visible { outline-color: #ACEEFF; }
+.app-layout .sidebar nav { scroll-padding-block: 6px; }
+.app-layout .app-main .icon-button { color: var(--sl-muted); }
+.app-layout .app-main .icon-button:hover { color: var(--sl-accent); }
+.app-layout .button:not(.primary, .danger, .ghost, .light) {
+  background: var(--sl-surface);
+  color: var(--sl-ink);
+  border-color: var(--sl-line);
+}
+.app-layout .button.secondary:hover { background: var(--sl-surface-subtle); }
+.app-layout .modal::backdrop { background: rgba(7,24,44,.55); }
+.app-layout .search-field input,
+.app-layout .commerce-catalog-search input { background: transparent; }
+.app-layout .modal { border-radius: var(--sl-radius-panel); }
 .app-layout .page-content :is(.muted, small, code, .table-meta, .empty-state p, .product-cell small,
+  .inventory-alert small, .alert-quantity strong span,
   .contact-detail p, .report-filters p, .bar-row > div:first-child,
   .payment-list > div:not(.empty-state), .role-guide p,
   .commerce-product > small, .commerce-line-controls label, .commerce-page-note,
   .commerce-document-heading p, .commerce-document-heading small,
   .commerce-document-eyebrow, .commerce-document-notes, .commerce-detail-list dt,
   .variant-editor legend, .advanced-fields summary, .adjustment-preview > span,
-  .tabs > button, .commerce-convert-summary p, .commerce-return-total p) {
+  .commerce-catalog-empty, .commerce-cart-empty, .commerce-pick-sale small,
+  .commerce-return-estimate span, .commerce-convert-summary p, .commerce-return-total p) {
   color: var(--sl-muted);
 }
-.app-layout :is(.product-cell strong, .stock-cell > strong, .data-table td > strong,
+.app-layout :is(.product-cell strong, .stock-cell > strong, .data-table td strong,
   .data-table .numeric, .payment-list strong, .bar-row strong, .adjustment-preview strong) {
   color: var(--sl-ink);
+}
+.app-layout :is(.data-table .number, .stock-cell > strong, .payment-list strong) {
+  font-variant-numeric: tabular-nums;
 }
 .app-layout :is(.catalog-price-preview, .note-box, .variant-editor,
   .panel-footer-link, .product-image, .empty-icon, .commerce-product-visual,
   .commerce-inline-note, .commerce-linked-note, .commerce-convert-summary,
-  .commerce-return-total, .role-guide, .adjustment-preview, .whatsapp-recipient, .whatsapp-hint) {
+  .commerce-return-total, .commerce-sale-icon, .role-guide, .adjustment-preview,
+  .whatsapp-recipient, .whatsapp-hint) {
   background: var(--sl-surface-subtle);
   color: var(--sl-ink);
   border-color: var(--sl-line);
 }
+.app-layout :is(.product-thumbnail, .bar-track) {
+  background: var(--sl-surface-subtle);
+  border-color: var(--sl-line);
+  color: var(--sl-muted);
+}
+.app-layout .note-box svg { color: var(--sl-accent); }
+.app-layout .bar-track > span { background: var(--sl-accent); }
+.app-layout .tabs > button { color: var(--sl-muted); }
+.app-layout .tabs > button[aria-selected='true'] { color: var(--sl-accent); }
 .app-layout :is(.commerce-product, .commerce-category, .commerce-pick-sale,
   .commerce-catalog-search, .search-field) {
   background: var(--sl-surface);
   color: var(--sl-ink);
   border-color: var(--sl-line);
 }
-.app-layout .commerce-category.selected {
+.app-layout .commerce-category.selected,
+.app-layout .commerce-cart-count {
   background: var(--sl-accent);
   color: var(--sl-on-accent);
   border-color: var(--sl-accent);
 }
+.app-layout .commerce-pick-sale:hover { background: var(--sl-surface-subtle); }
+.app-layout .commerce-product:hover:not(:disabled) { border-color: var(--sl-accent); }
 .app-layout .commerce-tabs button { color: var(--sl-muted); }
 .app-layout .commerce-tabs button.active { color: var(--sl-accent); border-color: var(--sl-accent); }
 .app-layout .panel.dark-panel {
@@ -259,21 +292,28 @@
   .badge.status-delivered, .success-notice, .operations-promo-current, .warranty-active) {
   color: var(--sl-success);
   background: color-mix(in srgb, var(--sl-success) 10%, var(--sl-surface));
+  border-color: color-mix(in srgb, var(--sl-success) 25%, var(--sl-surface));
 }
 .app-layout :is(.badge.warning, .badge.status-pending, .badge.status-partial,
   .badge.status-scheduled, .commerce-warning, .commerce-price-change, .warning-notice,
-  .operations-promo-expired, .warranty-expiring) {
+  .operations-promo-expired, .warranty-expiring, .alert-marker) {
   color: var(--sl-warning);
   background: color-mix(in srgb, var(--sl-warning) 10%, var(--sl-surface));
 }
 .app-layout :is(.badge.danger, .badge.status-voided, .badge.status-failed,
-  .error-notice, .warranty-expired) {
+  .error-notice, .warranty-expired, .alert-marker.danger) {
   color: var(--sl-danger);
   background: color-mix(in srgb, var(--sl-danger) 10%, var(--sl-surface));
+  border-color: color-mix(in srgb, var(--sl-danger) 25%, var(--sl-surface));
 }
 .app-layout :is(.badge.status-in_transit, .badge.status-open, .operations-promo-upcoming) {
   color: var(--sl-accent);
   background: var(--sl-accent-soft);
+}
+.app-layout :is(.badge.status-returned, .badge.status-partially_returned,
+  .badge.status-cancelled, .warranty-none, .operations-promo-inactive) {
+  color: var(--sl-muted);
+  background: var(--sl-surface-subtle);
 }
 .app-layout :is(.commerce-out, .commerce-error-text) { color: var(--sl-danger); }
 
@@ -353,6 +393,20 @@
   .app-layout .sl-bottom-dock { background:#E8F0FA; backdrop-filter:none; -webkit-backdrop-filter:none; }
   .app-layout[data-theme="dark"] .sl-bottom-dock { background:#1B314B; }
 }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .app-layout .sl-bottom-dock { background: #E8F0FA; }
+  .app-layout[data-theme="dark"] .sl-bottom-dock { background: #1B314B; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-layout .modal::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (max-width: 380px) {
+  .app-layout .topbar { padding-inline: 12px; gap: 8px; }
+  .app-layout .topbar .toolbar { min-width: 0; gap: 4px; }
+  .app-layout .topbar .breadcrumb { min-width: 0; gap: 5px; }
+  .app-layout .topbar .breadcrumb strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app-layout .topbar .sync-status { display: none; }
+}
 @media (forced-colors:active) {
   .app-layout .sidebar {border-right:1px solid CanvasText;background:Canvas;color:CanvasText;}
   .app-layout .sidebar :is(a,button,.nav-caption) {color:CanvasText;}
@@ -385,6 +439,7 @@
     --sl-danger: #B52D42;
     --sl-shadow-card: none;
   }
-  .app-layout .page-content { padding: 0; }
+  .app-layout .page-content { padding: 0; min-height: 0; }
   .app-layout .app-main { overflow: visible; }
+  .app-layout :is(.panel, .stat-card) { border: 0; box-shadow: none; }
 }

@@ -8,9 +8,9 @@ This audit compares the starter ZIP's `roadmap_phase5.md` (updated 10 November 2
 
 ## Scope and source authority
 
-The user's request authorizes a local branch, a Phase 1–4 integration audit, and implementation/testing of the shared app shell only. Stop for review before any push, merge, deployment, or production Supabase operation.
+The initial request authorized a local branch, a Phase 1–4 integration audit, and implementation/testing of the shared app shell, with a pause for review before publication. That pause was completed. On 11 November 2026 the user approved proceeding with committing the branch and opening a draft PR. Merging, production deployment and production Supabase operations remain outside this continuation.
 
-The ZIP is implementation/reference material. Its README recommends a later commit, draft PR, and Vercel preview; those steps are outside this request. Its historic GitHub integration 403 is not a prerequisite for creating a local Git branch. The roadmap's statements that prototypes passed tests describe those earlier standalone prototypes, not this React integration.
+The ZIP is implementation/reference material. Its README recommends a commit, draft PR and Vercel preview; the user's subsequent approval governs the continuation. Its historic GitHub integration 403 is not a prerequisite for creating a local Git branch. The roadmap's statements that prototypes passed tests describe those earlier standalone prototypes, not this React integration.
 
 The first slice adds the shared shell and supplied design-system foundations locally. It does not migrate Inventory 2.0, Sales 2.0, Purchases & Deliveries 2.0, or customer-address features. Existing authentication, permission guards, transaction commands, data contracts, and business logic must remain intact. Use local fixtures or non-production test resources.
 

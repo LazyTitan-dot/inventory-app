@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm ci",
-  "rewrites": [{ "source": "/((?!assets/|icons/|favicon.svg|manifest.json|sw.js).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!assets/|brand/|icons/|favicon.svg|manifest.json|sw.js).*)", "destination": "/index.html" }],
   "headers": [
     { "source": "/(.*)", "headers": [
       { "key": "X-Content-Type-Options", "value": "nosniff" },
