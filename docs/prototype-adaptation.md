@@ -48,6 +48,8 @@ further receipts. Old command operation UUIDs retain exact replay semantics.
 - `npm run check`: lint, application TypeScript, 263 unit tests, 388 local SQL
   assertions, 15 preview-output regressions and build passed. One optional
   sanitized legacy-profile rehearsal remains skipped without that input.
+- [GitHub Actions run 10](https://github.com/LazyTitan-dot/inventory-app/actions/runs/43034504740)
+  passed for release commit `d3e4ed0`.
 - Browser coverage: all 37 Chromium scenarios passed across the full integration
   run and focused rerun of two corrected accessible-name selectors. This includes
   320/390/768/1024/1440px themes, permission routing, drawer geometry/focus,
@@ -80,4 +82,41 @@ only after staging validation, then deploy with the production environment.
 Retain the previous production deployment for traffic rollback. A rollback keeps
 the new tables/history; it must not delete customer addresses or receipt records.
 
-Live production release details and real UI evidence are added after completion.
+## Production release
+
+Released directly from commit `d3e4ed05c095e91bd271ab9b39490894424cc4e2` on
+11 November 2026. Deployment `dpl_A7b9zrZmnavTx3fgtEiEfhPXSaeR` is `READY`,
+target `production`; [the production URL](https://inventory-app-nine-navy.vercel.app)
+resolves to that deployment. PR #1 remains unmerged.
+
+The same staging-validated migration was applied to production
+`twkpgzxkzdtgkkuahntr`, with bounded lock/statement timeouts. All 13 existing retail
+tables retained identical row counts and hashes after excluding only the newly
+added default columns. Existing products, documents, stock, contacts, memberships,
+audit and revision data were unchanged. Production bootstrap passed a read-only
+owner-role impersonation check and advertises both capabilities, initially with
+empty new address/receipt arrays. No production test records were created.
+
+The production root and all six referenced JS/CSS assets returned HTTP 200 with
+the expected content types and production-only CSP. The main bundle identifies
+the production backend; its environment's public key was separately verified
+against enabled production project keys. No staging backend appears in those
+assets. Camera is same-origin only; microphone/geolocation remain disabled.
+Temporary verification access was revoked after checks. No function error/fatal
+logs were returned for this deployment in the inspected window; this static SPA's
+logs do not establish the absence of client errors. Full authenticated browser
+transactions were verified against real staging, not production credentials.
+
+Security advisors introduced no error-level findings. The pre-existing
+[leaked-password protection warning](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
+remains; informational
+[RLS-without-policy findings](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)
+reflect denied direct table access and controlled RPCs. No unrelated Auth policy
+was changed.
+
+All disposable staging business fixtures were removed in a transaction guarded
+by their exact IDs, unique synthetic tag and journaled operations. Products,
+documents, contacts, deliveries, address-book rows and receipt rows returned to
+zero; the approved test Auth user and owner membership remain. A cleanup audit
+entry is retained. Evidence: `/workspace/adaptation-evidence/production-release.json`,
+`staging-api.json`, `live-ui-results.json` and responsive/receipt/proof screenshots.

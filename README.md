@@ -2,7 +2,9 @@
 
 Aplicación en español para una tienda de electrodomésticos en República Dominicana. React, TypeScript, Vite y Supabase (PostgreSQL, Auth, Realtime y Storage). Importes en pesos dominicanos; fechas operativas en `America/Santo_Domingo`.
 
-Publicada en [inventory-app-nine-navy.vercel.app](https://inventory-app-nine-navy.vercel.app/). El corte de datos se completó el 24 de septiembre de 2026, los recorridos principales se verificaron con una sesión real en producción y se limpiaron los registros de prueba. **Astra Ultra: aprobado para el alcance operativo verificado de una tienda única**, sobre la revisión de código `b4576d15d8c3fffd1399cff264e439212fc9722c`. No quedan pendientes de implementación ni pruebas principales de ese alcance. La aprobación se limita a la evidencia documentada y no es una garantía absoluta. Consultar [el registro de verificación](docs/verification-log.md) y las limitaciones vigentes.
+Publicada en [inventory-app-nine-navy.vercel.app](https://inventory-app-nine-navy.vercel.app/). La adaptación completa del prototipo se publicó el 11 de noviembre de 2026 desde `d3e4ed05c095e91bd271ab9b39490894424cc4e2`, con actualización aditiva del esquema y conservación verificada de los datos existentes. Consultar [la adaptación y evidencia actual](docs/prototype-adaptation.md).
+
+El corte de datos del 24 de septiembre de 2026 y la revisión operativa de `b4576d15d8c3fffd1399cff264e439212fc9722c` conservan su [registro histórico de verificación](docs/verification-log.md). Esa revisión corresponde a dicha versión y no constituye una garantía absoluta de versiones posteriores.
 
 ## Operación diaria
 
