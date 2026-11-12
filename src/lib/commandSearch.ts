@@ -1,5 +1,6 @@
 import type { RetailData } from './contracts';
 import { categoryName, matches } from './format';
+import { getVariantBarcodes } from './barcode';
 
 export type CommandResult = { id: string; label: string; detail: string; to: string; kind: 'action' | 'page' | 'product' | 'contact' | 'document' };
 
@@ -33,7 +34,7 @@ export function commandResults(data: RetailData, query: string): CommandResult[]
   const products = new Map(data.products.filter((product) => product.active).map((product) => [product.id, product]));
   const variants = data.variants.filter((variant) => {
     const product = products.get(variant.product_id);
-    return variant.active && product && matches(query, product.brand, product.model, product.category, variant.name, variant.sku, variant.barcode);
+    return variant.active && product && matches(query, product.brand, product.model, product.category, variant.name, variant.sku, ...getVariantBarcodes(variant));
   }).slice(0, 8);
   for (const variant of variants) {
     const product = products.get(variant.product_id)!;

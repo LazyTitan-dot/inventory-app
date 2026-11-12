@@ -1,4 +1,5 @@
 import type { RetailData } from './contracts';
+import { barcodeMatches } from './barcode';
 
 export interface CashierLine {
   variantId: string;
@@ -48,7 +49,7 @@ export function cashierPrefill(
 }
 
 export function exactCashierMatches(
-  variants: Pick<RetailData['variants'][number], 'id' | 'sku' | 'barcode'>[],
+  variants: Pick<RetailData['variants'][number], 'id' | 'sku' | 'barcode' | 'barcode_aliases'>[],
   input: string,
 ): string[] {
   const code = input.trim().toLocaleLowerCase('es');
@@ -57,7 +58,7 @@ export function exactCashierMatches(
     .filter(
       (item) =>
         item.sku.trim().toLocaleLowerCase('es') === code ||
-        item.barcode?.trim().toLocaleLowerCase('es') === code,
+        barcodeMatches(item, input),
     )
     .map((item) => item.id);
 }

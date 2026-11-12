@@ -9,8 +9,8 @@ const item = (overrides: Partial<DocumentItem> = {}): DocumentItem => ({
   unit_price: 20, unit_cost: 20, discount: 0, tax: 0, line_total: 100, parent_item_id: null,
   ...overrides,
 });
-const variants: Pick<Variant, 'id' | 'sku' | 'barcode'>[] = [
-  { id: 'variant-a', sku: 'CURRENT-A', barcode: 'CURRENT-BAR-A' },
+const variants: Pick<Variant, 'id' | 'sku' | 'barcode' | 'barcode_aliases'>[] = [
+  { id: 'variant-a', sku: 'CURRENT-A', barcode: 'CURRENT-BAR-A', barcode_aliases: ['6946087393113'] },
   { id: 'variant-b', sku: 'FOREIGN-SKU', barcode: 'FOREIGN-BAR' },
 ];
 const draft = (quantity: string, damagedQuantity = '0'): ReceiptDraft => ({ 'line-a': { quantity, damagedQuantity } });
@@ -59,7 +59,7 @@ describe('purchase receiving quantities', () => {
 
 describe('purchase receipt scanning', () => {
   it('accepts exact stored and current barcode/SKU values case-insensitively', () => {
-    for (const code of ['BAR-A', ' sku-a ', 'CURRENT-A', 'current-bar-a']) {
+    for (const code of ['BAR-A', ' sku-a ', 'CURRENT-A', 'current-bar-a', '6946087393113']) {
       const counted = scan(code);
       expect(counted.accepted).toBe(true);
       expect(counted.draft['line-a']?.quantity).toBe('1');

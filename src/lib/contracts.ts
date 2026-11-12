@@ -27,6 +27,7 @@ export const variantSchema = z.object({
   name: z.string(),
   sku: z.string(),
   barcode: optionalText,
+  barcode_aliases: z.array(z.string()).max(10).optional(),
   cost: amount.optional(),
   price: amount,
   min_stock: z.number(),

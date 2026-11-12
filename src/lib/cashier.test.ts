@@ -77,4 +77,10 @@ describe('cashier URL and scanner boundaries', () => {
     expect(exactCashierMatches(variants, 'SKU')).toEqual([]);
     expect(exactCashierMatches(variants, ' ')).toEqual([]);
   });
+  it('selects the same exact variant with its internal and manufacturer codes', () => {
+    const variants = [{ ...data.variants[0]!, barcode_aliases: ['6946087393113'] }];
+    expect(exactCashierMatches(variants, ' 6946087393113 ')).toEqual(['variant']);
+    expect(exactCashierMatches(variants, '00123')).toEqual(['variant']);
+    expect(exactCashierMatches(variants, '6946087')).toEqual([]);
+  });
 });

@@ -54,6 +54,7 @@ import {
   PurchaseReceiptHistory,
 } from '../components/PurchaseReceiving';
 import { cashierPrefill, exactCashierMatches } from '../lib/cashier';
+import { getVariantBarcodes } from '../lib/barcode';
 import './commerce.css';
 
 type Kind = 'sale' | 'purchase' | 'quote';
@@ -650,7 +651,7 @@ function CreateDocument({
     const product = products.get(variant.product_id);
     return (
       (category === 'all' || product?.category === category) &&
-      matches(query, variant.sku, variant.barcode, variant.name, product?.brand, product?.model)
+      matches(query, variant.sku, ...getVariantBarcodes(variant), variant.name, product?.brand, product?.model)
     );
   });
   if (kind === 'sale')
