@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { AlertTriangle, Camera, Check, Package, Printer, ScanLine } from 'lucide-react';
+import { AlertTriangle, Camera, Check, CheckCircle2, CircleDashed, Package, Printer, ScanLine } from 'lucide-react';
 import type { DocumentItem, RetailDocument } from '../lib/contracts';
 import { dateTime, documentNumber, money } from '../lib/format';
 import { printBarcodeLabel } from '../lib/barcode';
@@ -7,6 +7,7 @@ import {
   countPurchaseBarcode,
   preparePurchaseReceipt,
   purchaseItemTitle,
+  purchaseReferenceProgress,
   remainingPurchaseQuantity,
   type ReceiptDraft,
   type ReceiptScan,
@@ -24,6 +25,21 @@ type PurchaseFormProps = {
   onDone: () => void;
 };
 
+export function PurchaseReferenceProgress({ item, draft, enhanced, recent = false }: { item: DocumentItem; draft: ReceiptDraft; enhanced: boolean; recent?: boolean }) {
+  const progress = purchaseReferenceProgress(item, draft, enhanced);
+  const label = !progress.valid ? 'Revisa las cantidades' : progress.complete ? 'Referencia completa' : `Faltan ${progress.remaining} ${progress.remaining === 1 ? 'unidad' : 'unidades'}`;
+  return (
+    <div className={`purchase-reference-progress${progress.complete ? ' complete' : ''}${recent ? ' recent' : ''}`}>
+      {progress.complete ? <CheckCircle2 size={22} aria-hidden="true" /> : <CircleDashed size={20} aria-hidden="true" />}
+      <div className="purchase-reference-copy">
+        <strong>{purchaseItemTitle(item)} · {item.product_snapshot.name}</strong>
+        <span>{label}{enhanced && progress.valid && progress.damaged > 0 ? ` · ${progress.damaged} dañadas` : ''}</span>
+      </div>
+      <strong className="purchase-reference-count">{progress.valid ? progress.total : '—'} / {progress.target}</strong>
+    </div>
+  );
+}
+
 export function ReceivePurchase({ document: doc, items, operation, onDone }: PurchaseFormProps) {
   const { data, notify } = useRetail();
   const { run, busy, error } = operation;
@@ -38,6 +54,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
   const [notes, setNotes] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [lastItemId, setLastItemId] = useState<string | null>(null);
   const [validation, setValidation] = useState('');
   const current = data.documents.find((document) => document.id === doc.id);
   const stale = !current || current.updated_at !== openedVersion;
@@ -49,6 +66,8 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
   const pendingUnits = pending.reduce((sum, item) => sum + remainingPurchaseQuantity(item), 0);
   const countedUnits = result.good + result.damaged;
   const complete = pendingUnits > 0 && !result.error && countedUnits === pendingUnits;
+  const lastItem = pending.find(item => item.id === lastItemId);
+  const completedReferences = pending.filter(item => purchaseReferenceProgress(item, draft, enhanced).complete).length;
 
   useEffect(() => () => {
     const audio = audioRef.current;
@@ -93,6 +112,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
   function updateDraft(next: ReceiptDraft) {
     draftRef.current = next;
     setDraft(next);
+    setLastItemId(null);
     setValidation('');
   }
   function countCode(value: string) {
@@ -107,6 +127,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
       setCode('');
       playScanSound();
     }
+    setLastItemId(counted.accepted ? counted.itemId ?? null : null);
     setFeedback(counted.message);
     if (!scannerOpen) codeInput.current?.focus();
     return counted.accepted;
@@ -177,6 +198,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
           <p className="purchase-receiving-feedback" role="status">
             {complete ? '¡Todas las unidades contabilizadas! Revisa y confirma la recepción.' : feedback || 'El lector suma una unidad conforme al conteo provisional. Los escaneos muy rápidos del mismo código se bloquean.'}
           </p>
+          {lastItem && <div role="status" aria-live="polite"><PurchaseReferenceProgress item={lastItem} draft={draft} enhanced={enhanced} recent /></div>}
           <div className="purchase-receiving-summary purchase-receiving-summary-top" role="status" aria-live="polite">
             <span>Conteo provisional</span><strong>{countedUnits} / {pendingUnits} unidades · {result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</strong>
           </div>
@@ -189,10 +211,11 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
               return (
                 <article className="purchase-receiving-line" key={item.id}>
                   <div className="purchase-receiving-line-head">
-                    <Package size={23} aria-hidden="true" />
+                    {purchaseReferenceProgress(item, draft, enhanced).complete ? <CheckCircle2 className="purchase-line-complete-icon" size={23} aria-hidden="true" /> : <Package size={23} aria-hidden="true" />}
                     <div>
                       <strong>{purchaseItemTitle(item)}</strong>
                       <p className="muted">{item.product_snapshot.name} · {item.product_snapshot.sku}</p>
+                      {purchaseReferenceProgress(item, draft, enhanced).complete && <p className="purchase-line-complete-label">Referencia completa · Conteo provisional</p>}
                     </div>
                     <button
                       type="button" className="button ghost" disabled={!barcode}
@@ -259,10 +282,11 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
             <span>Conteo provisional</span><strong>{countedUnits} / {pendingUnits}</strong><span>{result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</span>
           </div>
           <progress aria-label="Progreso de la recepción" max={Math.max(1, pendingUnits)} value={countedUnits} />
-          <p role="status" aria-live="polite">{complete ? 'Conteo completo. No se ha guardado la recepción.' : feedback || 'Aún no se ha guardado la recepción.'} · {Math.max(0, pendingUnits - countedUnits)} pendientes</p>
-          <details>
-            <summary>Ver conteo por referencia ({pending.length})</summary>
-            <ul>{pending.map(item => <li key={item.id}><span>{item.product_snapshot.name} · {item.product_snapshot.sku}</span><strong>{draft[item.id]?.quantity || '0'} conformes{enhanced ? ` · ${draft[item.id]?.damagedQuantity || '0'} dañadas` : ''} / {remainingPurchaseQuantity(item)}</strong></li>)}</ul>
+          <p role="status" aria-live="polite">{complete ? 'Conteo completo. No se ha guardado la recepción.' : lastItem ? 'Unidad contabilizada. Recepción sin guardar.' : feedback || 'Aún no se ha guardado la recepción.'} · {Math.max(0, pendingUnits - countedUnits)} pendientes</p>
+          {lastItem && <div role="status" aria-live="polite"><PurchaseReferenceProgress item={lastItem} draft={draft} enhanced={enhanced} recent /></div>}
+          <details open>
+            <summary>Referencias completas: {completedReferences} / {pending.length}</summary>
+            <ul className="purchase-reference-list">{pending.map(item => <li key={item.id}><PurchaseReferenceProgress item={item} draft={draft} enhanced={enhanced} /></li>)}</ul>
           </details>
         </section>
       } />}
