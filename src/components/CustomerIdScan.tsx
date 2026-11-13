@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import {readPaddleAddress} from '../lib/customerPaddleClient';
 import { CustomerLiveScanner } from './CustomerLiveScanner';
 import {usableLiveAddress,usablePlace} from '../lib/customerLiveQuality';
 import type {LiveIdentity} from '../lib/customerLiveIdentity';
@@ -22,7 +23,7 @@ export function CustomerIdScan({onApply,disabled}:{onApply:(scan:CustomerScan)=>
   if(!photo)return;
   setBusy(true);setResult(null);setStatus(identity?'Cédula detectada. Leyendo dirección…':'Preparando imagen…');
   try{
-    if(base&&!fromUpload){const {readLiveAddress}=await import('../lib/customerLiveAddressOcr');const addr=await readLiveAddress(photo,setStatus);setResult({...base,...addr});setStatus(addr.warning||'Dirección leída. Confirma los datos antes de aplicarlos.');return;}
+    if(base&&!fromUpload){const addr=await readPaddleAddress(photo,setStatus);setResult({...base,...addr});setStatus(addr.warning||'Dirección leída. Confirma los datos antes de aplicarlos.');return;}
     const {scanCustomerId}=await import('../lib/customerIdScanner');const r=await scanCustomerId(photo,scanMode,setStatus,"upload");
     if(base){
       const conflict=!!r.ced&&r.ced.replace(/\D/g,'')!==identity!.ced;

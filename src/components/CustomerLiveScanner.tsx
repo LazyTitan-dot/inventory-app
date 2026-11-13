@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, CameraOff, CheckCircle2 } from 'lucide-react';
-import jsQR from 'jsqr';
-import { BrowserMultiFormatReader } from '@zxing/browser';
-import { BarcodeFormat, DecodeHintType } from '@zxing/library';
+import {prepareZXingModule,readBarcodes} from 'zxing-wasm/reader';
+import {preloadCustomerPaddle} from '../lib/customerPaddleClient';
 import { cameraFailureMessage } from '../lib/cameraScanner';
 import './customer-live-scanner.css';
 import {addressGuide} from '../lib/customerLiveAddress';
@@ -55,19 +54,19 @@ export function CustomerLiveScanner({onCapture,onClose,initialIdentity=null}:{on
     if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){setMessage('La cámara necesita HTTPS y permiso del navegador. Abre la app en Safari o Chrome, o sube una foto.');return;}
     const token=++generation.current;active.current=true;setPhase('starting');setMessage('Permite el acceso a la cámara.');
     try{
-      const media=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}},audio:false});
+      const media=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
       if(token!==generation.current){media.getTracks().forEach(t=>t.stop());return;}
       stream.current=media;const v=video.current;if(!v)throw Error('Cámara no disponible');
       for(const t of media.getVideoTracks())t.addEventListener('ended',()=>{if(token===generation.current){stop();setMessage('El acceso a la cámara terminó. Vuelve a activarla.');}},{once:true});
       v.srcObject=media;await v.play();if(token!==generation.current)return;
       const small=document.createElement('canvas'),sc=small.getContext('2d',{willReadFrequently:true});
       if(!sc)throw Error('No se pudo preparar la cámara');
-      const reader=new BrowserMultiFormatReader(new Map<DecodeHintType,unknown>([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.CODABAR,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39]],[DecodeHintType.TRY_HARDER,true]]));
-      let previous='',matches=0,last=0;
+      if(!initialIdentity)await prepareZXingModule({overrides:{locateFile:()=>'/assets/customer-paddle-v4/zxing_reader.wasm'},fireImmediately:true});if(token!==generation.current)return;
+      let last=0;
       const addressStep=(id:LiveIdentity)=>{pending.current=id;setPhase('address');setMessage('Acerca solo el bloque de dirección, sector y municipio. Cuando el texto se vea nítido, pulsa Capturar dirección.');};
-      if(initialIdentity)addressStep(initialIdentity);
+      if(initialIdentity){addressStep(initialIdentity);void preloadCustomerPaddle();}
       else {setPhase('ready');setMessage('Acerca el QR de la nueva cédula o el código de barras de la anterior. No necesitas mostrar toda la tarjeta.');}
-      const tick=(time:number)=>{
+      const tick=async(time:number)=>{
         if(token!==generation.current)return;
         if(v.videoWidth&&v.videoHeight)setRatio(v.videoWidth/v.videoHeight);
         if(!pending.current&&time-last>=150&&v.readyState>=2&&v.videoWidth&&v.videoHeight){
@@ -76,13 +75,12 @@ export function CustomerLiveScanner({onCapture,onClose,initialIdentity=null}:{on
           if(small.width!==dw||small.height!==dh){small.width=dw;small.height=dh;}
           sc.drawImage(v,0,0,dw,dh);
           let id:LiveIdentity|null=null;
-          try{const pixels=sc.getImageData(0,0,dw,dh),q=jsQR(pixels.data,dw,dh,{inversionAttempts:'dontInvert'});
-            if(q)id=readIdentityCode(q.data,'qr');
-            if(!id){try{id=readIdentityCode(reader.decodeFromCanvas(small).getText(),'barcode');}catch{/* Continue scanning. */}}
+          try{
+            const hits=await readBarcodes(sc.getImageData(0,0,dw,dh),{formats:['QRCode','Codabar','Code128','Code39'],tryHarder:true,maxNumberOfSymbols:4});
+            if(token!==generation.current)return;
+            for(const hit of hits){id=readIdentityCode(hit.text,hit.format==='QRCode'?'qr':'barcode');if(id)break;}
           }catch{/* Continue scanning. */}
-          const key=id?id.mode+'|'+id.ced+'|'+id.full:'';
-          matches=key&&key===previous?matches+1:key?1:0;previous=key;
-          if(id&&matches>=2){addressStep(id);beep();}
+          if(id){addressStep(id);beep();void preloadCustomerPaddle();}
         }
         raf.current=requestAnimationFrame(tick);
       };
@@ -102,7 +100,7 @@ export function CustomerLiveScanner({onCapture,onClose,initialIdentity=null}:{on
   return <section className="customer-live stack" aria-label="Escáner en vivo">
     <div className={'barcode-readiness '+(phase==='ready'||phase==='address'?'ready':phase==='detected'?'complete':'')} role="status" aria-live="polite">
       {phase==='detected'?<CheckCircle2 size={22} aria-hidden="true"/>:<span className="barcode-readiness-dot" aria-hidden="true"/>}
-      <div><strong>{phase==='detected'?'Cédula detectada':phase==='address'?'Paso 2 de 2 · Dirección':phase==='ready'?'Paso 1 de 2 · Identificación':'Escaneo en vivo'}</strong><p>{message}</p></div>
+      <div><strong>{phase==='detected'?'Cédula detectada':phase==='address'?'Paso 2 de 2 · Dirección':phase==='ready'?'Paso 1 de 2 · Identificación (ZXing)':'Escaneo en vivo'}</strong><p>{message}</p></div>
     </div>
     <div className="customer-live-preview" hidden={phase!=='ready'&&phase!=='starting'&&phase!=='address'} style={{aspectRatio:ratio,maxWidth:'calc(48vh * '+ratio+')'}}>
       <video ref={video} muted autoPlay playsInline aria-label="Vista previa de la cámara de cédula"/>

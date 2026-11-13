@@ -21,7 +21,7 @@ export function parseAddressBlock(text:string){
    }
    if(!field||/^(COLEGIO|UBICACI[O0]N|REGISTRO|CEDULA|IDDOM|CODIGO POSTAL)\b/.test(n))continue;
    if(field==='address')out.address+=(out.address?'\n':'')+line;
-   else if(!out[field])out[field]=line;
+   else out[field]+=(out[field]?' ':'')+line;
  }
  return { ...out, complete:header&&sector&&town&&!!out.address&&!!out.sector&&!!out.municipio };
 }

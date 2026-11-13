@@ -5,3 +5,4 @@ describe('two-step address capture',()=>{
  it('extracts only labeled fields',()=>{expect(parseAddressBlock('COLEGIO ELECTORAL\nDirección de residencia\nCALLE PRUEBA 12\nPISO 2 APTO 2-B\nSector\nBARRIO FICTICIO\nMunicipio\nDISTRITO NACIONAL')).toEqual({address:'CALLE PRUEBA 12\nPISO 2 APTO 2-B',sector:'BARRIO FICTICIO',municipio:'DISTRITO NACIONAL',complete:true});});
  it('does not claim complete when headers or fields are missing',()=>{expect(parseAddressBlock('UU\nSector\nBARRIO FICTICIO').complete).toBe(false);});
 });
+it('joins split PaddleOCR place lines without changing address identifiers',()=>{expect(parseAddressBlock('Dirección de residencia\nCALLE PRUEBA, EDIF. 12\nPISO 2 APTO 2-B\nSector\nBARRIO\nFICTICIO\nMunicipio\nDISTRITO\nNACIONAL')).toEqual({address:'CALLE PRUEBA, EDIF. 12\nPISO 2 APTO 2-B',sector:'BARRIO FICTICIO',municipio:'DISTRITO NACIONAL',complete:true});});

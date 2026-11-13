@@ -66,6 +66,7 @@ export async function generatePreviewOutput({ root = process.cwd(), env = proces
     if (!Array.isArray(headers)) throw new Error('Preview output requires reviewed response headers.');
     const mapped = Object.fromEntries(headers.map(({ key, value }) => {
       if (key.toLowerCase() === 'content-security-policy') {
+        if(source==='/assets/customer-paddle-v4/index.html') return [key,value];
         cspHeaders++;
         return [key, previewCsp(value)];
       }

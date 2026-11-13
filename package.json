@@ -20,10 +20,11 @@
     "test:shell:types": "tsc --project tests/tsconfig.json",
     "test:preview-output": "node --test tests/preview-output.test.mjs",
     "prepare:label-ocr": "node scripts/prepare-label-ocr.mjs",
-    "predev": "npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs",
-    "prebuild": "npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs"
+    "predev": "npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs && node scripts/prepare-customer-paddle.mjs",
+    "prebuild": "npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs && node scripts/prepare-customer-paddle.mjs"
   },
   "dependencies": {
+    "@paddleocr/paddleocr-js": "0.4.2",
     "@supabase/supabase-js": "2.117.1",
     "@zxing/browser": "0.1.5",
     "@zxing/library": "0.21.3",
@@ -34,7 +35,8 @@
     "react-router-dom": "7.18.4",
     "tesseract.js": "6.0.1",
     "tesseract5": "npm:tesseract.js@5.1.1",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "zxing-wasm": "3.1.6"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

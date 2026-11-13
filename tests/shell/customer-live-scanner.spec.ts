@@ -6,7 +6,7 @@ function qrSvg(value:string){
  let pixels='';for(let y=0;y<m.getHeight();y++)for(let x=0;x<m.getWidth();x++)if(m.get(x,y))pixels+='<rect x="'+x+'" y="'+y+'" width="1" height="1"/>';
  return '<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="884"><rect width="1400" height="884" fill="#fff"/><g transform="translate(570 312)">'+pixels+'</g></svg>';
 }
-const addressSvg='<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="884"><rect width="1400" height="884" fill="#fff"/><g fill="#111" font-family="Arial" font-size="40"><text x="200" y="185">Dirección de residencia</text><text x="200" y="250">CALLE PRUEBA, EDIF. 12</text><text x="200" y="310">PISO 2 APTO 2-B</text><text x="200" y="380">Sector</text><text x="200" y="440">BARRIO FICTICIO</text><text x="200" y="510">Municipio</text><text x="200" y="570">DISTRITO NACIONAL</text></g></svg>';
+const addressSvg='<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="884"><rect width="1400" height="884" fill="#fff"/><g fill="#111" font-family="Arial" font-size="40"><text x="200" y="185">Dirección de residencia</text><text x="200" y="250">CALLE PRUEBA, EDIF. 12</text><text x="200" y="310">PISO 2 APTO 2-B</text><text x="200" y="380">Sector</text><text x="200" y="420">BARRIO</text><text x="200" y="460">FICTICIO</text><text x="200" y="510">Municipio</text><text x="200" y="570">DISTRITO NACIONAL</text></g></svg>';
 const blankSvg='<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="884"><rect width="1400" height="884" fill="#ddd"/></svg>';
 async function mockCamera(page:import('@playwright/test').Page,identitySvg:string){
  await page.addInitScript(({identitySvg,addressSvg,blankSvg})=>{
@@ -24,6 +24,7 @@ async function scene(page:import('@playwright/test').Page,n:number){await page.e
 async function counters(page:import('@playwright/test').Page){return page.evaluate(()=> (window as unknown as Window & {__liveTest:{beeps:number;stops:number;starts:number}}).__liveTest);}
 test('two steps read QR then separate address without requiring full card; retry keeps identity',async({page})=>{
  test.setTimeout(90000);
+ await page.route('**/assets/customer-paddle-v4/index.html',async route=>{const response=await route.fetch();await route.fulfill({response,headers:{...response.headers(),'content-security-policy':"default-src 'none'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; img-src 'self' data: blob:; style-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; object-src 'none'",'x-frame-options':'SAMEORIGIN'}});});
  await mockCamera(page,qrSvg('00000000000|PERSONA PRUEBA|APELLIDO|FICTICIO|fixture'));
  await page.goto('/clientes');await page.getByRole('button',{name:'Agregar cliente',exact:true}).click();
  const modal=page.getByRole('dialog',{name:'Agregar cliente'});
