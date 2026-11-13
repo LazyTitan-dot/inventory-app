@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Camera, CameraOff, ScanLine } from 'lucide-react';
 import { ErrorNotice, Field, Modal } from './ui';
 import { MAX_BARCODE_LENGTH } from '../lib/barcode';
@@ -10,6 +10,7 @@ import {
   type CameraFrameDecoder,
   type NativeCodeDetectorConstructor,
 } from '../lib/cameraScanner';
+import { advanceContinuousScan, newContinuousScanGate } from '../lib/continuousScan';
 import './barcode-scanner.css';
 
 /** Camera access starts only after a click. USB/Bluetooth scanners can enter text and press Enter. */
@@ -17,10 +18,16 @@ export function BarcodeScanner({
   title = 'Escanear código',
   onDetected,
   onClose,
+  continuous = false,
+  summary,
+  onActivate,
 }: {
   title?: string;
-  onDetected: (value: string) => void;
+  onDetected: (value: string) => void | boolean;
   onClose: () => void;
+  continuous?: boolean;
+  summary?: ReactNode;
+  onActivate?: () => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -70,15 +77,22 @@ export function BarcodeScanner({
         setError('Introduce un código válido de hasta 80 caracteres.');
         return false;
       }
+      if (continuous) {
+        setError('');
+        callbacks.current.onDetected(code);
+        setValue('');
+        return true;
+      }
       stop();
       callbacks.current.onDetected(code);
       callbacks.current.onClose();
       return true;
     },
-    [stop],
+    [continuous, stop],
   );
   async function start() {
     if (active.current) return;
+    onActivate?.();
     setError('');
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       setError(
@@ -135,7 +149,8 @@ export function BarcodeScanner({
       decoder.current = selected;
       setStarting(false);
       setRunning(true);
-      setStatus('Acerca el código QR o de barras a la cámara con buena iluminación.');
+      setStatus(continuous ? 'Escanea una unidad y retira el código de la vista antes de acercar la siguiente.' : 'Acerca el código QR o de barras a la cámara con buena iluminación.');
+      let gate = newContinuousScanGate();
       let previous = 0;
       let nativeFailures = 0;
       const tick = async (timestamp: number) => {
@@ -146,7 +161,11 @@ export function BarcodeScanner({
             const code = await decoder.current?.decode(preview);
             if (generation.current !== token) return;
             nativeFailures = 0;
-            if (code && accept(code)) return;
+            if (continuous) {
+              const next = advanceContinuousScan(gate, code, timestamp);
+              gate = next.gate;
+              if (next.detect && code) accept(code);
+            } else if (code && accept(code)) return;
           } catch (cause) {
             if (generation.current !== token) return;
             if (decoder.current?.kind === 'native' && ++nativeFailures >= 3) {
@@ -187,6 +206,7 @@ export function BarcodeScanner({
   }
   function submit(event: FormEvent) {
     event.preventDefault();
+    onActivate?.();
     accept(value);
   }
   return (
@@ -198,7 +218,8 @@ export function BarcodeScanner({
       }}
     >
       <div className="barcode-scanner stack">
-        <p>Los lectores USB o Bluetooth funcionan como un teclado: enfoca el código y escanea.</p>
+        {continuous && summary}
+        <p>{continuous ? 'Escaneo continuo: retira cada código de la vista antes de escanear el siguiente. El conteo sigue siendo provisional.' : 'Los lectores USB o Bluetooth funcionan como un teclado: enfoca el código y escanea.'}</p>
         <form className="stack" onSubmit={submit}>
           <Field label="Código escaneado o manual">
             <input
@@ -239,7 +260,7 @@ export function BarcodeScanner({
               onClose();
             }}
           >
-            Cancelar
+            {continuous ? 'Terminar escaneo' : 'Cancelar'}
           </button>
           {running || starting ? (
             <button type="button" className="button secondary" onClick={stop}>
