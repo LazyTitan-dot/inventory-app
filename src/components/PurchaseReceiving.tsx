@@ -113,6 +113,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
     draftRef.current = next;
     setDraft(next);
     setLastItemId(null);
+    setFeedback('');
     setValidation('');
   }
   function countCode(value: string) {
@@ -284,8 +285,12 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
           <progress aria-label="Progreso de la recepción" max={Math.max(1, pendingUnits)} value={countedUnits} />
           <p role="status" aria-live="polite">{complete ? 'Conteo completo. No se ha guardado la recepción.' : lastItem ? 'Unidad contabilizada. Recepción sin guardar.' : feedback || 'Aún no se ha guardado la recepción.'} · {Math.max(0, pendingUnits - countedUnits)} pendientes</p>
           {lastItem && <div role="status" aria-live="polite"><PurchaseReferenceProgress item={lastItem} draft={draft} enhanced={enhanced} recent /></div>}
+          <p className="muted">Referencias completas: {completedReferences} / {pending.length}</p>
+        </section>
+      } referenceDetails={
+        <section className="purchase-scan-live" aria-label="Progreso por referencia">
           <details open>
-            <summary>Referencias completas: {completedReferences} / {pending.length}</summary>
+            <summary>Conteo por referencia · {completedReferences} / {pending.length} completas</summary>
             <ul className="purchase-reference-list">{pending.map(item => <li key={item.id}><PurchaseReferenceProgress item={item} draft={draft} enhanced={enhanced} /></li>)}</ul>
           </details>
         </section>

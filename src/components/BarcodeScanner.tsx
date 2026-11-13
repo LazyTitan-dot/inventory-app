@@ -21,6 +21,7 @@ export function BarcodeScanner({
   continuous = false,
   complete = false,
   summary,
+  referenceDetails,
   onActivate,
 }: {
   title?: string;
@@ -29,6 +30,7 @@ export function BarcodeScanner({
   continuous?: boolean;
   complete?: boolean;
   summary?: ReactNode;
+  referenceDetails?: ReactNode;
   onActivate?: () => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -267,6 +269,7 @@ export function BarcodeScanner({
           className={!complete && (running || starting) ? 'barcode-camera active' : 'barcode-camera'}
           aria-label="Vista previa de la cámara"
         />
+        {continuous && referenceDetails}
         {!continuous && <p role="status" className="muted">{status}</p>}
         <ErrorNotice message={error} />
         <div className="modal-footer">
