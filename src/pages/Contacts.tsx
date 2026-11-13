@@ -8,6 +8,7 @@ import { dateTime, documentNumber, downloadCsv, matches, money } from '../lib/fo
 import { WhatsAppComposer } from '../components/WhatsAppComposer';
 import { buildContactWhatsAppMessage } from '../lib/whatsapp';
 import { CustomerIdScan } from '../components/CustomerIdScan';
+import { scannedHome, legacyHome, hasHomeAddress } from '../lib/customerHomeAddress';
 import { AddressFields } from '../components/AddressFields';
 import { addressComparisonKey, addressMapsUrl, addressText, addressValidation, emptyAddress } from '../lib/addresses';
 import './contacts.css';
@@ -32,6 +33,9 @@ function ContactEditor({
 }) {
   const { notify, data } = useRetail();
   const { run, busy, error } = useOperation();
+  const newCustomer = kind === 'customer' && !contact && (data.features ?? []).includes('customer_addresses_v1');
+  const [home,setHome] = useState(emptyAddress());
+  const [validation,setValidation] = useState('');
   const [form, setForm] = useState({
     name: contact?.name ?? '',
     email: contact?.email ?? '',
@@ -53,9 +57,14 @@ function ContactEditor({
   }
   async function save(event: FormEvent) {
     event.preventDefault();
+    const hasHome = newCustomer && hasHomeAddress(home);
+    const invalid = hasHome ? addressValidation(home) : '';
+    if(invalid){setValidation(invalid);return;}
+    setValidation('');
     try {
       await run('save_contact', {
         ...form,
+        ...(hasHome ? {address:addressText(home), initial_home_address:Object.fromEntries(Object.entries(home).map(([k,v])=>[k,v.trim()]))} : {}),
         id: contact?.id,
         ...(contact ? { expected_updated_at: contact.updated_at } : {}),
         kind,
@@ -82,6 +91,7 @@ function ContactEditor({
         {kind === "customer" && !contact && <CustomerIdScan disabled={busy} onApply={(scan) => {
           const id = scan.ced.replace(/\D/g, "");
           const address = [scan.address, scan.sector, scan.municipio].filter(Boolean).join(", ");
+          if(newCustomer) setHome(previous => {const next=scannedHome(scan.address,scan.sector,scan.municipio,previous.phone||form.phone);return {...previous,...next,reference:previous.reference};});
           setForm(previous => ({ ...previous, ...(id.length === 11 ? {tax_id:id} : {}), ...(scan.full.trim() ? {name:scan.full.trim()} : {}), ...(address ? {address} : {}) }));
         }} />}
         <Field
@@ -102,7 +112,7 @@ function ContactEditor({
               maxLength={30}
               autoComplete="tel"
               value={form.phone}
-              onChange={(e) => field('phone', e.target.value)}
+              onChange={(e) => {field('phone', e.target.value);if(newCustomer)setHome(previous=>({...previous,phone:!previous.phone||previous.phone===form.phone?e.target.value:previous.phone}));}}
             />
           </Field>
           <Field label="Correo electrónico">
@@ -123,14 +133,18 @@ function ContactEditor({
             onChange={(e) => field('tax_id', e.target.value.replace(/[-\s]/g, ''))}
           />
         </Field>
-        <Field label="Dirección">
+        {newCustomer ? <section className="customer-address-form stack" aria-label="Dirección de entrega inicial">
+          <h3>Dirección de entrega · Casa</h3>
+          <p className="muted">Se guardará como primera dirección preferida. Confirma que corresponde al destino de entrega; puedes dejarla vacía para una compra sin entrega.</p>
+          <AddressFields value={home} onChange={setHome} disabled={busy} required={hasHomeAddress(home)} autoMunicipality />
+        </section> : <Field label="Dirección">
           <textarea
             maxLength={600}
             value={form.address}
             onChange={(e) => field('address', e.target.value)}
             placeholder="Calle, número, sector, ciudad y referencia"
           />
-        </Field>
+        </Field>}
         <Field label="Notas internas">
           <textarea
             maxLength={2000}
@@ -149,7 +163,7 @@ function ContactEditor({
             no sea la misma persona o empresa.
           </div>
         )}
-        <ErrorNotice message={error} />
+        <ErrorNotice message={validation || error} />
         <div className="modal-footer">
           <button type="button" className="button secondary" disabled={busy} onClick={onClose}>
             Cancelar
@@ -202,8 +216,9 @@ function AddressBook({
     setValidation('');
     setArchiveTarget(null);
     setEditing(address ?? 'new');
-    setForm(emptyAddress(address ?? { phone: contact.phone ?? '' }));
-    setLabel(address?.label ?? '');
+    const first = !address && addresses.length===0;
+    setForm(address ? emptyAddress(address) : first && contact.address ? legacyHome(contact.address,contact.phone??'') : emptyAddress({phone:contact.phone??''}));
+    setLabel(address?.label ?? (first ? 'Casa' : ''));
     setPreferred(address?.is_default ?? active.length === 0);
   }
   async function save(event: FormEvent) {

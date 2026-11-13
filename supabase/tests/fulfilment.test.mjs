@@ -37,6 +37,15 @@ test('fulfilment: address ownership/defaults/versions, immutable snapshots, rece
   }
   await as('owner');
   eq((await state()).features,['customer_addresses_v1','purchase_receipts_v1','barcode_aliases_v1'],'Capabilities advertise real migrated contract');
+  const homeOp=randomUUID(),homePayload={kind:'customer',name:'Cliente con Casa',phone:'8095551234',address:'Calle Uno 12, Centro, Santo Domingo, Distrito Nacional',initial_home_address:addressFields};
+  const createdHome=await command('save_contact',homePayload,homeOp);
+  eq(await command('save_contact',homePayload,homeOp),createdHome,'Atomic contact replay');
+  const homes=(await state()).customer_addresses.filter(a=>a.contact_id===createdHome.entity_id);
+  eq(homes.length,1,'Exactly one initial address');
+  eq(homes[0].label,'Casa','Default label');eq(homes[0].is_default,true,'Preferred home');eq(homes[0].street,addressFields.street,'Structured street');
+  await reject('save_contact',{kind:'customer',name:'No guardar cliente inválido',initial_home_address:{...addressFields,phone:'123'}},/7 y 15/);
+  ok(!(await state()).contacts.some(c=>c.name==='No guardar cliente inválido'),'Invalid address rolls back customer');
+  await reject('save_contact',{kind:'supplier',name:'Proveedor sin Casa',initial_home_address:addressFields},/cliente nuevo/);
   const customer=(await command('save_contact',{kind:'customer',name:'Cliente Uno'})).entity_id;
   const customer2=(await command('save_contact',{kind:'customer',name:'Cliente Dos'})).entity_id;
   const supplier=(await command('save_contact',{kind:'supplier',name:'Proveedor'})).entity_id;
