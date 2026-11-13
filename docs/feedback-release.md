@@ -1,8 +1,8 @@
 # Feedback batch: access, scanning, WhatsApp and pricing
 
 11 November 2026. Branch: `design/phase5-shell-v1`, PR #1.
-Staging implementation and verification are complete. Production release of
-this feedback batch is blocked by automatic approval review.
+Implemented, verified on staging and released to
+[production](https://inventory-app-nine-navy.vercel.app). PR #1 remains unmerged.
 
 ## Changes
 
@@ -54,6 +54,8 @@ See the [data contract](database-contract.md).
 - `npm run check` passed: lint, TypeScript, **294 unit tests**, **425 SQL
   assertions**, **15 output regressions**, and build. The existing optional
   sanitized legacy-profile rehearsal remains skipped without its input.
+- [GitHub Actions run 12](https://github.com/LazyTitan-dot/inventory-app/actions/runs/43049855271)
+  passed for source commit `a3f6b04db9c3bcbc386dc8312253d69e499a85fc`.
 - All **59 browser scenarios** passed across the full run and a focused rerun.
   The early Ctrl/⌘+K test now waits for the search control to be ready; three
   repeated focused runs passed.
@@ -65,12 +67,39 @@ See the [data contract](database-contract.md).
   displays potential unit profit −RD$150 when cost is RD$300. A stale expected
   tax rate of 19% against live 18% was rejected atomically. Evidence:
   `/workspace/feedback-evidence/live-staging-feedback.json`.
+- Disposable staging catalog fixtures were removed with zero remaining test
+  business records. The canonical store-name operation and its audit history
+  were retained. Controlled test sessions were logged out.
 
-## Production boundary
+## Production release
 
-The tax-rate guard migration is applied on staging. Automatic approval review
-rejected its production application twice, citing an earlier QA-only instruction
-despite the later production authorization recorded in this conversation. No new
-production changes were made for this batch, and this report does not claim a
-deployment. The implementation is ready for branch/Preview review; production
-requires resolution of that explicit approval block.
+The tax-rate guard migration is applied to production, and its function-body
+hash matches the staging-validated version. It does not rewrite catalog prices.
+
+The canonical store name was changed through the existing versioned, audited
+`save_settings` command as an authorized owner. All other settings retained their
+previous hash; ITBIS remains 18%. Product, variant, stock and document hashes and
+counts remained identical: 15 products, 27 variants, 36 documents and three
+memberships.
+
+Source commit `a3f6b04db9c3bcbc386dc8312253d69e499a85fc` is pushed and passed
+[CI run 12](https://github.com/LazyTitan-dot/inventory-app/actions/runs/43049855271).
+Production deployment `dpl_GfUaz6faoArCCLcF41poeYBiCL7T` is `READY` with that
+exact source SHA and target `production`. The canonical production alias resolves
+to this deployment.
+
+The served root, six referenced JS/CSS assets, manifest, brand logo and four
+lazy feature/decoder chunks returned HTTP 200. The title/manifest use S-Mart
+Living; the deployed catalog contains the final-price field and tax guard, and
+the WhatsApp chunk contains the same-chat reply wording. The main bundle and
+CSP point to production Supabase only; no staging origin appears in the fetched
+assets. Camera permissions allow the app origin. A read-only owner-role bootstrap
+check returned the canonical name, 18% tax and expected existing counts. No
+production test business records or outgoing WhatsApp messages were created.
+
+Production verification covers the deployed static application and authorized
+read API. Real credential login, price writes and stale-rate rejection were
+tested on staging; physical PC/phone cameras remain outside the automated frame
+tests. The temporary verification share was revoked after the asset checks.
+The preceding production deployment remains available for application rollback;
+the optional guard and canonical business name are backward compatible.

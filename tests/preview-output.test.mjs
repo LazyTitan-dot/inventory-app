@@ -76,6 +76,27 @@ test('preview output preserves static resources, security headers and cache rule
   assert.equal(await readFile(path.join(root, 'vercel.json'), 'utf8'), sourceConfiguration);
 });
 
+test('label OCR assets remain same-origin static files under the narrow WASM policy', async t => {
+  const root = await fixture(t);
+  const directory = path.join(root, 'dist', 'assets', 'label-ocr-v1');
+  await mkdir(directory, { recursive: true });
+  const files = { 'worker.min.js': '// fixture worker', 'tesseract-core-lstm.wasm': 'fixture wasm', 'eng.traineddata.gz': 'fixture language data' };
+  for (const [name, body] of Object.entries(files)) await writeFile(path.join(directory, name), body);
+  await generatePreviewOutput({ root, env: previewEnv });
+  const config = await outputConfig(root);
+  const policy = config.routes.find(route => route.src === '^/(.*)$').headers['Content-Security-Policy'];
+  assert.match(policy, /script-src 'self' 'wasm-unsafe-eval';/);
+  assert.match(policy, /worker-src 'self';/);
+  assert.ok(!policy.includes("'unsafe-eval'"));
+  assert.ok(!policy.includes('worker-src blob:'));
+  const fallback = new RegExp(config.routes.at(-1).src);
+  for (const [name, body] of Object.entries(files)) {
+    const resource = `/assets/label-ocr-v1/${name}`;
+    assert.ok(!fallback.test(resource));
+    assert.equal(await readFile(path.join(root, '.vercel', 'output', 'static', resource), 'utf8'), body);
+  }
+});
+
 for (const environment of [undefined, 'development', 'production']) {
   test(`normal ${environment ?? 'local'} build is a no-op even without staging configuration`, async t => {
     const root = await fixture(t);

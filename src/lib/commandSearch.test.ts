@@ -20,10 +20,11 @@ describe('permission-aware command search', () => {
   it('searches exact SKU/barcode and links the exact active variant without cost information', () => {
     const data = fixture();
     data.products = [{ id: 'p', active: true, brand: 'Ártico', model: 'Breeze', category: 'air_conditioner' }] as RetailData['products'];
-    data.variants = [{ id: 'v', product_id: 'p', active: true, name: 'White', sku: 'ART-WHT-01', barcode: '12345', cost: 4200 }] as RetailData['variants'];
+    data.variants = [{ id: 'v', product_id: 'p', active: true, name: 'White', sku: 'ART-WHT-01', barcode: '12345', barcode_aliases: ['6946087393113'], cost: 4200 }] as RetailData['variants'];
     const results = commandResults(data, 'artico');
     expect(results[0]?.to).toBe('/inventario?variante=v');
     expect(commandResults(data, '12345')[0]?.id).toBe('product-v');
+    expect(commandResults(data, '6946087393113')[0]?.id).toBe('product-v');
     expect(JSON.stringify(results)).not.toContain('4200');
     data.products[0]!.active = false;
     expect(commandResults(data, 'artico')).toEqual([]);

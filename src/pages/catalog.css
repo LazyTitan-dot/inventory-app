@@ -477,3 +477,17 @@
 }
 .catalog-price-suggestion { display: grid; align-content: start; gap: 8px; padding-top: 20px; }
 .catalog-price-suggestion > small { color: var(--sl-muted, var(--muted)); line-height: 1.6; font-size: 12px; }
+
+.catalog-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.catalog-financial-disclosure { margin: 0 0 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.catalog-financial-disclosure > summary { padding: 14px 18px; min-height: 44px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.catalog-financial-disclosure .catalog-financials { padding: 0 16px 16px; margin-bottom: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.catalog-financial-disclosure .catalog-financial-note { grid-column: 1/-1; padding: 12px 16px; }
+.catalog-financial-disclosure .catalog-financial-note strong { font-size: 16px; }
+.catalog-row-sku { font-size: 11px; color: var(--muted); }
+.catalog-scanned-code { display: block; overflow-wrap: anywhere; padding: 12px; background: var(--surface-subtle); border-radius: 10px; }
+@media (max-width: 620px) {
+  .catalog-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .catalog-stats > :last-child { grid-column: 1/-1; }
+  .catalog-financial-disclosure .catalog-financials { grid-template-columns: 1fr; }
+}

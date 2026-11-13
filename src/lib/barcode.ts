@@ -1,4 +1,5 @@
 export const MAX_BARCODE_LENGTH = 80;
+export const MAX_BARCODE_ALIASES = 10;
 
 const CODE128_PATTERNS = [
   '212222',
@@ -111,10 +112,24 @@ const CODE128_PATTERNS = [
 ] as const;
 
 export const normalizeBarcode = (value: string) => value.trim();
-const barcodeKey = (value: string) => normalizeBarcode(value).toLocaleUpperCase('en-US');
+// Barcode identity uses ASCII folding, matching the database without locale rules.
+const barcodeKey = (value: string) => normalizeBarcode(value).replace(/[a-z]/g, (char) => char.toUpperCase());
 export interface BarcodeVariant {
   id?: string;
   barcode?: string | null;
+  barcode_aliases?: readonly string[];
+}
+
+/** Product codes only: unit serials and batch identifiers are not scanner aliases. */
+export function getVariantBarcodes(variant: BarcodeVariant): string[] {
+  return [variant.barcode ?? '', ...(variant.barcode_aliases ?? [])]
+    .map(normalizeBarcode)
+    .filter(Boolean);
+}
+
+export function barcodeMatches(variant: BarcodeVariant, input: string): boolean {
+  const key = barcodeKey(input);
+  return Boolean(key) && getVariantBarcodes(variant).some((code) => barcodeKey(code) === key);
 }
 
 /** Archived variants reserve their barcodes too; mirror that constraint before submitting. */
@@ -124,23 +139,23 @@ export function validateBarcodes(
 ): string | null {
   const seen = new Set<string>();
   for (const draft of drafts) {
-    const barcode = normalizeBarcode(draft.barcode ?? '');
-    if (!barcode) continue;
-    if (
-      barcode.length > MAX_BARCODE_LENGTH ||
-      Array.from(barcode).some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)
-    )
-      return 'El código de barras admite hasta 80 caracteres y no puede contener saltos de línea ni caracteres de control.';
-    const key = barcodeKey(barcode);
-    if (seen.has(key))
-      return `El código ${barcode} se repite entre las variantes. Usa un código diferente para cada una.`;
-    if (
-      catalog.some(
-        (row) => (!draft.id || row.id !== draft.id) && barcodeKey(row.barcode ?? '') === key,
+    if ((draft.barcode_aliases?.length ?? 0) > MAX_BARCODE_ALIASES)
+      return 'Cada variante admite hasta 10 códigos adicionales del fabricante.';
+    if (draft.barcode_aliases?.some((code) => !normalizeBarcode(code)))
+      return 'Los códigos adicionales del fabricante no pueden estar vacíos.';
+    for (const barcode of getVariantBarcodes(draft)) {
+      if (
+        barcode.length > MAX_BARCODE_LENGTH ||
+        Array.from(barcode).some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)
       )
-    )
-      return `El código ${barcode} ya pertenece a otra variante, incluso si está archivada.`;
-    seen.add(key);
+        return 'El código de barras admite hasta 80 caracteres y no puede contener saltos de línea ni caracteres de control.';
+      const key = barcodeKey(barcode);
+      if (seen.has(key))
+        return `El código ${barcode} se repite entre las variantes. Usa un código diferente para cada una.`;
+      if (catalog.some((row) => (!draft.id || row.id !== draft.id) && barcodeMatches(row, barcode)))
+        return `El código ${barcode} ya pertenece a otra variante, incluso si está archivada.`;
+      seen.add(key);
+    }
   }
   return null;
 }

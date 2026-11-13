@@ -1,4 +1,5 @@
 import type { DocumentItem, Variant } from './contracts';
+import { barcodeMatches } from './barcode';
 
 export type ReceiptCount = { quantity: string; damagedQuantity: string };
 export type ReceiptDraft = Record<string, ReceiptCount>;
@@ -60,7 +61,7 @@ export function countPurchaseBarcode({
 }: {
   value: string;
   items: readonly DocumentItem[];
-  variants: readonly Pick<Variant, 'id' | 'barcode' | 'sku'>[];
+  variants: readonly Pick<Variant, 'id' | 'barcode' | 'barcode_aliases' | 'sku'>[];
   draft: ReceiptDraft;
   previous: ReceiptScan | null;
   at: number;
@@ -71,8 +72,10 @@ export function countPurchaseBarcode({
   const matched = items.filter((item) => {
     if (!item.variant_id) return false;
     const current = variants.find((variant) => variant.id === item.variant_id);
-    return [item.product_snapshot.sku, item.product_snapshot.barcode, current?.sku, current?.barcode]
-      .some((code) => code?.trim().toLocaleLowerCase('es') === normalized);
+    return [item.product_snapshot.sku, current?.sku]
+      .some((code) => code?.trim().toLocaleLowerCase('es') === normalized) ||
+      barcodeMatches({ barcode: item.product_snapshot.barcode }, value) ||
+      Boolean(current && barcodeMatches(current, value));
   });
   if (!matched.length) return reject('El código no corresponde a una referencia de esta orden.');
   if (matched.length !== 1) return reject('El código coincide con varias líneas. Registra las cantidades manualmente para evitar confusiones.');
