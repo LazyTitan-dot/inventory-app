@@ -5,7 +5,7 @@ test('live customer scanner confirms the same QR, beeps, releases camera and app
   test.setTimeout(90000);
   const matrix=new QRCodeWriter().encode('00000000000|PERSONA PRUEBA|APELLIDO|FICTICIO|fixture',BarcodeFormat.QR_CODE,240,240,new Map());
   let pixels='';for(let y=0;y<matrix.getHeight();y++)for(let x=0;x<matrix.getWidth();x++)if(matrix.get(x,y))pixels+='<rect x="'+x+'" y="'+y+'" width="1" height="1"/>';
-  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="884"><rect width="1400" height="884" fill="#d5e4f8"/><g transform="translate(480 35)"><rect width="240" height="240" fill="white"/>'+pixels+'</g><g fill="#111" font-family="Arial" font-size="26"><text x="745" y="265">Dirección de residencia</text><text x="745" y="300">CALLE PRUEBA, EDIF. 12</text><text x="745" y="335">PISO 2 APTO 2-B</text><text x="745" y="385">Sector</text><text x="745" y="420">SECTOR FICTICIO</text><text x="745" y="465">Municipio</text><text x="745" y="495">DISTRITO NACIONAL</text></g></svg>';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="884"><rect width="1400" height="884" fill="#d5e4f8"/><g transform="translate(480 35)"><rect width="240" height="240" fill="white"/>'+pixels+'</g><g fill="#111" font-family="Arial" font-size="26"><text x="745" y="247">Dirección de residencia</text><text x="745" y="279">CALLE PRUEBA, EDIF. 12</text><text x="745" y="308">PISO 2 APTO 2-B</text><text x="745" y="333">Sector</text><text x="745" y="371">BARRIO FICTICIO</text><text x="745" y="404">Municipio</text><text x="745" y="443">DISTRITO NACIONAL</text></g></svg>';
   await page.addInitScript(svg=>{
     const state={beeps:0,stops:0};Object.defineProperty(window,'__liveTest',{value:state});
     const original=AudioContext.prototype.createOscillator;
@@ -30,6 +30,10 @@ test('live customer scanner confirms the same QR, beeps, releases camera and app
   await expect(modal.getByLabel('Cédula',{exact:true})).toHaveValue('000-0000000-0');
   const counters=await page.evaluate(()=> (window as unknown as Window & {__liveTest:{beeps:number;stops:number}}).__liveTest);
   expect(counters.beeps).toBe(1);expect(counters.stops).toBe(1);
+  await expect(modal.locator('section textarea')).toHaveValue(/CALLE PRUEBA/i);
+  await expect(modal.locator('section textarea')).toHaveValue(/PISO 2/i);
+  await expect(modal.getByLabel('Sector',{exact:true})).toHaveValue(/FICTICIO/i);
+  await expect(modal.getByLabel('Municipio',{exact:true})).toHaveValue(/DISTRITO NACIONAL/i);
   await modal.locator('section textarea').fill('Calle de prueba, 12');
   await modal.getByRole('button',{name:'Aplicar datos al formulario'}).click();
   await expect(modal.getByLabel('Nombre completo o razón social')).toHaveValue('PERSONA PRUEBA APELLIDO FICTICIO');
@@ -58,4 +62,37 @@ test('old card live scanner ignores its UUID QR and reads the horizontal Codabar
   await modal.getByRole('button',{name:'Escanear cédula',exact:true}).click();await modal.getByRole('button',{name:'Escanear en vivo'}).click();await modal.getByRole('button',{name:'Activar cámara'}).click();
   await expect(modal.getByRole('button',{name:'Aplicar datos al formulario'})).toBeVisible({timeout:60000});
   await expect(modal.getByLabel('Cédula',{exact:true})).toHaveValue('012-3456789-0');
+});
+
+test('a distant QR cannot trigger automatic address capture; identity-only fallback works', async ({page})=>{
+  test.setTimeout(60000);
+  const matrix=new QRCodeWriter().encode('00000000000|PERSONA PRUEBA|APELLIDO|FICTICIO|fixture',BarcodeFormat.QR_CODE,150,150,new Map());
+  let pixels='';for(let y=0;y<matrix.getHeight();y++)for(let x=0;x<matrix.getWidth();x++)if(matrix.get(x,y))pixels+='<rect x="'+x+'" y="'+y+'" width="1" height="1"/>';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="884"><rect width="1400" height="884" fill="#e6e6e6"/><g transform="translate(600 300)"><rect width="150" height="150" fill="white"/>'+pixels+'</g></svg>';
+  await page.addInitScript(svg=>{
+    const state={beeps:0,stops:0};Object.defineProperty(window,'__liveTest',{value:state});
+    const original=AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator=function(){state.beeps++;return original.call(this);};
+    Object.defineProperty(navigator.mediaDevices,'getUserMedia',{value:async()=>{
+      const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=884;
+      const ctx=canvas.getContext('2d')!,img=new Image();img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);await img.decode();
+      const draw=()=>ctx.drawImage(img,0,0);draw();const stream=canvas.captureStream(15),interval=setInterval(draw,60);
+      for(const track of stream.getTracks()){const stop=track.stop.bind(track);track.stop=()=>{state.stops++;clearInterval(interval);stop();};}return stream;
+    }});
+  },svg);
+  await page.goto('/clientes');await page.getByRole('button',{name:'Agregar cliente',exact:true}).click();
+  const modal=page.getByRole('dialog',{name:'Agregar cliente'});
+  await modal.getByRole('button',{name:'Escanear cédula',exact:true}).click();await modal.getByRole('button',{name:'Escanear en vivo'}).click();await modal.getByRole('button',{name:'Activar cámara'}).click();
+  const fallback=modal.getByRole('button',{name:'Usar identidad y completar dirección'});
+  await expect(fallback).toBeVisible({timeout:20000});
+  await expect(modal.getByRole('button',{name:'Aplicar datos al formulario'})).toHaveCount(0);
+  const before=await page.evaluate(()=> (window as unknown as Window & {__liveTest:{beeps:number;stops:number}}).__liveTest);
+  expect(before.beeps).toBe(0);expect(before.stops).toBe(0);
+  await fallback.click();
+  await expect(modal.getByRole('button',{name:'Aplicar datos al formulario'})).toBeVisible();
+  await expect(modal.getByLabel('Nombre completo',{exact:true})).toHaveValue('PERSONA PRUEBA APELLIDO FICTICIO');
+  await expect(modal.locator('section textarea')).toHaveValue('');
+  await expect(modal.getByLabel('Subir foto del reverso (misma cédula)')).toBeVisible();
+  const after=await page.evaluate(()=> (window as unknown as Window & {__liveTest:{beeps:number;stops:number}}).__liveTest);
+  expect(after.beeps).toBe(1);expect(after.stops).toBe(1);
 });
