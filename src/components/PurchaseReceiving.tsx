@@ -48,6 +48,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
   const result = preparePurchaseReceipt(items, draft, enhanced);
   const pendingUnits = pending.reduce((sum, item) => sum + remainingPurchaseQuantity(item), 0);
   const countedUnits = result.good + result.damaged;
+  const complete = pendingUnits > 0 && !result.error && countedUnits === pendingUnits;
 
   useEffect(() => () => {
     const audio = audioRef.current;
@@ -75,14 +76,14 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
         const gain = audio.createGain();
         const now = audio.currentTime;
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, now);
+        oscillator.frequency.setValueAtTime(1100, now);
         gain.gain.setValueAtTime(0.001, now);
-        gain.gain.exponentialRampToValueAtTime(0.2, now + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.65, now + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
         oscillator.connect(gain).connect(audio.destination);
         oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
         oscillator.start(now);
-        oscillator.stop(now + 0.13);
+        oscillator.stop(now + 0.19);
       } catch { /* Audio failure must never prevent counting a unit. */ }
     };
     if (audio.state === 'running') play();
@@ -174,7 +175,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
             </div>
           </div>
           <p className="purchase-receiving-feedback" role="status">
-            {feedback || 'El lector suma una unidad conforme al conteo provisional. Los escaneos muy rápidos del mismo código se bloquean.'}
+            {complete ? '¡Todas las unidades contabilizadas! Revisa y confirma la recepción.' : feedback || 'El lector suma una unidad conforme al conteo provisional. Los escaneos muy rápidos del mismo código se bloquean.'}
           </p>
           <div className="purchase-receiving-summary purchase-receiving-summary-top" role="status" aria-live="polite">
             <span>Conteo provisional</span><strong>{countedUnits} / {pendingUnits} unidades · {result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</strong>
@@ -252,13 +253,13 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
           </button>
         </div>
       </form>
-      {scannerOpen && !locked && <BarcodeScanner title="Recepción · Escaneo continuo" continuous onActivate={unlockAudio} onDetected={countCode} onClose={() => setScannerOpen(false)} summary={
+      {scannerOpen && !locked && <BarcodeScanner title="Recepción · Escaneo continuo" continuous complete={complete} onActivate={unlockAudio} onDetected={countCode} onClose={() => setScannerOpen(false)} summary={
         <section className="purchase-scan-live" aria-label="Conteo en vivo">
           <div className="purchase-scan-live-total" role="status" aria-live="polite">
             <span>Conteo provisional</span><strong>{countedUnits} / {pendingUnits}</strong><span>{result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</span>
           </div>
           <progress aria-label="Progreso de la recepción" max={Math.max(1, pendingUnits)} value={countedUnits} />
-          <p role="status" aria-live="polite">{feedback || 'Listo para escanear. Aún no se guardó la recepción.'}</p>
+          <p role="status" aria-live="polite">{complete ? 'Conteo completo. No se ha guardado la recepción.' : feedback || 'Aún no se ha guardado la recepción.'} · {Math.max(0, pendingUnits - countedUnits)} pendientes</p>
           <details>
             <summary>Ver conteo por referencia ({pending.length})</summary>
             <ul>{pending.map(item => <li key={item.id}><span>{item.product_snapshot.name} · {item.product_snapshot.sku}</span><strong>{draft[item.id]?.quantity || '0'} conformes{enhanced ? ` · ${draft[item.id]?.damagedQuantity || '0'} dañadas` : ''} / {remainingPurchaseQuantity(item)}</strong></li>)}</ul>
