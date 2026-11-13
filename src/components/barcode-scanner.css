@@ -17,3 +17,10 @@
 .barcode-scanner .modal-footer {
   flex-wrap: wrap;
 }
+
+.barcode-readiness { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-subtle); color:var(--ink); }
+.barcode-readiness-dot { width:15px; height:15px; flex:0 0 15px; border-radius:50%; background:#d53043; box-shadow:0 0 0 4px rgba(213,48,67,.14); }
+.barcode-readiness.ready .barcode-readiness-dot { background:#168846; box-shadow:0 0 0 4px rgba(22,136,70,.14); }
+.barcode-readiness.complete > svg { color:#168846; flex:none; }
+.barcode-readiness strong { font-size:15px; }
+.barcode-readiness p { margin:3px 0 0; font-size:12px; color:var(--muted); }

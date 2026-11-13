@@ -65,6 +65,10 @@ describe('purchase receipt scanning', () => {
       expect(counted.draft['line-a']?.quantity).toBe('1');
     }
   });
+  it('reports per-reference progress and completion after accepted scans', () => {
+    expect(scan('BAR-A').message).toContain('1 / 3 contabilizadas');
+    expect(scan('BAR-A', draft('2')).message).toContain('Referencia completa.');
+  });
   it('rejects a catalog variant that is not in this order and partial SKU text', () => {
     expect(scan('FOREIGN-SKU').accepted).toBe(false);
     expect(scan('FOREIGN-BAR').accepted).toBe(false);

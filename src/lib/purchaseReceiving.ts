@@ -93,7 +93,7 @@ export function countPurchaseBarcode({
   return {
     draft: { ...draft, [item.id]: { ...existing, quantity: String(quantity + 1) } },
     scan: { value: normalized, at },
-    message: `${purchaseItemTitle(item)}: +1 conforme. Conteo provisional; aún no se guardó la recepción.`,
+    message: `${purchaseItemTitle(item)} · ${item.product_snapshot.name}: +1 conforme. ${quantity + damaged + 1} / ${remainingPurchaseQuantity(item)} contabilizadas.${quantity + damaged + 1 === remainingPurchaseQuantity(item) ? ' Referencia completa.' : ''} Conteo provisional; aún no se guardó la recepción.`,
     accepted: true,
   };
 }

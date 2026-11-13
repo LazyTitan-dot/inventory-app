@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Camera, CameraOff, ScanLine } from 'lucide-react';
+import { Camera, CameraOff, CheckCircle2, ScanLine } from 'lucide-react';
 import { ErrorNotice, Field, Modal } from './ui';
 import { MAX_BARCODE_LENGTH } from '../lib/barcode';
 import {
@@ -10,7 +10,7 @@ import {
   type CameraFrameDecoder,
   type NativeCodeDetectorConstructor,
 } from '../lib/cameraScanner';
-import { advanceContinuousScan, newContinuousScanGate } from '../lib/continuousScan';
+import { advanceContinuousScan, continuousScanStatus, newContinuousScanGate } from '../lib/continuousScan';
 import './barcode-scanner.css';
 
 /** Camera access starts only after a click. USB/Bluetooth scanners can enter text and press Enter. */
@@ -19,6 +19,7 @@ export function BarcodeScanner({
   onDetected,
   onClose,
   continuous = false,
+  complete = false,
   summary,
   onActivate,
 }: {
@@ -26,6 +27,7 @@ export function BarcodeScanner({
   onDetected: (value: string) => void | boolean;
   onClose: () => void;
   continuous?: boolean;
+  complete?: boolean;
   summary?: ReactNode;
   onActivate?: () => void;
 }) {
@@ -44,6 +46,8 @@ export function BarcodeScanner({
   const [error, setError] = useState('');
   const [running, setRunning] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const indicator = continuousScanStatus({ complete, running, starting, armed });
   const release = useCallback(() => {
     generation.current++;
     active.current = false;
@@ -58,6 +62,7 @@ export function BarcodeScanner({
     release();
     setRunning(false);
     setStarting(false);
+    setArmed(false);
     setStatus('Cámara detenida. Puedes volver a activarla o introducir el código.');
   }, [release]);
   useEffect(() => {
@@ -70,8 +75,11 @@ export function BarcodeScanner({
       release();
     };
   }, [release, stop]);
+  // A completed provisional count must stop camera capture without closing the review screen.
+  useEffect(() => { if (continuous && complete) release(); }, [continuous, complete, release]);
   const accept = useCallback(
     (raw: string) => {
+      if (continuous && complete) return false;
       const code = validScannedCode(raw);
       if (!code) {
         setError('Introduce un código válido de hasta 80 caracteres.');
@@ -88,10 +96,10 @@ export function BarcodeScanner({
       callbacks.current.onClose();
       return true;
     },
-    [continuous, stop],
+    [continuous, complete, stop],
   );
   async function start() {
-    if (active.current) return;
+    if (active.current || complete) return;
     onActivate?.();
     setError('');
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
@@ -149,6 +157,7 @@ export function BarcodeScanner({
       decoder.current = selected;
       setStarting(false);
       setRunning(true);
+      setArmed(true);
       setStatus(continuous ? 'Escanea una unidad y retira el código de la vista antes de acercar la siguiente.' : 'Acerca el código QR o de barras a la cámara con buena iluminación.');
       let gate = newContinuousScanGate();
       let previous = 0;
@@ -163,6 +172,7 @@ export function BarcodeScanner({
             nativeFailures = 0;
             if (continuous) {
               const next = advanceContinuousScan(gate, code, timestamp);
+              if (gate.armed !== next.gate.armed) setArmed(next.gate.armed);
               if (!gate.armed && next.gate.armed) setStatus('Listo para la siguiente unidad.');
               gate = next.gate;
               if (next.detect && code) {
@@ -174,6 +184,7 @@ export function BarcodeScanner({
             if (generation.current !== token) return;
             if (decoder.current?.kind === 'native' && ++nativeFailures >= 3) {
               try {
+                setArmed(false);
                 const fallback = await loadSoftwareFrameDecoder();
                 if (generation.current !== token) {
                   fallback.dispose();
@@ -181,6 +192,7 @@ export function BarcodeScanner({
                 }
                 decoder.current?.dispose();
                 decoder.current = fallback;
+                setArmed(gate.armed);
               } catch (fallbackError) {
                 if (generation.current !== token) return;
                 stop();
@@ -223,8 +235,12 @@ export function BarcodeScanner({
     >
       <div className="barcode-scanner stack">
         {continuous && summary}
+        {continuous && <div className={`barcode-readiness ${indicator.state}`} role="status" aria-live="polite">
+          {indicator.state === 'complete' ? <CheckCircle2 size={22} aria-hidden="true" /> : <span className="barcode-readiness-dot" aria-hidden="true" />}
+          <div><strong>{indicator.label}</strong><p>{indicator.detail}</p></div>
+        </div>}
         <p>{continuous ? 'Escaneo continuo: retira cada código de la vista antes de escanear el siguiente. El conteo sigue siendo provisional.' : 'Los lectores USB o Bluetooth funcionan como un teclado: enfoca el código y escanea.'}</p>
-        <form className="stack" onSubmit={submit}>
+        {!complete && <form className="stack" onSubmit={submit}>
           <Field label="Código escaneado o manual">
             <input
               autoFocus={!continuous}
@@ -242,18 +258,16 @@ export function BarcodeScanner({
           <button className="button primary" disabled={!value.trim()}>
             <ScanLine size={17} /> Usar código
           </button>
-        </form>
+        </form>}
         <video
           ref={video}
           muted
           autoPlay
           playsInline
-          className={running || starting ? 'barcode-camera active' : 'barcode-camera'}
+          className={!complete && (running || starting) ? 'barcode-camera active' : 'barcode-camera'}
           aria-label="Vista previa de la cámara"
         />
-        <p role="status" className="muted">
-          {status}
-        </p>
+        {!continuous && <p role="status" className="muted">{status}</p>}
         <ErrorNotice message={error} />
         <div className="modal-footer">
           <button
@@ -264,9 +278,9 @@ export function BarcodeScanner({
               onClose();
             }}
           >
-            {continuous ? 'Terminar escaneo' : 'Cancelar'}
+            {continuous ? (complete ? 'Revisar recepción' : 'Terminar escaneo') : 'Cancelar'}
           </button>
-          {running || starting ? (
+          {!complete && (running || starting ? (
             <button type="button" className="button secondary" onClick={stop}>
               <CameraOff size={17} /> Detener cámara
             </button>
@@ -274,7 +288,7 @@ export function BarcodeScanner({
             <button type="button" className="button secondary" onClick={() => void start()}>
               <Camera size={17} /> Activar cámara
             </button>
-          )}
+          ))}
         </div>
       </div>
     </Modal>
