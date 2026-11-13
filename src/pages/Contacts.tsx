@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowDownToLine, Archive, Building2, Check, ChevronRight, MapPin, MessageCircle, Pencil, Plus, Star, UserRound } from 'lucide-react';
+import { ArrowDownToLine, Archive, Building2, Check, ChevronRight, MapPin, MessageCircle, Pencil, Plus, Star, ScanLine, UserRound } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Contact, CustomerAddress } from '../lib/contracts';
 import { useRetail } from '../state/useRetail';
@@ -12,6 +12,7 @@ import { scannedHome, legacyHome, hasHomeAddress } from '../lib/customerHomeAddr
 import { AddressFields } from '../components/AddressFields';
 import { addressComparisonKey, addressMapsUrl, addressText, addressValidation, emptyAddress } from '../lib/addresses';
 import './contacts.css';
+import './customer-visual-v2.css';
 import {
   EmptyState,
   ErrorNotice,
@@ -21,6 +22,8 @@ import {
   SearchInput,
   StatusBadge,
 } from '../components/ui';
+
+const initials = (name: string) => name.trim().split(/\s+/).slice(0,2).map(word=>Array.from(word)[0]??'').join('').toLocaleUpperCase('es') || 'C';
 
 function ContactEditor({
   kind,
@@ -91,12 +94,12 @@ function ContactEditor({
       <form className="stack" onSubmit={save}>
         <div className={kind === "customer" ? "customer-form-section" : "stack"}>
         {kind === "customer" && <h3>Identificación y contacto</h3>}
-        {kind === "customer" && !contact && <CustomerIdScan disabled={busy} onApply={(scan) => {
+        {kind === "customer" && !contact && <div className="customer-scan-feature"><div className="customer-scan-intro"><span className="customer-address-icon"><ScanLine size={23}/></span><div><strong>Registro inteligente</strong><small>Escanea la cédula para completar los datos.</small></div></div><CustomerIdScan disabled={busy} onApply={(scan) => {
           const id = scan.ced.replace(/\D/g, "");
           const address = [scan.address, scan.sector, scan.municipio].filter(Boolean).join(", ");
           if(newCustomer) setHome(previous => {const next=scannedHome(scan.address,scan.sector,scan.municipio,previous.phone||form.phone);return {...previous,...next,reference:previous.reference};});
           setForm(previous => ({ ...previous, ...(id.length === 11 ? {tax_id:id} : {}), ...(scan.full.trim() ? {name:scan.full.trim()} : {}), ...(address ? {address} : {}) }));
-        }} />}
+        }} /></div>}
         <Field
           label={kind === 'customer' ? 'Nombre completo o razón social' : 'Nombre del proveedor'}
         >
@@ -296,7 +299,7 @@ function AddressBook({
       <div className="customer-address-list">
         {addresses.filter((address) => showArchived || address.active).map((address) => {
           const mapUrl = addressMapsUrl(address);
-          return <article className={`customer-address-card ${!address.active ? 'archived' : ''}`} key={address.id}>
+          return <article className={`customer-address-card ${!address.active ? 'archived' : address.is_default ? 'is-preferred' : ''}`} key={address.id}>
             <div className="customer-address-heading">
               <span className="customer-address-icon"><MapPin size={19} /></span>
               <div><strong>{address.label}</strong>
@@ -399,7 +402,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
     } catch { /* Display the server error in the confirmation. */ }
   }
   return <div className={kind === "customer" ? "customer-workspace" : undefined}>
-    <PageHeader eyebrow="RELACIONES DEL NEGOCIO" title={kind === 'customer' ? 'Clientes y direcciones' : 'Proveedores'}
+    <PageHeader eyebrow="RELACIONES DEL NEGOCIO" title={kind === 'customer' ? 'Clientes' : 'Proveedores'}
       description={kind === 'customer' ? 'Conoce a tus clientes y guarda sus destinos habituales para la próxima entrega.' : 'Contactos, condiciones e historial de tus aliados comerciales.'}
       actions={<>
         <button className="button secondary" onClick={() => downloadCsv(`${kind === 'customer' ? 'clientes' : 'proveedores'}.csv`, [
@@ -423,7 +426,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
           const preferred = preferredFor(contact.id); const count = addressesFor(contact.id).length;
           return <article className="customer-directory-card" key={contact.id}>
             <button className="customer-profile-trigger" onClick={() => openDetail(contact.id)}>
-              <span className="contact-avatar"><UserRound size={21} /></span>
+              <span className="contact-avatar" aria-hidden="true">{initials(contact.name)}</span>
               <span className="customer-list-copy"><strong>{contact.name}</strong><small>{contact.phone || contact.email || 'Sin contacto registrado'}</small>
                 <small>{count ? `${count} ${count === 1 ? 'dirección guardada' : 'direcciones guardadas'}` : 'Sin direcciones guardadas'}{preferred ? ` · ${preferred.label}` : ''}</small>
                 {(preferred || contact.address) && <span className="customer-preferred-address"><MapPin size={13} /> {preferred ? addressText(preferred) : contact.address}</span>}
@@ -446,12 +449,13 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
     {editor && <ContactEditor key={editor === 'new' ? 'new' : editor.id} kind={kind} contact={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
     {detail && !whatsAppContact && !editor && !archiveTarget && <Modal title={detail.name} onClose={closeDetail} wide variant={kind === 'customer' ? 'drawer' : undefined} className={kind === 'customer' ? 'customer-profile-view' : undefined} backLabel={kind === 'customer' ? 'Clientes' : undefined}>
       <div className="contact-profile-content">
-        <div className="customer-profile-summary"><span className="contact-avatar"><UserRound size={25} /></span><div>
+        <div className="customer-profile-summary"><span className="contact-avatar" aria-hidden="true">{kind === "customer" ? initials(detail.name) : <UserRound size={25} />}</span><div>
           <span className="eyebrow">{kind === 'customer' ? 'PERFIL DEL CLIENTE' : 'PROVEEDOR'}</span>
+          {kind === "customer" && <strong className="customer-hero-name">{detail.name}</strong>}
           <p>{detail.phone || 'Sin teléfono'} · {detail.email || 'Sin correo'}</p>
           {detail.tax_id && <small>RNC / Cédula: {detail.tax_id}</small>}
         </div></div>
-        {detail.address && <p className="muted"><MapPin size={15} /> {detail.address}</p>}
+        {detail.address && <p className="muted customer-profile-address"><MapPin size={15} /> {detail.address}</p>}
         {detail.notes && <p className="note-box">{detail.notes}</p>}
         {!detail.active && <div className="warning-notice">Este contacto está archivado. Reactívalo para nuevas operaciones.</div>}
         <div className="toolbar contact-profile-actions">

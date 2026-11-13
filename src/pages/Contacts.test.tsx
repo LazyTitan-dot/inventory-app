@@ -51,7 +51,7 @@ beforeEach(() => {
 describe('customer directory and saved destinations', () => {
   it('shows active address count and preferred destination without counting archived addresses', () => {
     const html = markup();
-    expect(html).toContain('Clientes y direcciones');
+    expect(html).toContain('>Clientes</h1>');
     expect(html).toContain('1 dirección guardada');
     expect(html).toContain('Calle Primera 5');
     expect(html).not.toContain('Dirección archivada');
