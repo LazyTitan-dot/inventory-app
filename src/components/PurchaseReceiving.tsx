@@ -116,11 +116,11 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
     setFeedback('');
     setValidation('');
   }
-  function countCode(value: string) {
+  function countCode(value: string, at: number) {
     if (locked) return false;
     const counted = countPurchaseBarcode({
       value, items, variants: data.variants, draft: draftRef.current,
-      previous: previousScan.current, at: performance.now(),
+      previous: previousScan.current, at,
     });
     if (counted.accepted) {
       updateDraft(counted.draft);
@@ -184,11 +184,11 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
                 ref={codeInput} value={code} autoComplete="off" autoCapitalize="off" spellCheck={false}
                 maxLength={80} placeholder="Escanea con el lector y pulsa Enter"
                 onChange={(event) => setCode(event.target.value)}
-                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); unlockAudio(); countCode(code); } }}
+                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); unlockAudio(); countCode(code, event.timeStamp); } }}
               />
             </Field>
             <div className="purchase-receiving-scan-actions">
-              <button type="button" className="button secondary" onClick={() => { unlockAudio(); countCode(code); }}>
+              <button type="button" className="button secondary" onClick={(event) => { unlockAudio(); countCode(code, event.timeStamp); }}>
                 <ScanLine size={17} /> Contar unidad
               </button>
               <button type="button" className="button secondary" onClick={() => { unlockAudio(); setScannerOpen(true); }}>

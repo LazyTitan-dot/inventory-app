@@ -25,7 +25,7 @@ export function BarcodeScanner({
   onActivate,
 }: {
   title?: string;
-  onDetected: (value: string) => void | boolean;
+  onDetected: (value: string, at: number) => void | boolean;
   onClose: () => void;
   continuous?: boolean;
   complete?: boolean;
@@ -80,7 +80,7 @@ export function BarcodeScanner({
   // A completed provisional count must stop camera capture without closing the review screen.
   useEffect(() => { if (continuous && complete) release(); }, [continuous, complete, release]);
   const accept = useCallback(
-    (raw: string) => {
+    (raw: string, at: number) => {
       if (continuous && complete) return false;
       const code = validScannedCode(raw);
       if (!code) {
@@ -89,12 +89,12 @@ export function BarcodeScanner({
       }
       if (continuous) {
         setError('');
-        callbacks.current.onDetected(code);
+        callbacks.current.onDetected(code, at);
         setValue('');
         return true;
       }
       stop();
-      callbacks.current.onDetected(code);
+      callbacks.current.onDetected(code, at);
       callbacks.current.onClose();
       return true;
     },
@@ -178,10 +178,10 @@ export function BarcodeScanner({
               if (!gate.armed && next.gate.armed) setStatus('Listo para la siguiente unidad.');
               gate = next.gate;
               if (next.detect && code) {
-                accept(code);
+                accept(code, timestamp);
                 setStatus('Retira el código de la vista hasta que aparezca «Listo para la siguiente unidad».');
               }
-            } else if (code && accept(code)) return;
+            } else if (code && accept(code, timestamp)) return;
           } catch (cause) {
             if (generation.current !== token) return;
             if (decoder.current?.kind === 'native' && ++nativeFailures >= 3) {
@@ -225,7 +225,7 @@ export function BarcodeScanner({
   function submit(event: FormEvent) {
     event.preventDefault();
     onActivate?.();
-    accept(value);
+    accept(value, event.timeStamp);
   }
   return (
     <Modal
