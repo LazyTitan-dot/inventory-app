@@ -163,8 +163,12 @@ export function BarcodeScanner({
             nativeFailures = 0;
             if (continuous) {
               const next = advanceContinuousScan(gate, code, timestamp);
+              if (!gate.armed && next.gate.armed) setStatus('Listo para la siguiente unidad.');
               gate = next.gate;
-              if (next.detect && code) accept(code);
+              if (next.detect && code) {
+                accept(code);
+                setStatus('Retira el código de la vista hasta que aparezca «Listo para la siguiente unidad».');
+              }
             } else if (code && accept(code)) return;
           } catch (cause) {
             if (generation.current !== token) return;
@@ -223,7 +227,7 @@ export function BarcodeScanner({
         <form className="stack" onSubmit={submit}>
           <Field label="Código escaneado o manual">
             <input
-              autoFocus
+              autoFocus={!continuous}
               autoComplete="off"
               autoCapitalize="off"
               spellCheck={false}

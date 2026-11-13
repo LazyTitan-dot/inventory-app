@@ -176,6 +176,9 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
           <p className="purchase-receiving-feedback" role="status">
             {feedback || 'El lector suma una unidad conforme al conteo provisional. Los escaneos muy rápidos del mismo código se bloquean.'}
           </p>
+          <div className="purchase-receiving-summary purchase-receiving-summary-top" role="status" aria-live="polite">
+            <span>Conteo provisional</span><strong>{countedUnits} / {pendingUnits} unidades · {result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</strong>
+          </div>
           <div className="purchase-receiving-lines">
             {pending.map((item) => {
               const remaining = remainingPurchaseQuantity(item);
@@ -258,7 +261,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
           <p role="status" aria-live="polite">{feedback || 'Listo para escanear. Aún no se guardó la recepción.'}</p>
           <details>
             <summary>Ver conteo por referencia ({pending.length})</summary>
-            <ul>{pending.map(item => <li key={item.id}><span>{item.product_snapshot.name} · {item.product_snapshot.sku}</span><strong>{draft[item.id]?.quantity || '0'} conformes / {remainingPurchaseQuantity(item)}</strong></li>)}</ul>
+            <ul>{pending.map(item => <li key={item.id}><span>{item.product_snapshot.name} · {item.product_snapshot.sku}</span><strong>{draft[item.id]?.quantity || '0'} conformes{enhanced ? ` · ${draft[item.id]?.damagedQuantity || '0'} dañadas` : ''} / {remainingPurchaseQuantity(item)}</strong></li>)}</ul>
           </details>
         </section>
       } />}
