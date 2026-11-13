@@ -5,11 +5,11 @@ import { BrowserMultiFormatReader } from '@zxing/browser';
 import { BarcodeFormat, DecodeHintType } from '@zxing/library';
 import { cameraFailureMessage } from '../lib/cameraScanner';
 import './customer-live-scanner.css';
-import {cardCrop,stableCrop,textSharpness,type CardCrop} from '../lib/customerLiveQuality';
+import {addressGuide} from '../lib/customerLiveAddress';
 
 import {readIdentityCode,type LiveIdentity} from '../lib/customerLiveIdentity';
 
-export function CustomerLiveScanner({onCapture,onClose}:{onCapture:(file:File|null,id:LiveIdentity)=>void;onClose:()=>void}) {
+export function CustomerLiveScanner({onCapture,onClose,initialIdentity=null}:{onCapture:(file:File|null,id:LiveIdentity)=>void;onClose:()=>void;initialIdentity?:LiveIdentity|null}) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream|null>(null);
   const raf = useRef(0);
@@ -17,20 +17,20 @@ export function CustomerLiveScanner({onCapture,onClose}:{onCapture:(file:File|nu
   const timer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const audioRef = useRef<AudioContext|null>(null);
   const active = useRef(false);
-  const [phase,setPhase]=useState<'idle'|'starting'|'ready'|'detected'>('idle');
-  const [message,setMessage]=useState('Activa la cámara y coloca el reverso completo dentro del marco.');
+  const [phase,setPhase]=useState<'idle'|'starting'|'ready'|'address'|'detected'>('idle');
+  const [message,setMessage]=useState('Activa la cámara y acerca el QR o código de barras de la cédula.');
   const [ratio,setRatio]=useState(1.58);
   const pending=useRef<LiveIdentity|null>(null);
-  const [identityReady,setIdentityReady]=useState(false);
+  const capturing=useRef(false);
 
   const release=useCallback(()=>{
-    generation.current++;active.current=false;cancelAnimationFrame(raf.current);pending.current=null;
+    generation.current++;active.current=false;cancelAnimationFrame(raf.current);pending.current=null;capturing.current=false;
     if(timer.current!==null){clearTimeout(timer.current);timer.current=null;}
     stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;
     if(video.current)video.current.srcObject=null;
   },[]);
   useEffect(()=>{
-    const hidden=()=>{if(document.visibilityState==='hidden'){release();setIdentityReady(false);setPhase('idle');setMessage('Cámara detenida. Actívala nuevamente.');}};
+    const hidden=()=>{if(document.visibilityState==='hidden'){release();setPhase('idle');setMessage('Cámara detenida. Actívala nuevamente.');}};
     document.addEventListener('visibilitychange',hidden);
     return()=>{document.removeEventListener('visibilitychange',hidden);release();const a=audioRef.current;audioRef.current=null;if(a&&a.state!=='closed')void a.close().catch(()=>{});};
   },[release]);
@@ -48,8 +48,8 @@ export function CustomerLiveScanner({onCapture,onClose}:{onCapture:(file:File|nu
     }catch{/* Sound must not interrupt the scan. */}};
     if(a.state==='running')play();else if(a.state==='suspended')void a.resume().then(play).catch(()=>{});
   }
-  function finish(file:File|null,id:LiveIdentity){release();setIdentityReady(false);setPhase('detected');setMessage(file?'Cédula capturada. Leyendo dirección…':'Identificación leída. Completa la dirección con una foto.');beep();timer.current=setTimeout(()=>{timer.current=null;onCapture(file,id);},260);}
-  function stop(){release();setIdentityReady(false);setPhase('idle');setMessage('Cámara detenida. Puedes volver a activarla o subir una foto.');}
+  function finish(file:File|null,id:LiveIdentity){release();setPhase('detected');setMessage(file?'Cédula capturada. Leyendo dirección…':'Identificación leída. Completa la dirección con una foto.');timer.current=setTimeout(()=>{timer.current=null;onCapture(file,id);},260);}
+  function stop(){release();setPhase('idle');setMessage('Cámara detenida. Puedes volver a activarla o subir una foto.');}
   async function start(){
     if(active.current)return;unlock();
     if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){setMessage('La cámara necesita HTTPS y permiso del navegador. Abre la app en Safari o Chrome, o sube una foto.');return;}
@@ -60,67 +60,57 @@ export function CustomerLiveScanner({onCapture,onClose}:{onCapture:(file:File|nu
       stream.current=media;const v=video.current;if(!v)throw Error('Cámara no disponible');
       for(const t of media.getVideoTracks())t.addEventListener('ended',()=>{if(token===generation.current){stop();setMessage('El acceso a la cámara terminó. Vuelve a activarla.');}},{once:true});
       v.srcObject=media;await v.play();if(token!==generation.current)return;
-      const frame=document.createElement('canvas'),small=document.createElement('canvas');
-      const fc=frame.getContext('2d',{willReadFrequently:true}),sc=small.getContext('2d',{willReadFrequently:true});
-      if(!fc||!sc)throw Error('No se pudo preparar la cámara');
+      const small=document.createElement('canvas'),sc=small.getContext('2d',{willReadFrequently:true});
+      if(!sc)throw Error('No se pudo preparar la cámara');
       const reader=new BrowserMultiFormatReader(new Map<DecodeHintType,unknown>([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.CODABAR,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39]],[DecodeHintType.TRY_HARDER,true]]));
-      let previous='',matches=0,last=0,stableSince=0,lastCrop:CardCrop|null=null,bestScore=-1,best:HTMLCanvasElement|null=null;
-      setPhase('ready');setMessage('Cámara lista. Coloca el reverso completo en el marco y mantén la cédula quieta.');
+      let previous='',matches=0,last=0;
+      const addressStep=(id:LiveIdentity)=>{pending.current=id;setPhase('address');setMessage('Acerca solo el bloque de dirección, sector y municipio. Cuando el texto se vea nítido, pulsa Capturar dirección.');};
+      if(initialIdentity)addressStep(initialIdentity);
+      else {setPhase('ready');setMessage('Acerca el QR de la nueva cédula o el código de barras de la anterior. No necesitas mostrar toda la tarjeta.');}
       const tick=(time:number)=>{
         if(token!==generation.current)return;
-        if(time-last>=220&&v.readyState>=2&&v.videoWidth&&v.videoHeight){
+        if(v.videoWidth&&v.videoHeight)setRatio(v.videoWidth/v.videoHeight);
+        if(!pending.current&&time-last>=150&&v.readyState>=2&&v.videoWidth&&v.videoHeight){
           last=time;
-          const w=v.videoWidth,h=v.videoHeight;
-          if(frame.width!==w||frame.height!==h){frame.width=w;frame.height=h;setRatio(w/h);}
-          fc.drawImage(v,0,0,w,h);
-          const dscale=Math.min(1,1280/Math.max(w,h)),dw=Math.round(w*dscale),dh=Math.round(h*dscale);
+          const scale=Math.min(1,1280/Math.max(v.videoWidth,v.videoHeight)),dw=Math.round(v.videoWidth*scale),dh=Math.round(v.videoHeight*scale);
           if(small.width!==dw||small.height!==dh){small.width=dw;small.height=dh;}
-          sc.drawImage(frame,0,0,dw,dh);
-          let id:LiveIdentity|null=null,crop:CardCrop|null=null;
-          try{
-            const pixels=sc.getImageData(0,0,dw,dh),q=jsQR(pixels.data,dw,dh,{inversionAttempts:'dontInvert'});
-            if(q){const p=q.location;const size=Math.hypot(p.topRightCorner.x-p.topLeftCorner.x,p.topRightCorner.y-p.topLeftCorner.y);
-              if(size>=Math.max(45,dw*.06)){id=readIdentityCode(q.data,'qr');if(id){const pt=(a:{x:number;y:number})=>({x:a.x*w/dw,y:a.y*h/dh});crop=cardCrop(pt(p.topLeftCorner),pt(p.topRightCorner),pt(p.bottomLeftCorner),pt(p.bottomRightCorner),w,h);}}}
-            if(!id){try{id=readIdentityCode(reader.decodeFromCanvas(small).getText(),'barcode');}catch{/* No valid old-format barcode in this frame. */}}
-          }catch{/* Try the next frame. */}
-          const key=id? id.mode+'|'+id.ced+'|'+id.full:'';
+          sc.drawImage(v,0,0,dw,dh);
+          let id:LiveIdentity|null=null;
+          try{const pixels=sc.getImageData(0,0,dw,dh),q=jsQR(pixels.data,dw,dh,{inversionAttempts:'dontInvert'});
+            if(q)id=readIdentityCode(q.data,'qr');
+            if(!id){try{id=readIdentityCode(reader.decodeFromCanvas(small).getText(),'barcode');}catch{/* Continue scanning. */}}
+          }catch{/* Continue scanning. */}
+          const key=id?id.mode+'|'+id.ced+'|'+id.full:'';
           matches=key&&key===previous?matches+1:key?1:0;previous=key;
-          if(id&&matches>=2){
-            pending.current=id;setIdentityReady(true);
-            if(id.mode==='new'){
-              if(!crop){lastCrop=null;stableSince=0;best=null;bestScore=-1;setMessage('QR reconocido. Acerca la cédula completa, horizontal y sin cortar sus bordes.');}
-              else{
-                if(!lastCrop||!stableCrop(lastCrop,crop)){stableSince=time;best=null;bestScore=-1;}
-                lastCrop=crop;
-                const sharp=textSharpness(fc,crop);
-                if(sharp>bestScore){const copy=document.createElement('canvas');copy.width=crop.width;copy.height=crop.height;copy.getContext('2d')?.drawImage(frame,crop.x,crop.y,crop.width,crop.height,0,0,crop.width,crop.height);best=copy;bestScore=sharp;}
-                setMessage('QR reconocido. Mantén la cédula quieta mientras comprobamos la nitidez.');
-                if(best&&time-stableSince>=1100&&bestScore>=1.6){
-                  const identity=id;best.toBlob(blob=>{if(token!==generation.current)return;if(blob)finish(new File([blob],'cedula-camara.png',{type:'image/png'}),identity);else stop();},'image/png');return;
-                }
-              }
-            }else{
-              const identity=id;frame.toBlob(blob=>{if(token!==generation.current)return;if(blob)finish(new File([blob],'cedula-camara.png',{type:'image/png'}),identity);else stop();},'image/png');return;
-            }
-          }else{lastCrop=null;stableSince=0;best=null;bestScore=-1;pending.current=null;setIdentityReady(false);}
+          if(id&&matches>=2){addressStep(id);beep();}
         }
         raf.current=requestAnimationFrame(tick);
       };
       raf.current=requestAnimationFrame(tick);
     }catch(cause){if(token!==generation.current)return;release();setPhase('idle');setMessage(cameraFailureMessage(cause));}
   }
+  function captureAddress(){
+    const v=video.current,id=pending.current;
+    if(!v||!id||capturing.current||v.readyState<2||!v.videoWidth)return;
+    const {x,y,width,height}=addressGuide(v.videoWidth,v.videoHeight);
+    const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+    const ctx=canvas.getContext('2d');if(!ctx)return;
+    ctx.drawImage(v,x,y,width,height,0,0,width,height);capturing.current=true;
+    const token=generation.current;
+    canvas.toBlob(blob=>{if(token!==generation.current)return;capturing.current=false;if(blob)finish(new File([blob],'direccion-camara.png',{type:'image/png'}),id);else setMessage('No se pudo capturar. Intenta nuevamente.');},'image/png');
+  }
   return <section className="customer-live stack" aria-label="Escáner en vivo">
-    <div className={'barcode-readiness '+(phase==='ready'?'ready':phase==='detected'?'complete':'')} role="status" aria-live="polite">
+    <div className={'barcode-readiness '+(phase==='ready'||phase==='address'?'ready':phase==='detected'?'complete':'')} role="status" aria-live="polite">
       {phase==='detected'?<CheckCircle2 size={22} aria-hidden="true"/>:<span className="barcode-readiness-dot" aria-hidden="true"/>}
-      <div><strong>{phase==='detected'?'Cédula detectada':phase==='ready'?'Cámara lista':'Escaneo en vivo'}</strong><p>{message}</p></div>
+      <div><strong>{phase==='detected'?'Cédula detectada':phase==='address'?'Paso 2 de 2 · Dirección':phase==='ready'?'Paso 1 de 2 · Identificación':'Escaneo en vivo'}</strong><p>{message}</p></div>
     </div>
-    <div className="customer-live-preview" hidden={phase!=='ready'&&phase!=='starting'} style={{aspectRatio:ratio,maxWidth:'calc(48vh * '+ratio+')'}}>
+    <div className="customer-live-preview" hidden={phase!=='ready'&&phase!=='starting'&&phase!=='address'} style={{aspectRatio:ratio,maxWidth:'calc(48vh * '+ratio+')'}}>
       <video ref={video} muted autoPlay playsInline aria-label="Vista previa de la cámara de cédula"/>
-      <div className="customer-live-guide" aria-hidden="true"/>
+      <div className={phase==="address"?"customer-address-guide":"customer-live-guide customer-qr-guide"} style={phase==="address"?{width:"86%",height:Math.min(.82,.86*ratio/1.65)*100+"%"}:undefined} aria-hidden="true"/>
     </div>
     <div className="modal-footer">
       <button type="button" className="button secondary" onClick={()=>{release();onClose();}}>Volver</button>
-      {phase==='ready'&&identityReady&&<button type="button" className="button secondary" onClick={()=>{if(pending.current)finish(null,pending.current);}}>Usar identidad y completar dirección</button>}
+      {phase==='address'&&<><button type="button" className="button primary" onClick={captureAddress}>Capturar dirección</button><button type="button" className="button secondary" onClick={()=>{if(pending.current)finish(null,pending.current);}}>Usar identidad y completar dirección</button></>}
       {phase==='idle'?<button type="button" className="button primary" onClick={()=>void start()}><Camera size={17}/> Activar cámara</button>:phase!=='detected'&&<button type="button" className="button secondary" onClick={stop}><CameraOff size={17}/> Detener cámara</button>}
     </div>
   </section>;

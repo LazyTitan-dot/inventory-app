@@ -22,7 +22,8 @@ export function CustomerIdScan({onApply,disabled}:{onApply:(scan:CustomerScan)=>
   if(!photo)return;
   setBusy(true);setResult(null);setStatus(identity?'Cédula detectada. Leyendo dirección…':'Preparando imagen…');
   try{
-    const {scanCustomerId}=await import('../lib/customerIdScanner');const r=await scanCustomerId(photo,scanMode,setStatus,identity&&!fromUpload?"live":"upload");
+    if(base&&!fromUpload){const {readLiveAddress}=await import('../lib/customerLiveAddressOcr');const addr=await readLiveAddress(photo,setStatus);setResult({...base,...addr});setStatus(addr.warning||'Dirección leída. Confirma los datos antes de aplicarlos.');return;}
+    const {scanCustomerId}=await import('../lib/customerIdScanner');const r=await scanCustomerId(photo,scanMode,setStatus,"upload");
     if(base){
       const conflict=!!r.ced&&r.ced.replace(/\D/g,'')!==identity!.ced;
       const same=!conflict&&(!fromUpload||!!r.ced);
@@ -42,13 +43,13 @@ export function CustomerIdScan({onApply,disabled}:{onApply:(scan:CustomerScan)=>
  <button type="button" className="button secondary" disabled={disabled||busy} onClick={()=>open?reset():setOpen(true)}><ScanLine size={18}/> {open?'Cerrar escáner':'Escanear cédula'}</button>
  {open&&<div className="stack"><p className="muted">Fotografía el reverso con autorización del cliente. La imagen se procesa en este dispositivo y no se guarda. Usa el frente si faltan los nombres.</p>
  {!live&&<button type="button" className="button primary" disabled={busy||disabled} onClick={()=>{setLive(true);setLiveIdentity(null);setFile(null);setResult(null);setStatus("");}}><ScanLine size={17}/> Escanear en vivo</button>}
- {live&&<CustomerLiveScanner onClose={()=>setLive(false)} onCapture={(photo,id)=>{setLive(false);setLiveIdentity(id);void analyze(photo,id.mode,id);}}/>}
+ {live&&<CustomerLiveScanner initialIdentity={liveIdentity} onClose={()=>setLive(false)} onCapture={(photo,id)=>{setLive(false);setLiveIdentity(id);void analyze(photo,id.mode,id);}}/>}
  {!live&&<>
  <label>{liveIdentity?"Subir foto del reverso (misma cédula)":"Seleccionar imagen"}<input type="file" accept="image/*" disabled={busy} onChange={e=>select(e.target.files?.[0])}/></label>
  <label>Formato<select value={mode} disabled={busy} onChange={e=>setMode(e.target.value as ScanMode)}><option value="auto">Automático</option><option value="new">Nueva cédula</option><option value="old">Cédula anterior</option><option value="front">Frente</option><option value="combined">Frente y reverso</option></select></label>
  <button type="button" className="button primary" disabled={!file||busy||disabled} onClick={()=>void analyze(file,mode,liveIdentity??undefined,!!liveIdentity)}>{busy?'Analizando…':'Analizar fotografía'}</button></>}
  <p role="status" className="muted">{status}</p>
- {result&&<div className="stack"><label>Cédula<input value={result.ced} onChange={e=>setResult({...result,ced:e.target.value})}/></label><label>Nombre completo<input value={result.full} onChange={e=>setResult({...result,full:e.target.value})}/></label><label>Dirección de residencia<textarea rows={3} value={result.address} onChange={e=>setResult({...result,address:e.target.value})}/></label><label>Sector<input value={result.sector} onChange={e=>setResult({...result,sector:e.target.value})}/></label><label>Municipio<input value={result.municipio} onChange={e=>setResult({...result,municipio:e.target.value})}/></label><p className="muted">Comprueba números de edificio y apartamento. La dirección de entrega puede ser distinta. Si faltan nombres, completa el formulario manualmente.</p><button type="button" className="button primary" disabled={disabled||busy} onClick={()=>{onApply(result);reset();}}>Aplicar datos al formulario</button></div>}
+ {result&&!live&&<div className="stack">{liveIdentity&&<button type="button" className="button secondary" disabled={busy} onClick={()=>setLive(true)}>Repetir solo dirección</button>}<label>Cédula<input value={result.ced} onChange={e=>setResult({...result,ced:e.target.value})}/></label><label>Nombre completo<input value={result.full} onChange={e=>setResult({...result,full:e.target.value})}/></label><label>Dirección de residencia<textarea rows={3} value={result.address} onChange={e=>setResult({...result,address:e.target.value})}/></label><label>Sector<input value={result.sector} onChange={e=>setResult({...result,sector:e.target.value})}/></label><label>Municipio<input value={result.municipio} onChange={e=>setResult({...result,municipio:e.target.value})}/></label><p className="muted">Comprueba números de edificio y apartamento. La dirección de entrega puede ser distinta. Si faltan nombres, completa el formulario manualmente.</p><button type="button" className="button primary" disabled={disabled||busy} onClick={()=>{onApply(result);reset();}}>Aplicar datos al formulario</button></div>}
  </div>}
  </section>;
 }
