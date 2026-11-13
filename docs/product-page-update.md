@@ -89,7 +89,25 @@ were sent or business fixtures created for this batch. The isolated database and
 browser checks above are separate evidence, not a claimed live staging pass.
 
 The user has authorized direct production updates in this conversation and
-approved this product-page scope. The release will use the completed isolated
-checks, a read-only production preflight, and before/after business-table
-snapshots. At this source checkpoint the new migration and UI are not yet
-released. PR #1 remains unmerged.
+approved this product-page scope. Read-only production preflight passed (27 variants; no invalid or conflicting
+primary codes), and all 15 retail tables were snapshotted before the proposed
+migration. The migration tool's in-app confirmation expired twice without
+execution. A fresh schema read confirms both alias column and registry remain
+absent and the previous save_product body is unchanged. This is a connector
+confirmation blocker, not a missing user approval in the conversation.
+
+Source commit `1c0433d1f3b31acd0dd73a535538726243169d44` is pushed and
+[CI run 15](https://github.com/LazyTitan-dot/inventory-app/actions/runs/43324828088)
+passed. Its automatic Vercel Preview build failed because the branch's public
+Supabase environment values are no longer configured; the production-scoped
+public values remain present. No environment values were copied between targets.
+The new migration and UI have not been released to production. PR #1 remains
+unmerged.
+
+To resume, refresh the production state/preflight, obtain the connector's own
+migration confirmation for the exact reviewed SQL (SHA-256
+`6cba6abf768ade72f5c0140948d9dec31840bc234b08c645d980f25bb5feb595`), apply it
+with bounded timeouts, verify data preservation/capability/registry grants, and
+release the exact source commit to the existing production Vercel project.
+Production Auth credentials and persistent synthetic production records are not
+needed for that release verification.
