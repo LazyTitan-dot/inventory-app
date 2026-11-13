@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowDownToLine, Archive, Building2, Check, MapPin, MessageCircle, Pencil, Plus, Star, UserRound } from 'lucide-react';
+import { ArrowDownToLine, Archive, Building2, Check, ChevronRight, MapPin, MessageCircle, Pencil, Plus, Star, UserRound } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Contact, CustomerAddress } from '../lib/contracts';
 import { useRetail } from '../state/useRetail';
@@ -82,12 +82,15 @@ function ContactEditor({
   }
   return (
     <Modal
+      className={kind === "customer" ? "customer-editor-view" : undefined}
       title={`${contact ? 'Editar' : 'Agregar'} ${kind === 'customer' ? 'cliente' : 'proveedor'}`}
       onClose={() => {
         if (!busy) onClose();
       }}
     >
       <form className="stack" onSubmit={save}>
+        <div className={kind === "customer" ? "customer-form-section" : "stack"}>
+        {kind === "customer" && <h3>Identificación y contacto</h3>}
         {kind === "customer" && !contact && <CustomerIdScan disabled={busy} onApply={(scan) => {
           const id = scan.ced.replace(/\D/g, "");
           const address = [scan.address, scan.sector, scan.municipio].filter(Boolean).join(", ");
@@ -133,6 +136,7 @@ function ContactEditor({
             onChange={(e) => field('tax_id', e.target.value.replace(/[-\s]/g, ''))}
           />
         </Field>
+        </div>
         {newCustomer ? <section className="customer-address-form stack" aria-label="Dirección de entrega inicial">
           <h3>Dirección de entrega · Casa</h3>
           <p className="muted">Se guardará como primera dirección preferida. Confirma que corresponde al destino de entrega; puedes dejarla vacía para una compra sin entrega.</p>
@@ -145,6 +149,8 @@ function ContactEditor({
             placeholder="Calle, número, sector, ciudad y referencia"
           />
         </Field>}
+        <div className={kind === "customer" ? "customer-form-section" : "stack"}>
+        {kind === "customer" && <h3>Información adicional</h3>}
         <Field label="Notas internas">
           <textarea
             maxLength={2000}
@@ -157,6 +163,7 @@ function ContactEditor({
             }
           />
         </Field>
+        </div>
         {duplicate && (
           <div className="warning-notice">
             Ya existe un registro con estos datos: <strong>{duplicate.name}</strong>. Comprueba que
@@ -391,7 +398,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
       setArchiveTarget(null); closeDetail();
     } catch { /* Display the server error in the confirmation. */ }
   }
-  return <>
+  return <div className={kind === "customer" ? "customer-workspace" : undefined}>
     <PageHeader eyebrow="RELACIONES DEL NEGOCIO" title={kind === 'customer' ? 'Clientes y direcciones' : 'Proveedores'}
       description={kind === 'customer' ? 'Conoce a tus clientes y guarda sus destinos habituales para la próxima entrega.' : 'Contactos, condiciones e historial de tus aliados comerciales.'}
       actions={<>
@@ -417,12 +424,13 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
           return <article className="customer-directory-card" key={contact.id}>
             <button className="customer-profile-trigger" onClick={() => openDetail(contact.id)}>
               <span className="contact-avatar"><UserRound size={21} /></span>
-              <span><strong>{contact.name}</strong><small>{contact.phone || contact.email || 'Sin contacto registrado'}</small>
+              <span className="customer-list-copy"><strong>{contact.name}</strong><small>{contact.phone || contact.email || 'Sin contacto registrado'}</small>
                 <small>{count ? `${count} ${count === 1 ? 'dirección guardada' : 'direcciones guardadas'}` : 'Sin direcciones guardadas'}{preferred ? ` · ${preferred.label}` : ''}</small>
                 {(preferred || contact.address) && <span className="customer-preferred-address"><MapPin size={13} /> {preferred ? addressText(preferred) : contact.address}</span>}
               </span>
+              <ChevronRight className="customer-list-chevron" size={19} aria-hidden="true" />
             </button>
-            <div className="customer-directory-actions"><button className="button secondary" onClick={() => openDetail(contact.id)}>Ver perfil</button>
+            <div className="customer-directory-actions"><button className="button secondary customer-open-profile" onClick={() => openDetail(contact.id)}>Ver perfil</button>
               {permitted && <button className="button ghost" aria-label={`Escribir a ${contact.name} por WhatsApp`} onClick={() => setWhatsAppContactId(contact.id)}><MessageCircle size={17} /> WhatsApp</button>}
             </div>
           </article>;
@@ -436,7 +444,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
           </tbody></table></div>}
     </section>
     {editor && <ContactEditor key={editor === 'new' ? 'new' : editor.id} kind={kind} contact={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
-    {detail && !whatsAppContact && !editor && !archiveTarget && <Modal title={detail.name} onClose={closeDetail} wide variant={kind === 'customer' ? 'drawer' : undefined}>
+    {detail && !whatsAppContact && !editor && !archiveTarget && <Modal title={detail.name} onClose={closeDetail} wide variant={kind === 'customer' ? 'drawer' : undefined} className={kind === 'customer' ? 'customer-profile-view' : undefined} backLabel={kind === 'customer' ? 'Clientes' : undefined}>
       <div className="contact-profile-content">
         <div className="customer-profile-summary"><span className="contact-avatar"><UserRound size={25} /></span><div>
           <span className="eyebrow">{kind === 'customer' ? 'PERFIL DEL CLIENTE' : 'PROVEEDOR'}</span>
@@ -455,8 +463,8 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
         {kind === 'customer' && addressFeature && <AddressBook key={detail.id} contact={detail} permitted={permitted} onBusyChange={setAddressBusy} />}
         <section className="contact-history"><div className="contacts-section-heading"><div><h3>Historial de operaciones</h3><p>Documentos registrados para este contacto.</p></div><span className="badge">{documents.length}</span></div>
           {documents.length ? <div className="table-wrap"><table className="data-table"><thead><tr><th>Documento</th><th>Fecha</th><th>Estado</th><th>Total</th></tr></thead><tbody>{documents.map((document) => <tr key={document.id}>
-            <td><Link to={`/${document.type === 'purchase' ? 'compras' : document.type === 'quote' ? 'cotizaciones' : document.type === 'return' ? 'posventa' : 'ventas'}?documento=${document.id}`}>{documentNumber(document)}</Link></td>
-            <td>{dateTime(document.created_at)}</td><td><StatusBadge status={document.status} /></td><td>{money(document.total)}</td>
+            <td data-label="Documento"><Link to={`/${document.type === 'purchase' ? 'compras' : document.type === 'quote' ? 'cotizaciones' : document.type === 'return' ? 'posventa' : 'ventas'}?documento=${document.id}`}>{documentNumber(document)}</Link></td>
+            <td data-label="Fecha">{dateTime(document.created_at)}</td><td data-label="Estado"><StatusBadge status={document.status} /></td><td data-label="Total">{money(document.total)}</td>
           </tr>)}</tbody></table></div> : <EmptyState title="Sin operaciones todavía" description="Las compras y ventas de este contacto aparecerán aquí." />}
         </section>
       </div>
@@ -468,5 +476,5 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
     </Modal>}
     {whatsAppContact?.kind === 'customer' && kind === 'customer' && permitted && <WhatsAppComposer title="Mensaje al cliente por WhatsApp" contactName={whatsAppContact.name} phone={whatsAppContact.phone ?? ''}
       message={buildContactWhatsAppMessage({ contact: whatsAppContact, businessName: data.settings.business_name })} onClose={() => setWhatsAppContactId(null)} />}
-  </>;
+  </div>;
 }

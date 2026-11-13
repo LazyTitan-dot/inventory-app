@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AlertCircle, Inbox, Search, X } from 'lucide-react';
+import { AlertCircle, ChevronLeft, Inbox, Search, X } from 'lucide-react';
 import { statusLabels } from '../lib/format';
 import './drawer.css';
 
@@ -124,12 +124,16 @@ export function Modal({
   onClose,
   wide,
   variant = 'dialog',
+  className = '',
+  backLabel,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
   variant?: 'dialog' | 'drawer';
+  className?: string;
+  backLabel?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -151,7 +155,7 @@ export function Modal({
   return (
     <dialog
       ref={dialog}
-      className={`modal ${wide ? 'wide' : ''} ${variant === 'drawer' ? 'detail-drawer' : ''}`}
+      className={`modal ${wide ? 'wide' : ''} ${variant === 'drawer' ? 'detail-drawer' : ''} ${className}`}
       aria-label={title}
       onCancel={(e) => {
         e.preventDefault();
@@ -161,7 +165,8 @@ export function Modal({
       <div className="modal-heading">
         <h2>{title}</h2>
         <button type="button" className="icon-button" aria-label="Cerrar ventana" onClick={onClose}>
-          <X size={20} />
+          <X className="modal-close-icon" size={20} />
+          {backLabel && <span className="customer-mobile-back"><ChevronLeft size={20} />{backLabel}</span>}
         </button>
       </div>
       <div className="modal-body">{children}</div>
