@@ -1,0 +1,13 @@
+import {mkdir,copyFile,readdir} from 'node:fs/promises';
+import {createRequire} from 'node:module';
+import path from 'node:path';
+const require=createRequire(import.meta.url);
+const base=path.dirname(require.resolve('tesseract5/package.json'));
+const core=path.dirname(require.resolve('tesseract.js-core/package.json',{paths:[base]}));
+const spa=path.dirname(require.resolve('@tesseract.js-data/spa/package.json'));
+const target='public/assets/customer-ocr-v06';
+await mkdir(target+'/core',{recursive:true});await mkdir(target+'/lang',{recursive:true});
+await copyFile(path.join(base,'dist','worker.min.js'),target+'/worker.min.js');
+for(const f of await readdir(core))if(f.endsWith('.wasm')||f.endsWith('.wasm.js'))await copyFile(path.join(core,f),target+'/core/'+f);
+await copyFile(path.join(spa,'4.0.0_best_int','spa.traineddata.gz'),target+'/lang/spa.traineddata.gz');
+console.log('Prepared local customer OCR v0.6 assets');

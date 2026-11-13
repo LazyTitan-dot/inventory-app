@@ -7,6 +7,7 @@ import { useOperation } from '../state/useOperation';
 import { dateTime, documentNumber, downloadCsv, matches, money } from '../lib/format';
 import { WhatsAppComposer } from '../components/WhatsAppComposer';
 import { buildContactWhatsAppMessage } from '../lib/whatsapp';
+import { CustomerIdScan } from '../components/CustomerIdScan';
 import { AddressFields } from '../components/AddressFields';
 import { addressComparisonKey, addressMapsUrl, addressText, addressValidation, emptyAddress } from '../lib/addresses';
 import './contacts.css';
@@ -78,6 +79,11 @@ function ContactEditor({
       }}
     >
       <form className="stack" onSubmit={save}>
+        {kind === "customer" && !contact && <CustomerIdScan disabled={busy} onApply={(scan) => {
+          const id = scan.ced.replace(/\D/g, "");
+          const address = [scan.address, scan.sector, scan.municipio].filter(Boolean).join(", ");
+          setForm(previous => ({ ...previous, ...(id.length === 11 ? {tax_id:id} : {}), ...(scan.full.trim() ? {name:scan.full.trim()} : {}), ...(address ? {address} : {}) }));
+        }} />}
         <Field
           label={kind === 'customer' ? 'Nombre completo o razón social' : 'Nombre del proveedor'}
         >

@@ -12,3 +12,5 @@ supabase/.temp/
 supabase/.branches/
 playwright-report/
 public/assets/label-ocr-v1/
+
+public/assets/customer-ocr-v06/

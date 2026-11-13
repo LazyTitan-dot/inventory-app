@@ -20,18 +20,20 @@
     "test:shell:types": "tsc --project tests/tsconfig.json",
     "test:preview-output": "node --test tests/preview-output.test.mjs",
     "prepare:label-ocr": "node scripts/prepare-label-ocr.mjs",
-    "predev": "npm run prepare:label-ocr",
-    "prebuild": "npm run prepare:label-ocr"
+    "predev": "npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs",
+    "prebuild": "npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.117.1",
     "@zxing/browser": "0.1.5",
     "@zxing/library": "0.21.3",
+    "jsqr": "1.4.0",
     "lucide-react": "1.48.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-router-dom": "7.18.4",
     "tesseract.js": "6.0.1",
+    "tesseract5": "npm:tesseract.js@5.1.1",
     "zod": "4.6.5"
   },
   "devDependencies": {

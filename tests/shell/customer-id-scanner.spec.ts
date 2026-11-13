@@ -1,0 +1,26 @@
+import { test, expect } from './fixtures';
+import { QRCodeWriter, BarcodeFormat } from '@zxing/library';
+test('customer scanner reads local QR, applies editable fields without saving', async ({ page }) => {
+  test.setTimeout(120000);
+  const matrix = new QRCodeWriter().encode('00000000000|PERSONA PRUEBA|APELLIDO|FICTICIO|fixture', BarcodeFormat.QR_CODE, 240, 240, new Map());
+  let pixels = '';
+  for (let y=0;y<matrix.getHeight();y++) for(let x=0;x<matrix.getWidth();x++) if(matrix.get(x,y)) pixels += '<rect x="'+x+'" y="'+y+'" width="1" height="1"/>';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="884"><rect width="1400" height="884" fill="#d5e4f8"/><g transform="translate(480 35)"><rect width="240" height="240" fill="white"/>'+pixels+'</g><g fill="#111" font-family="Arial" font-size="26"><text x="745" y="265">Dirección de residencia</text><text x="745" y="300">CALLE PRUEBA, EDIF. 12</text><text x="745" y="335">PISO 2 APTO 2-B</text><text x="745" y="385">Sector</text><text x="745" y="420">SECTOR FICTICIO</text><text x="745" y="465">Municipio</text><text x="745" y="495">DISTRITO NACIONAL</text></g></svg>';
+  await page.goto('/clientes');
+  await page.getByRole('button',{name:'Agregar cliente',exact:true}).click();
+  const modal=page.getByRole('dialog',{name:'Agregar cliente'});
+  await modal.getByRole('button',{name:'Escanear cédula'}).click();
+  await modal.getByLabel('Seleccionar imagen').setInputFiles({name:'fixture.svg',mimeType:'image/svg+xml',buffer:Buffer.from(svg)});
+  await modal.getByRole('button',{name:'Analizar fotografía'}).click();
+  const apply=modal.getByRole('button',{name:'Aplicar datos al formulario'});
+  await expect(apply).toBeVisible({timeout:90000});
+  await expect(modal.getByLabel('Nombre completo',{exact:true})).toHaveValue('PERSONA PRUEBA APELLIDO FICTICIO');
+  await expect(modal.getByLabel('Cédula',{exact:true})).toHaveValue('000-0000000-0');
+  await modal.locator('section textarea').fill('Calle de prueba, 12');
+  await apply.click();
+  await expect(modal.getByLabel('Nombre completo o razón social')).toHaveValue('PERSONA PRUEBA APELLIDO FICTICIO');
+  await expect(modal.getByLabel('RNC o cédula')).toHaveValue('00000000000');
+  await expect(modal.locator('textarea').first()).toHaveValue(/Calle de prueba, 12/);
+  await modal.getByRole('button',{name:'Cancelar',exact:true}).click();
+  await expect(modal).not.toBeVisible();
+});
