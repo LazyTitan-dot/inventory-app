@@ -36,7 +36,7 @@ test('fulfilment: address ownership/defaults/versions, immutable snapshots, rece
    if(role!=='outsider')await db.query('insert into public.retail_memberships(user_id,email,role) values($1,$2,$3)',[id,`${role}@example.test`,role]);
   }
   await as('owner');
-  eq((await state()).features,['customer_addresses_v1','purchase_receipts_v1'],'Capabilities advertise real migrated contract');
+  eq((await state()).features,['customer_addresses_v1','purchase_receipts_v1','barcode_aliases_v1'],'Capabilities advertise real migrated contract');
   const customer=(await command('save_contact',{kind:'customer',name:'Cliente Uno'})).entity_id;
   const customer2=(await command('save_contact',{kind:'customer',name:'Cliente Dos'})).entity_id;
   const supplier=(await command('save_contact',{kind:'supplier',name:'Proveedor'})).entity_id;

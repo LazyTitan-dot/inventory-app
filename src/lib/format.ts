@@ -1,5 +1,7 @@
 import type { RetailDocument } from './contracts';
 
+export const taxRateLabel = (rate: number) => `${new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 }).format(rate)} %`;
+
 export const BUSINESS_TIMEZONE = 'America/Santo_Domingo';
 const moneyFormatter = new Intl.NumberFormat('es-DO', {
   style: 'currency',

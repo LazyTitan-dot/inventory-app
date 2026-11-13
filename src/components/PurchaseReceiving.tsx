@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { AlertTriangle, Camera, Check, Package, Printer, ScanLine } from 'lucide-react';
 import type { DocumentItem, RetailDocument } from '../lib/contracts';
 import { dateTime, documentNumber, money } from '../lib/format';
@@ -33,6 +33,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
   const draftRef = useRef<ReceiptDraft>({});
   const previousScan = useRef<ReceiptScan | null>(null);
   const codeInput = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<AudioContext | null>(null);
   const [code, setCode] = useState('');
   const [notes, setNotes] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -45,6 +46,48 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
   const locked = busy || stale || !permitted || !open;
   const pending = items.filter((item) => remainingPurchaseQuantity(item) > 0);
   const result = preparePurchaseReceipt(items, draft, enhanced);
+  const pendingUnits = pending.reduce((sum, item) => sum + remainingPurchaseQuantity(item), 0);
+  const countedUnits = result.good + result.damaged;
+
+  useEffect(() => () => {
+    const audio = audioRef.current;
+    audioRef.current = null;
+    if (audio && audio.state !== 'closed') void audio.close().catch(() => {});
+  }, []);
+
+  // Unlock audio from an explicit gesture, including the iPhone camera activation.
+  function unlockAudio() {
+    try {
+      const Audio = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Audio) return;
+      const audio = audioRef.current ?? new Audio();
+      audioRef.current = audio;
+      if (audio.state === 'suspended') void audio.resume().catch(() => {});
+    } catch { /* Visual confirmation remains available if audio is blocked. */ }
+  }
+  function playScanSound() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const play = () => {
+      if (audioRef.current !== audio || audio.state !== 'running') return;
+      try {
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        const now = audio.currentTime;
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.2, now + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        oscillator.connect(gain).connect(audio.destination);
+        oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+        oscillator.start(now);
+        oscillator.stop(now + 0.13);
+      } catch { /* Audio failure must never prevent counting a unit. */ }
+    };
+    if (audio.state === 'running') play();
+    else if (audio.state === 'suspended') void audio.resume().then(play).catch(() => {});
+  }
 
   function updateDraft(next: ReceiptDraft) {
     draftRef.current = next;
@@ -52,7 +95,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
     setValidation('');
   }
   function countCode(value: string) {
-    if (locked) return;
+    if (locked) return false;
     const counted = countPurchaseBarcode({
       value, items, variants: data.variants, draft: draftRef.current,
       previous: previousScan.current, at: performance.now(),
@@ -61,9 +104,11 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
       updateDraft(counted.draft);
       previousScan.current = counted.scan;
       setCode('');
+      playScanSound();
     }
     setFeedback(counted.message);
-    codeInput.current?.focus();
+    if (!scannerOpen) codeInput.current?.focus();
+    return counted.accepted;
   }
   function acceptCurrentOrder() {
     if (!current || busy) return;
@@ -116,21 +161,24 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
                 ref={codeInput} value={code} autoComplete="off" autoCapitalize="off" spellCheck={false}
                 maxLength={80} placeholder="Escanea con el lector y pulsa Enter"
                 onChange={(event) => setCode(event.target.value)}
-                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); countCode(code); } }}
+                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); unlockAudio(); countCode(code); } }}
               />
             </Field>
             <div className="purchase-receiving-scan-actions">
-              <button type="button" className="button secondary" onClick={() => countCode(code)}>
+              <button type="button" className="button secondary" onClick={() => { unlockAudio(); countCode(code); }}>
                 <ScanLine size={17} /> Contar unidad
               </button>
-              <button type="button" className="button secondary" onClick={() => setScannerOpen(true)}>
-                <Camera size={17} /> Cámara
+              <button type="button" className="button secondary" onClick={() => { unlockAudio(); setScannerOpen(true); }}>
+                <Camera size={17} /> Cámara continua
               </button>
             </div>
           </div>
           <p className="purchase-receiving-feedback" role="status">
             {feedback || 'El lector suma una unidad conforme al conteo provisional. Los escaneos muy rápidos del mismo código se bloquean.'}
           </p>
+          <div className="purchase-receiving-summary purchase-receiving-summary-top" role="status" aria-live="polite">
+            <span>Conteo provisional</span><strong>{countedUnits} / {pendingUnits} unidades · {result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</strong>
+          </div>
           <div className="purchase-receiving-lines">
             {pending.map((item) => {
               const remaining = remainingPurchaseQuantity(item);
@@ -194,7 +242,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
           </Field>
         </fieldset>
         <div className="purchase-receiving-summary" role="status">
-          <span>Conteo provisional</span><strong>{result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</strong>
+          <span>Conteo provisional</span><strong>{countedUnits} / {pendingUnits} unidades · {result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</strong>
         </div>
         <ErrorNotice message={validation || error} />
         <div className="modal-footer">
@@ -204,7 +252,19 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
           </button>
         </div>
       </form>
-      {scannerOpen && !locked && <BarcodeScanner title="Escanear mercancía de esta orden" onDetected={countCode} onClose={() => setScannerOpen(false)} />}
+      {scannerOpen && !locked && <BarcodeScanner title="Recepción · Escaneo continuo" continuous onActivate={unlockAudio} onDetected={countCode} onClose={() => setScannerOpen(false)} summary={
+        <section className="purchase-scan-live" aria-label="Conteo en vivo">
+          <div className="purchase-scan-live-total" role="status" aria-live="polite">
+            <span>Conteo provisional</span><strong>{countedUnits} / {pendingUnits}</strong><span>{result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</span>
+          </div>
+          <progress aria-label="Progreso de la recepción" max={Math.max(1, pendingUnits)} value={countedUnits} />
+          <p role="status" aria-live="polite">{feedback || 'Listo para escanear. Aún no se guardó la recepción.'}</p>
+          <details>
+            <summary>Ver conteo por referencia ({pending.length})</summary>
+            <ul>{pending.map(item => <li key={item.id}><span>{item.product_snapshot.name} · {item.product_snapshot.sku}</span><strong>{draft[item.id]?.quantity || '0'} conformes{enhanced ? ` · ${draft[item.id]?.damagedQuantity || '0'} dañadas` : ''} / {remainingPurchaseQuantity(item)}</strong></li>)}</ul>
+          </details>
+        </section>
+      } />}
     </>
   );
 }

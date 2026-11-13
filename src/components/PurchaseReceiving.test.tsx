@@ -40,6 +40,8 @@ describe('purchase receiving capability and safety presentation', () => {
     expect(html).toContain('Dañadas recibidas hoy');
     expect(html).toContain('sin aumentar el stock disponible');
     expect(html).toContain('Código de barras o SKU de esta orden');
+    expect(html).toContain('Cámara continua');
+    expect(html).toContain('0 / 3 unidades');
   });
   it('retains the previous quantity-only form on an older backend', () => {
     data.features = undefined;

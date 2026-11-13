@@ -13,7 +13,7 @@ const stamp = '2026-11-11T12:00:00Z';
 
 function populatedFixture(): RetailData {
   const data = retailFixture('owner');
-  data.features = ['customer_addresses_v1', 'purchase_receipts_v1'];
+  data.features = ['customer_addresses_v1', 'purchase_receipts_v1', 'barcode_aliases_v1'];
   data.contacts = [
     { id: customerId, kind: 'customer', name: 'Cliente de prueba', email: null, phone: '8095550101', tax_id: null, address: 'Dirección histórica', notes: null, active: true, created_at: stamp, updated_at: stamp },
     { id: supplierId, kind: 'supplier', name: 'Proveedor de prueba', email: null, phone: '8095550102', tax_id: null, address: null, notes: null, active: true, created_at: stamp, updated_at: stamp },

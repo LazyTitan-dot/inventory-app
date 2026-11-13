@@ -11,6 +11,7 @@ export function retailFixture(role: Role): RetailData {
   const sales = admin || role === 'sales';
   const inventory = admin || role === 'inventory';
   return {
+    features: ['barcode_aliases_v1'],
     profile: { id: userId, email: 'shell@example.test', display_name: 'Equipo de prueba', role },
     permissions: {
       manage_catalog: inventory, view_costs: inventory, sell: sales, purchase: inventory,

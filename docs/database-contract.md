@@ -9,7 +9,7 @@ Moneda DOP; importes decimales RD$ (sin conversión de datos existentes). Todos 
 ## Filas
 
 - `products`: `id,category,brand,model,description,warranty_months,images` (string[] URLs), `active,created_at,updated_at`.
-- `variants`: `id,product_id,name,sku,barcode,cost,price,min_stock,reorder_target,active,created_at,updated_at`. `cost` no se envía a sales/viewer.
+- `variants`: `id,product_id,name,sku,barcode,barcode_aliases?,cost,price,min_stock,reorder_target,active,created_at,updated_at`. `barcode_aliases` es `string[]` en servidores con `barcode_aliases_v1`; clientes anteriores pueden omitirlo. `cost` no se envía a sales/viewer.
 - `stocks`: `variant_id,available,quarantine,updated_at`.
 - `contacts`: `id,kind` (`customer|supplier`), `name,email,phone,tax_id,address,notes,active,created_at,updated_at`.
 - `documents`: `id,number,type` (`sale|purchase|quote|return`), `status,status_reason,contact_id,contact_snapshot,subtotal,discount,tax_rate,tax,total,currency,payment_method,tendered,change_amount,notes,parent_id,promotion_id,expires_at,created_by,created_at,updated_at`. `sale`: completed/partially_returned/returned/voided/legacy_pending; `purchase`: draft/pending/partial/received/cancelled; `quote`: open/converted/cancelled; `return`: completed. `payment_method`: cash/card/transfer/other; vacío para compra/cotización. `status_reason` conserva el motivo administrativo separado de las condiciones comerciales en `notes`; `number` correlativo por tipo.
@@ -63,7 +63,25 @@ escritura. Se conserva `variants.price` como precio neto de dos decimales; no se
 reescriben precios ni documentos históricos. La conversión del total con ITBIS
 muestra cualquier ajuste de centavo en la UI antes de guardar.
 
-- `save_product`: `{id?,category,brand,model,description?,warranty_months,images?:string[],expected_tax_rate?:number,variants:[{id?,name,sku,barcode?,cost,price,min_stock,reorder_target,active?,opening_quantity?}]}`. Variantes existentes omitidas se archivan, nunca eliminan; `opening_quantity` solo al crear. Producto activo por defecto. Validar mínimo una variante activa. Variantes con existencias o pedidos pendientes no se archivan.
+La migración `20261112223533_product_barcode_aliases.sql` añade la capacidad
+`barcode_aliases_v1` y hasta 10 códigos confirmados del fabricante por variante.
+Cada código contiene entre 1 y 80 caracteres, sin caracteres de control; no se
+registran automáticamente números de serie ni de lote. `barcode` sigue siendo el
+código principal, usado para las etiquetas internas. Añadir un alias no lo
+sustituye. En `save_product`, omitir `barcode_aliases` conserva los alias de una
+variante existente; al crear significa ninguno, y `[]` los elimina explícitamente.
+El cliente solo envía el campo cuando bootstrap anuncia la capacidad.
+
+Un registro privado `retail_private.barcode_registry`, con RLS y concesiones
+directas revocadas, garantiza unicidad entre códigos principales y alias de todas
+las variantes, incluidas las archivadas. La identidad recorta el espacio de
+ECMAScript y normaliza únicamente las letras ASCII a mayúsculas, sin depender de
+la configuración regional de PostgreSQL. Su clave única también arbitra guardados
+concurrentes. Una colisión rechaza el comando completo; la migración rechaza
+conflictos previos en vez de reasignar códigos. No modifica precios, existencias
+ni instantáneas históricas de documentos.
+
+- `save_product`: `{id?,category,brand,model,description?,warranty_months,images?:string[],expected_tax_rate?:number,variants:[{id?,name,sku,barcode?,barcode_aliases?:string[],cost,price,min_stock,reorder_target,active?,opening_quantity?}]}`. Variantes existentes omitidas se archivan, nunca eliminan; `opening_quantity` solo al crear. Producto activo por defecto. Validar mínimo una variante activa. Variantes con existencias o pedidos pendientes no se archivan.
 - `archive_product`: `{id,active:boolean}`. Archivar con existencias/pedidos pendientes rechazado.
 - `save_contact`: `{id?,kind,name,email?,phone?,tax_id?,address?,notes?}`; `archive_contact`: `{id,active:boolean}`.
 - `adjust_stock`: `{variant_id,quantity:number,expected_quantity:number,bucket?:available|quarantine,reason}`; cantidad es diferencia con signo, no saldo final. Motivo obligatorio. expected_quantity es el saldo observado al abrir formulario; rechaza si cambió mientras tanto.
