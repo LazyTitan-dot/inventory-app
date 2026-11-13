@@ -18,7 +18,7 @@ export function StartupScreen({ title, message, failed = false, children }: {
   return (
     <main className="sl-startup" data-theme={theme}>
       <section className="sl-startup-card">
-        <img className="sl-startup-logo" src="/icons/s-mart-living-v2-180.png" alt="" width={84} height={84} />
+        <img className="sl-startup-logo" src="/brand/square_icon.png" alt="" width={84} height={88} />
         <p className="sl-startup-brand">S-Mart Living</p>
         <h1>{title}</h1>
         <p className="sl-startup-message" role={failed ? 'alert' : 'status'}>{message}</p>

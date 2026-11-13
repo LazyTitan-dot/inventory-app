@@ -1,6 +1,5 @@
-// Generate full-bleed PWA icons from the approved, version-controlled RGB PNG.
-// Keep the artwork unchanged; remove its presentation margin and fill the
-// rounded source corners with navy so the OS supplies its own icon mask.
+// Preserve the exact approved artwork, including its original background and margins.
+// Fit its original aspect ratio into square OS icon sizes without crop or distortion.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { inflateSync, deflateSync } from 'node:zlib';
 import { resolve } from 'node:path';
@@ -43,33 +42,27 @@ function chunk(type, data) {
   out.writeUInt32BE((crc ^ 0xffffffff) >>> 0, out.length - 4);
   return out;
 }
-function makeIcon(size, maskable = false) {
+function makeIcon(size) {
   const data = Buffer.alloc(size * (size * 3 + 1));
-  // Original tile is 636×626; crop just inside its border.
-  const crop = { x: 100, y: 108, w: 626, h: 615 };
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    let u = (x + .5) / size, v = (y + .5) / size;
-    if (maskable) { u = (u - .5) / .82 + .5; v = (v - .5) / .82 + .5; }
-    const sx = crop.x + u * crop.w, sy = crop.y + v * crop.h;
-    const dx = Math.max(0, .20 - u, u - .80), dy = Math.max(0, .20 - v, v - .80);
-    const alpha = Math.max(0, Math.min(1, (.198 - Math.hypot(dx,dy)) / .013));
-    const bg = [6, Math.round(37 - 16 * y / size), Math.round(81 - 29 * y / size)];
-    const i = y * (size * 3 + 1) + 1 + x * 3;
-    for (let c = 0; c < 3; c++) {
-      let val = bg[c];
-      if (alpha > 0) {
-        const ix = Math.floor(sx), iy = Math.floor(sy), fx = sx - ix, fy = sy - iy;
-        const a = pixels[(iy*w+ix)*3+c], b = pixels[(iy*w+ix+1)*3+c];
-        const d = pixels[((iy+1)*w+ix)*3+c], e = pixels[((iy+1)*w+ix+1)*3+c];
-        val = val * (1-alpha) + alpha * ((a*(1-fx)+b*fx)*(1-fy)+(d*(1-fx)+e*fx)*fy);
-      }
-      data[i+c] = Math.round(val);
+  const scale = size / Math.max(w,h), insetX = (size - w*scale)/2, insetY = (size - h*scale)/2;
+  // The source is 810×852. Extend only its edge pixels into the narrow
+  // horizontal padding; every original pixel remains inside the icon.
+  for (let y=0;y<size;y++) for (let x=0;x<size;x++) {
+    const sx = Math.max(0,Math.min(w-1,(x+.5-insetX)/scale-.5));
+    const sy = Math.max(0,Math.min(h-1,(y+.5-insetY)/scale-.5));
+    const ix=Math.floor(sx), iy=Math.floor(sy), fx=sx-ix, fy=sy-iy;
+    const rx=Math.min(w-1,ix+1), ry=Math.min(h-1,iy+1);
+    const i=y*(size*3+1)+1+x*3;
+    for(let c=0;c<3;c++) {
+      const a=pixels[(iy*w+ix)*3+c], b=pixels[(iy*w+rx)*3+c];
+      const d=pixels[(ry*w+ix)*3+c], e=pixels[(ry*w+rx)*3+c];
+      data[i+c]=Math.round((a*(1-fx)+b*fx)*(1-fy)+(d*(1-fx)+e*fx)*fy);
     }
   }
-  const header = Buffer.alloc(13); header.writeUInt32BE(size,0); header.writeUInt32BE(size,4); header[8]=8; header[9]=2;
-  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR',header),chunk('IDAT',deflateSync(data,{level:9})),chunk('IEND',Buffer.alloc(0))]);
+  const header=Buffer.alloc(13); header.writeUInt32BE(size,0); header.writeUInt32BE(size,4); header[8]=8; header[9]=2;
+  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',header),chunk('IDAT',deflateSync(data,{level:9})),chunk('IEND',Buffer.alloc(0))]);
 }
 const out = resolve(root, 'public/icons'); mkdirSync(out,{recursive:true});
-for (const [name, size, maskable] of [['s-mart-living-v2-180.png',180,false],['s-mart-living-v2-192.png',192,false],['s-mart-living-v2-512.png',512,false],['s-mart-living-v2-maskable-512.png',512,true]]) {
-  writeFileSync(resolve(out,name), makeIcon(size,maskable));
+for (const [name, size] of [['s-mart-living-v3-180.png',180],['s-mart-living-v3-192.png',192],['s-mart-living-v3-512.png',512]]) {
+  writeFileSync(resolve(out,name), makeIcon(size));
 }

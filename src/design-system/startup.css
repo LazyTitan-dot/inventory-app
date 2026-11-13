@@ -49,8 +49,8 @@
   -webkit-backdrop-filter: blur(28px) saturate(135%);
 }
 .sl-startup .sl-startup-logo {
-  display: block; width: 84px; height: 84px; border-radius: 21px;
-  margin: 0 auto 17px; box-shadow: 0 12px 28px rgba(6,23,52,.22);
+  display: block; width: 84px; height: auto; object-fit: contain;
+  margin: 0 auto 17px;
 }
 .sl-startup .sl-startup-brand {
   margin: 0 0 20px; color: var(--startup-muted); font-size: 14px; font-weight: 650;
