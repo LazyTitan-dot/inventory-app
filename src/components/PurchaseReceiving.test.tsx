@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DocumentItem, RetailData, RetailDocument } from '../lib/contracts';
-import { ClosePurchaseShort, PurchaseReceiptHistory, ReceivePurchase } from './PurchaseReceiving';
+import { ClosePurchaseShort, PurchaseReceiptHistory, PurchaseReferenceProgress, ReceivePurchase } from './PurchaseReceiving';
 
 let data: RetailData;
 vi.mock('../state/useRetail', () => ({ useRetail: () => ({ data, notify: vi.fn(), refresh: vi.fn() }) }));
@@ -84,5 +84,24 @@ describe('purchase receiving capability and safety presentation', () => {
     expect(html).not.toContain('<img');
     data.permissions.view_costs = false;
     expect(renderToStaticMarkup(<PurchaseReceiptHistory purchaseId={doc.id} />)).not.toContain('997.45');
+  });
+});
+
+describe('per-reference progress presentation', () => {
+  it('renders a visible check, explicit completion text and combined quantity for completed references', () => {
+    const html = renderToStaticMarkup(<PurchaseReferenceProgress item={items[0]!} draft={{ line: { quantity: '2', damagedQuantity: '1' } }} enhanced recent />);
+    expect(html).toContain('purchase-reference-progress complete recent');
+    expect(html).toContain('Referencia completa');
+    expect(html).toContain('3 / 3');
+    expect(html).toContain('1 dañadas');
+    expect(html).toContain('lucide-circle-check');
+  });
+  it('renders pending and invalid references without a completion check', () => {
+    const html = renderToStaticMarkup(<PurchaseReferenceProgress item={items[0]!} draft={{ line: { quantity: '2', damagedQuantity: '0' } }} enhanced />);
+    expect(html).toContain('Faltan 1 unidad');
+    expect(html).not.toContain('Referencia completa');
+    const invalid = renderToStaticMarkup(<PurchaseReferenceProgress item={items[0]!} draft={{ line: { quantity: '4', damagedQuantity: '0' } }} enhanced />);
+    expect(invalid).toContain('Revisa las cantidades');
+    expect(invalid).not.toContain('Referencia completa');
   });
 });

@@ -19,6 +19,18 @@ function countValue(value: string | undefined) {
   return value?.trim() ? Number(value) : 0;
 }
 
+/** Progress refers to the outstanding quantity at the start of this receipt. */
+export function purchaseReferenceProgress(item: DocumentItem, draft: ReceiptDraft, allowDamaged: boolean) {
+  const target = remainingPurchaseQuantity(item);
+  const good = countValue(draft[item.id]?.quantity);
+  const damaged = countValue(draft[item.id]?.damagedQuantity);
+  const total = good + damaged;
+  const valid = Boolean(item.variant_id) && Number.isSafeInteger(good) && Number.isSafeInteger(damaged)
+    && good >= 0 && damaged >= 0 && (allowDamaged || damaged === 0) && total <= target;
+  return { good, damaged, total, target, valid, complete: valid && target > 0 && total === target,
+    remaining: valid ? target - total : target };
+}
+
 /** Validate against the current order, including staged lines that just became fully received. */
 export function preparePurchaseReceipt(
   items: readonly DocumentItem[],
@@ -65,7 +77,7 @@ export function countPurchaseBarcode({
   draft: ReceiptDraft;
   previous: ReceiptScan | null;
   at: number;
-}): { draft: ReceiptDraft; scan: ReceiptScan | null; message: string; accepted: boolean } {
+}): { draft: ReceiptDraft; scan: ReceiptScan | null; message: string; accepted: boolean; itemId?: string } {
   const normalized = value.trim().toLocaleLowerCase('es');
   const reject = (message: string) => ({ draft, scan: previous, message, accepted: false });
   if (!normalized) return reject('Escanea un código de barras o introduce un SKU completo.');
@@ -95,5 +107,6 @@ export function countPurchaseBarcode({
     scan: { value: normalized, at },
     message: `${purchaseItemTitle(item)} · ${item.product_snapshot.name}: +1 conforme. ${quantity + damaged + 1} / ${remainingPurchaseQuantity(item)} contabilizadas.${quantity + damaged + 1 === remainingPurchaseQuantity(item) ? ' Referencia completa.' : ''} Conteo provisional; aún no se guardó la recepción.`,
     accepted: true,
+    itemId: item.id,
   };
 }

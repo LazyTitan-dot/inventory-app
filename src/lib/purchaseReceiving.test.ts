@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DocumentItem, Variant } from './contracts';
-import { countPurchaseBarcode, preparePurchaseReceipt, remainingPurchaseQuantity, type ReceiptDraft } from './purchaseReceiving';
+import { countPurchaseBarcode, preparePurchaseReceipt, purchaseReferenceProgress, remainingPurchaseQuantity, type ReceiptDraft } from './purchaseReceiving';
 
 const item = (overrides: Partial<DocumentItem> = {}): DocumentItem => ({
   id: 'line-a', document_id: 'purchase', variant_id: 'variant-a',
@@ -105,5 +105,22 @@ describe('purchase receipt scanning', () => {
   });
   it('rejects an invalid manual count before adding a scanned unit', () => {
     expect(scan('BAR-A', draft('-1')).message).toContain('Corrige');
+  });
+});
+
+describe('per-reference receiving progress', () => {
+  it('checks a completed reference only after all outstanding units are accounted for', () => {
+    expect(purchaseReferenceProgress(item(), draft('2'), true)).toMatchObject({ complete: false, remaining: 1, total: 2, target: 3 });
+    expect(purchaseReferenceProgress(item(), draft('2', '1'), true)).toMatchObject({ complete: true, remaining: 0, total: 3 });
+  });
+  it('does not mark invalid, excess or unlinked counts complete', () => {
+    expect(purchaseReferenceProgress(item(), draft('4'), true).complete).toBe(false);
+    expect(purchaseReferenceProgress(item(), draft('-1','4'), true).complete).toBe(false);
+    expect(purchaseReferenceProgress(item({ variant_id: null }), draft('3'), true).complete).toBe(false);
+    expect(purchaseReferenceProgress(item(), draft('2','1'), false).complete).toBe(false);
+  });
+  it('identifies the exact accepted reference but not a rejected scan', () => {
+    expect(scan('BAR-A').itemId).toBe('line-a');
+    expect(scan('FOREIGN-BAR').itemId).toBeUndefined();
   });
 });
