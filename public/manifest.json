@@ -2,10 +2,31 @@
   "name": "S-Mart Living · Inventario y operaciones",
   "short_name": "S-Mart Living",
   "description": "Inventario y operaciones para tu tienda de electrodomésticos.",
-  "start_url": "/", "scope": "/", "display": "standalone",
-  "background_color": "#F5F7FB", "theme_color": "#061734", "lang": "es-DO",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5F7FB",
+  "theme_color": "#061734",
+  "lang": "es-DO",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "/icons/s-mart-living-v2-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/s-mart-living-v2-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/s-mart-living-v2-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

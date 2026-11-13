@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { errorMessage } from '../lib/errors';
 import { RetailContext } from './RetailContext';
 import { createRetailStore } from './retailStore';
+import { StartupScreen } from '../components/StartupScreen';
 
 export function RetailProvider({ children, userId }: { children: ReactNode; userId: string }) {
   const store = useMemo(() => createRetailStore(userId), [userId]);
@@ -85,14 +86,12 @@ export function RetailProvider({ children, userId }: { children: ReactNode; user
   );
   if (!value)
     return (
-      <main className="center-screen">
-        <div className="panel loading-panel">
-          <div className="brand-mark">S</div>
-          <h1>{failure ? 'No pudimos abrir el negocio' : 'Preparando tu tienda'}</h1>
-          <p role={failure ? 'alert' : 'status'}>
-            {failure || 'Estamos cargando tus productos, operaciones y permisos.'}
-          </p>
-          {failure ? (
+      <StartupScreen
+        title={failure ? 'No pudimos abrir el negocio' : 'Preparando tu tienda'}
+        message={failure || 'Estamos cargando tus productos, operaciones y permisos.'}
+        failed={Boolean(failure)}
+      >
+          {failure && (
             <div className="toolbar">
               <button
                 className="button primary"
@@ -109,12 +108,9 @@ export function RetailProvider({ children, userId }: { children: ReactNode; user
                 {loggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
               </button>
             </div>
-          ) : (
-            <div className="loading-line" />
           )}
-          {logoutError && <p role="alert">{logoutError}</p>}
-        </div>
-      </main>
+          {logoutError && <p className="sl-startup-error" role="alert">{logoutError}</p>}
+      </StartupScreen>
     );
   return (
     <RetailContext.Provider value={value}>

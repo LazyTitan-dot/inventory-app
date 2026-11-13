@@ -6,11 +6,26 @@
     <meta name="theme-color" content="#061734" />
     <meta name="description" content="S-Mart Living: inventario, ventas y operaciones retail para República Dominicana." />
     <title>S-Mart Living · Inventario y operaciones</title>
-    <link rel="icon" href="/brand/square_icon.png" type="image/png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="S-Mart Living" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="icon" href="/icons/s-mart-living-v2-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/icons/s-mart-living-v2-180.png" sizes="180x180" />
+    <link rel="stylesheet" href="/src/design-system/startup.css" />
     <link rel="manifest" href="/manifest.json" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="sl-startup">
+        <section class="sl-startup-card">
+          <img class="sl-startup-logo" src="/icons/s-mart-living-v2-180.png" alt="" width="84" height="84" />
+          <p class="sl-startup-brand">S-Mart Living</p>
+          <h1>Abriendo tu espacio de trabajo</h1>
+          <p class="sl-startup-message" role="status">Cargando aplicación…</p>
+          <div class="sl-startup-progress" aria-hidden="true"></div>
+        </section>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

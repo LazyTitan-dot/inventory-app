@@ -20,8 +20,8 @@
     "test:shell:types": "tsc --project tests/tsconfig.json",
     "test:preview-output": "node --test tests/preview-output.test.mjs",
     "prepare:label-ocr": "node scripts/prepare-label-ocr.mjs",
-    "predev": "npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs && node scripts/prepare-customer-paddle.mjs",
-    "prebuild": "npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs && node scripts/prepare-customer-paddle.mjs"
+    "predev": "node scripts/prepare-brand-icons.mjs && npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs && node scripts/prepare-customer-paddle.mjs",
+    "prebuild": "node scripts/prepare-brand-icons.mjs && npm run prepare:label-ocr && node scripts/prepare-customer-ocr.mjs && node scripts/prepare-customer-paddle.mjs"
   },
   "dependencies": {
     "@paddleocr/paddleocr-js": "0.4.2",

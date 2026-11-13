@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { StartupScreen } from './StartupScreen';
 export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() {
@@ -10,18 +11,15 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: 
   render() {
     if (this.state.failed)
       return (
-        <main className="center-screen">
-          <section className="panel loading-panel">
-            <h1>No pudimos mostrar esta pantalla</h1>
-            <p>
-              Recarga para volver a consultar tus datos. Si estabas guardando una operación, revisa
-              el historial antes de repetirla.
-            </p>
-            <button className="button primary" onClick={() => window.location.reload()}>
-              Recargar aplicación
-            </button>
-          </section>
-        </main>
+        <StartupScreen
+          title="No pudimos mostrar esta pantalla"
+          message="Recarga para volver a consultar tus datos. Si estabas guardando una operación, revisa el historial antes de repetirla."
+          failed
+        >
+          <button className="button primary" onClick={() => window.location.reload()}>
+            Recargar aplicación
+          </button>
+        </StartupScreen>
       );
     return this.props.children;
   }

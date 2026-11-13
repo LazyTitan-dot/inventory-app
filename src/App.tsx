@@ -39,6 +39,7 @@ import { BUSINESS_TIMEZONE, roleLabels } from './lib/format';
 import { displayBusinessName } from './lib/brand';
 import { createAuthSessionStore } from './lib/authSession';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { StartupScreen } from './components/StartupScreen';
 import { useMobileSidebar } from './design-system/useMobileSidebar';
 import { CommandPalette } from './components/CommandPalette';
 
@@ -417,15 +418,7 @@ export default function App() {
     store.finishRecovery();
   }
   if (loading)
-    return (
-      <main className="center-screen">
-        <div className="loading-panel" role="status">
-          <span className="brand-mark">S</span>
-          <p>Comprobando tu sesión…</p>
-          <div className="loading-line" />
-        </div>
-      </main>
-    );
+    return <StartupScreen title="Abriendo tu espacio de trabajo" message="Comprobando tu sesión…" />;
   return (
     <ErrorBoundary>
       {!session || recovery || recoveryRequested ? (
