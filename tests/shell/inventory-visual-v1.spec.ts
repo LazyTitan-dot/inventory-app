@@ -75,6 +75,8 @@ test('desktop V1.1 aligns indicators and keeps a constrained table scroll local'
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto('/inventario');
   const cards = page.locator('.catalog-stats .stat-card');
+  await expect(cards).toHaveCount(3);
+  await expect(cards.first()).toBeVisible();
   const bounds = await cards.evaluateAll(nodes => nodes.map(node => ({ h: node.getBoundingClientRect().height, valueTop: node.querySelector('strong')!.getBoundingClientRect().top })));
   expect(bounds).toHaveLength(3);
   expect(new Set(bounds.map(b => Math.round(b.h))).size).toBe(1);
