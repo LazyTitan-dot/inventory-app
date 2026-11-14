@@ -55,7 +55,9 @@ import {
 } from '../components/PurchaseReceiving';
 import { cashierPrefill, exactCashierMatches } from '../lib/cashier';
 import { getVariantBarcodes } from '../lib/barcode';
+import { PurchaseOrdersList, PurchaseOrderProgress } from './PurchaseVisual';
 import './commerce.css';
+import './purchase-visual-v1.css';
 
 type Kind = 'sale' | 'purchase' | 'quote';
 type CartLine = { variantId: string; quantity: number; expectedPrice: number; unitCost: number };
@@ -269,10 +271,10 @@ export function CommercePage({ kind }: { kind: Kind }) {
       </>
     );
 
-  return (
+  const content = (
     <>
       <PageHeader
-        eyebrow="OPERACIONES"
+        eyebrow={kind === 'purchase' ? 'ABASTECIMIENTO Y RECEPCIÓN' : 'OPERACIONES'}
         title={details.title}
         description={details.description}
         actions={
@@ -287,7 +289,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
       {selectedId && !selected && (
         <ErrorNotice message="El documento solicitado no está disponible. Puede que tu rol no tenga acceso o que debas actualizar los datos." />
       )}
-      <div className="stats-grid commerce-stats">
+      <div className={`stats-grid commerce-stats${kind === 'purchase' ? ' purchase-kpis' : ''}`}>
         <StatCard
           label={
             kind === 'purchase'
@@ -328,6 +330,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
           }
         />
         <StatCard
+          tone={kind === 'purchase' && documents.some(purchaseLate) ? 'warning' : ''}
           label={kind === 'purchase' ? 'Compras atrasadas' : 'Documentos registrados'}
           value={kind === 'purchase' ? documents.filter(purchaseLate).length : documents.length}
           hint={
@@ -380,12 +383,13 @@ export function CommercePage({ kind }: { kind: Kind }) {
           </div>
         </details>
       )}
-      <section className="panel">
+      <section className={kind === 'purchase' ? 'panel purchase-orders-panel' : 'panel'}>
+        {kind === 'purchase' && <div className="purchase-list-heading"><h2>Órdenes de compra</h2><span>{filtered.length} {filtered.length === 1 ? 'orden' : 'órdenes'}</span></div>}
         <div className="toolbar commerce-toolbar">
           <SearchInput
             value={query}
             onChange={setQuery}
-            placeholder="Buscar número, contacto o nota…"
+            placeholder={kind === 'purchase' ? 'Buscar orden, proveedor o nota…' : 'Buscar número, contacto o nota…'}
           />
           <select
             aria-label="Filtrar por estado"
@@ -428,6 +432,9 @@ export function CommercePage({ kind }: { kind: Kind }) {
             {filtered.length} {filtered.length === 1 ? 'documento' : 'documentos'}
           </span>
         </div>
+        {kind === 'purchase' && <div className="purchase-quick-filters" role="group" aria-label="Estados rápidos de compra">
+          {[{ value: 'all', label: 'Todas' }, ...[{ value: 'pending', label: 'Pendientes' }, { value: 'partial', label: 'Parciales' }, { value: 'received', label: 'Recibidas' }].filter(option => statuses.includes(option.value)), ...(purchaseEnhanced ? [{ value: 'overdue', label: 'Atrasadas' }] : [])].map(option => <button type="button" key={option.value} aria-pressed={status === option.value} onClick={() => setStatus(option.value)}>{option.label}</button>)}
+        </div>}
         {!filtered.length ? (
           <EmptyState
             title={
@@ -460,13 +467,15 @@ export function CommercePage({ kind }: { kind: Kind }) {
               ) : undefined
             }
           />
+        ) : kind === 'purchase' ? (
+          <PurchaseOrdersList documents={filtered} items={data.document_items} isLate={purchaseLate} onOpen={setSelectedId} />
         ) : (
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
                   <th>Documento</th>
-                  <th>{kind === 'purchase' ? 'Proveedor' : 'Cliente'}</th>
+                  <th>Cliente</th>
                   <th>Fecha</th>
                   <th>Estado</th>
                   <th className="number">Total</th>
@@ -489,14 +498,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
                     <td>{contactName(doc)}</td>
                     <td>
                       {shortDate(doc.created_at)}
-                      {kind === 'purchase' && doc.expected_at && (
-                        <small
-                          className={`commerce-table-meta ${purchaseLate(doc) ? 'commerce-error-text' : ''}`}
-                        >
-                          Esperada: {shortDate(`${doc.expected_at}T12:00:00-04:00`)}
-                          {purchaseLate(doc) ? ' · Atrasada' : ''}
-                        </small>
-                      )}
+
                     </td>
                     <td>
                       {quoteExpired(doc, now) ? (
@@ -560,6 +562,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
       )}
     </>
   );
+  return kind === 'purchase' ? <div className="purchase-visual-v1 sl-refined-theme">{content}</div> : content;
 }
 
 function CreateDocument({
@@ -1599,6 +1602,7 @@ function CreateDocument({
       title={editingDocument ? `Editar ${documentNumber(editingDocument)}` : labels[kind].create}
       onClose={busy ? () => undefined : onClose}
       wide
+      className={kind === 'purchase' ? 'purchase-create-v1 sl-refined-theme' : '' }
     >
       {editor}
     </Modal>
@@ -1781,7 +1785,7 @@ function DocumentDetail({
     );
   }
   return (
-    <Modal title={documentNumber(doc)} onClose={operation.busy ? () => undefined : onClose} wide>
+    <Modal title={documentNumber(doc)} onClose={operation.busy ? () => undefined : onClose} wide variant={doc.type === 'purchase' ? 'drawer' : 'dialog'} className={doc.type === 'purchase' ? 'purchase-detail-v1 sl-refined-theme' : ''}>
       {mode !== 'detail' && (
         <button
           className="button ghost commerce-back"
@@ -1856,6 +1860,7 @@ function DocumentDetail({
                 )}
               </div>
             </div>
+            {doc.type === 'purchase' && <PurchaseOrderProgress document={doc} items={items} />}
             <div className="table-wrap">
               <table className="data-table">
                 <thead>

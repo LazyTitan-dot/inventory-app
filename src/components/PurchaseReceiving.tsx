@@ -178,6 +178,10 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
           </div>
         )}
         <fieldset disabled={locked} className="purchase-receiving-fieldset">
+          <div className="purchase-receiving-summary purchase-receiving-summary-top" role="status" aria-live="polite">
+            <span>Conteo provisional · Sin guardar</span><strong>{countedUnits} / {pendingUnits} unidades · {result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</strong>
+            <progress aria-label="Progreso del conteo provisional" max={Math.max(1, pendingUnits)} value={countedUnits} />
+          </div>
           <div className="purchase-receiving-scan">
             <Field label="Código de barras o SKU de esta orden">
               <input
@@ -200,9 +204,6 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
             {complete ? '¡Todas las unidades contabilizadas! Revisa y confirma la recepción.' : feedback || 'El lector suma una unidad conforme al conteo provisional. Los escaneos muy rápidos del mismo código se bloquean.'}
           </p>
           {lastItem && <div role="status" aria-live="polite"><PurchaseReferenceProgress item={lastItem} draft={draft} enhanced={enhanced} recent /></div>}
-          <div className="purchase-receiving-summary purchase-receiving-summary-top" role="status" aria-live="polite">
-            <span>Conteo provisional</span><strong>{countedUnits} / {pendingUnits} unidades · {result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</strong>
-          </div>
           <div className="purchase-receiving-lines">
             {pending.map((item) => {
               const remaining = remainingPurchaseQuantity(item);
