@@ -116,3 +116,30 @@
 /* Solid fallbacks maintain readable controls when gradients are unsupported. */
 .app-layout .sl-dashboard-v1 .button.primary,.app-layout .sl-dashboard-v1 .dark-panel .button.light,.sl-dashboard-v1 .sl-period-toggle button[aria-pressed=true]{background-color:#086db7}
 .app-layout .sl-dashboard-v1 .panel.dark-panel{background-color:var(--sl-refined-surface)}
+
+/* V1 polish: shared heading rhythm and bounded activity rows. */
+.sl-dashboard-v1 .sl-quick-actions > .section-heading {padding:20px 20px 16px}
+.sl-dashboard-v1 .sl-quick-actions > .section-heading h2 {margin:0;font-size:20px;line-height:1.3;font-weight:600}
+.sl-dashboard-v1 .sl-quick-actions .sl-quick-grid {padding:0 20px 20px}
+.sl-dashboard-v1 .sl-quick-grid :is(a,button) {min-width:0}
+.sl-dashboard-v1 .sl-quick-grid :is(a,button) > svg {flex-shrink:0}
+.sl-dashboard-v1 .sl-quick-grid :is(strong,small) {overflow-wrap:anywhere;line-height:1.5}
+.sl-dashboard-v1 .sl-recent-activity > .section-heading {padding:20px 20px 12px;flex-wrap:wrap;gap:8px 16px}
+.sl-dashboard-v1 .sl-recent-activity > .section-heading > div {min-width:0}
+.sl-dashboard-v1 .sl-recent-activity > ul {padding:0 20px 8px}
+.sl-dashboard-v1 .sl-recent-activity li {min-width:0}
+.sl-dashboard-v1 .sl-recent-activity li > a {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);gap:8px 16px;align-items:start;min-width:0;min-height:44px;padding:14px 0}
+.sl-dashboard-v1 .sl-recent-activity li > a > span {min-width:0;overflow-wrap:anywhere}
+.sl-dashboard-v1 .sl-recent-activity li > a :is(strong,small) {line-height:1.5;overflow-wrap:anywhere}
+.sl-dashboard-v1 .sl-recent-activity li > a > b {max-width:100%;text-align:right;overflow-wrap:anywhere;line-height:1.5}
+.sl-dashboard-v1 .sl-recent-activity li > a > svg {justify-self:end;margin-top:3px}
+@media(max-width:760px){
+ .sl-dashboard-v1 .sl-quick-actions > .section-heading,.sl-dashboard-v1 .sl-recent-activity > .section-heading {padding-inline:16px}
+ .sl-dashboard-v1 .sl-quick-actions .sl-quick-grid {padding:0 16px 16px}
+ .sl-dashboard-v1 .sl-recent-activity > ul {padding-inline:16px}
+ .sl-dashboard-v1 .sl-recent-activity li > a {grid-template-columns:minmax(0,1fr) minmax(0,40%);gap:8px 12px}
+}
+@media(max-width:360px){
+ .sl-dashboard-v1 .sl-recent-activity li > a {grid-template-columns:minmax(0,1fr)}
+ .sl-dashboard-v1 .sl-recent-activity li > a > b {justify-self:end}
+}

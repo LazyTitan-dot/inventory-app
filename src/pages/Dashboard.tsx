@@ -288,7 +288,7 @@ export function DashboardPage() {
         )}
       </div>
       <section className="panel sl-quick-actions" aria-label="Accesos rápidos">
-        <div><span className="eyebrow">A TU ALCANCE</span><h2>¿Qué quieres hacer?</h2></div>
+        <div className="section-heading"><h2>Accesos rápidos</h2></div>
         <div className="sl-quick-grid">
           {data.permissions.sell && <Link to="/ventas?nuevo=1"><ShoppingBag size={21} /><span><strong>Registrar una venta</strong><small>Cliente, productos y medio de pago</small></span><ArrowRight size={16} /></Link>}
           {data.permissions.manage_catalog && <Link to="/inventario?nuevo=1"><Plus size={21} /><span><strong>Agregar producto</strong><small>Crear producto y variantes</small></span><ArrowRight size={16} /></Link>}
