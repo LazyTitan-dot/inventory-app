@@ -63,6 +63,10 @@ test('desktop V1.1 action popover stays inside the viewport without resizing row
   await expect(popover).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await trigger.click();
+  await expect(popover).toBeVisible();
+  await trigger.click();
+  await expect(popover).toHaveCount(0);
+  await trigger.click();
   await popover.getByRole('button', { name: 'Ver ficha', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });

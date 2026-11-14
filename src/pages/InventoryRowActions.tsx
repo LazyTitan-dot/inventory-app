@@ -66,7 +66,7 @@ export function InventoryRowActions({ sku, productName, active, canManage, onVie
 
   return (
     <div className="inventory-row-actions">
-      <button ref={trigger} type="button" className="icon-button inventory-action-trigger" aria-label={`Acciones de ${sku}`} aria-controls={id} aria-expanded={open} title="Acciones" onClick={toggle}>
+      <button ref={trigger} type="button" className="icon-button inventory-action-trigger" aria-label={`Acciones de ${sku}`} aria-controls={id} aria-expanded={open} popoverTarget={id} title="Acciones" onClick={(event) => { event.preventDefault(); toggle(); }}>
         <MoreHorizontal size={20} aria-hidden="true" />
       </button>
       <div id={id} ref={panel} popover="auto" className="inventory-actions-popover" role="group" aria-label={`Acciones de ${sku}`}
