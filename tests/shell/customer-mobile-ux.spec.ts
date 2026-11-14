@@ -17,6 +17,10 @@ for (const [width,theme] of [[320,'light'],[390,'dark'],[430,'light'],[1440,'dar
   if(width<=760){expect(b!.x).toBe(0);expect(b!.width).toBe(width);expect(b!.height).toBe(844);await expect(profile.getByText('Clientes',{exact:true})).toBeVisible();}
   else {expect(b!.width).toBeLessThan(width);expect(b!.x+b!.width).toBeCloseTo(width,0);}
   expect(await profile.evaluate(e=>e.scrollWidth)).toBeLessThanOrEqual(Math.ceil(b!.width));
+  await expect(profile.locator('a.customer-call')).toHaveAttribute('href','tel:+18095550101');
+  await expect(profile.getByRole('button',{name:'WhatsApp',exact:true}).locator('img').first()).toHaveAttribute('src','/assets/whatsapp-glyph-black.svg');
+  await expect(profile.getByRole('button',{name:'Editar datos',exact:true}).locator('svg')).toBeVisible();
+  await expect(profile.getByRole('link',{name:'Ver en Maps'}).locator('svg')).toHaveCount(2);
   await expect(profile.getByRole('link',{name:'Nueva venta'})).toHaveAttribute('href',/ventas\?contacto=/);
   await expect(profile.getByRole('link',{name:'Ver en Maps'})).toHaveAttribute('href',/google/);
   await page.screenshot({path:testInfo.outputPath('profile.jpg'),type:'jpeg',quality:75});
@@ -29,6 +33,8 @@ for (const [width,theme] of [[320,'light'],[390,'dark'],[430,'light'],[1440,'dar
   await page.getByRole('button',{name:'Agregar cliente',exact:true}).click();
   const editor=page.getByRole('dialog',{name:'Agregar cliente'});
   await expect(editor.getByRole('button',{name:'Escanear cédula',exact:true})).toBeVisible();
+  await expect(editor.locator('.customer-scan-frame')).toBeVisible();
+  await expect(editor.locator('.customer-field-icon')).toHaveCount(11);
   if(width<=760){const e=await editor.boundingBox();expect(e!.width).toBe(width);expect(e!.height).toBe(844);const phone=await editor.getByLabel('Teléfono',{exact:true}).boundingBox();const email=await editor.getByLabel('Correo electrónico').boundingBox();expect(email!.y).toBeGreaterThan(phone!.y);}
   await page.screenshot({path:testInfo.outputPath('editor.jpg'),type:'jpeg',quality:75});
   await editor.getByRole('button',{name:'Cancelar',exact:true}).click();

@@ -53,15 +53,17 @@ export function Field({
   label,
   children,
   hint,
+  icon,
 }: {
   label: string;
   children: ReactNode;
   hint?: string;
+  icon?: ReactNode;
 }) {
   return (
     <label className="field">
       <span>{label}</span>
-      {children}
+      {icon ? <span className="customer-field-control"><span className="customer-field-icon" aria-hidden="true">{icon}</span>{children}</span> : children}
       {hint && <small>{hint}</small>}
     </label>
   );

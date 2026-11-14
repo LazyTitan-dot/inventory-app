@@ -4,9 +4,9 @@ import { CustomerLiveScanner } from './CustomerLiveScanner';
 import {usableLiveAddress,usablePlace} from '../lib/customerLiveQuality';
 import type {LiveIdentity} from '../lib/customerLiveIdentity';
 import './barcode-scanner.css';
-import { ScanLine } from 'lucide-react';
+import { ScanLine, IdCard, ChevronRight } from 'lucide-react';
 import type { CustomerScan, ScanMode } from '../lib/customerIdScanner';
-export function CustomerIdScan({onApply,disabled}:{onApply:(scan:CustomerScan)=>void;disabled:boolean}) {
+export function CustomerIdScan({onApply,disabled,visualCard=false}:{onApply:(scan:CustomerScan)=>void;disabled:boolean;visualCard?:boolean}) {
  const [open,setOpen]=useState(false);
  const [live,setLive]=useState(false);
  const [liveIdentity,setLiveIdentity]=useState<LiveIdentity|null>(null);
@@ -41,7 +41,7 @@ export function CustomerIdScan({onApply,disabled}:{onApply:(scan:CustomerScan)=>
  function reset(){setLive(false);setLiveIdentity(null);setFile(null);setResult(null);setStatus('');setOpen(false);}
  function select(f:File|undefined){setFile(f??null);if(!liveIdentity)setResult(null);setStatus(f?'Imagen lista para analizar.':'');}
  return <section className="stack" aria-label="Escáner de cédula">
- <button type="button" className="button secondary" disabled={disabled||busy} onClick={()=>open?reset():setOpen(true)}><ScanLine size={18}/> {open?'Cerrar escáner':'Escanear cédula'}</button>
+ <button type="button" className={visualCard ? "button secondary customer-scan-entry" : "button secondary"} aria-label={open?'Cerrar escáner':'Escanear cédula'} disabled={disabled||busy} onClick={()=>open?reset():setOpen(true)}>{visualCard && !open ? <><span className="customer-scan-frame" aria-hidden="true"><IdCard size={26}/></span><span className="customer-scan-copy"><strong>Escanear cédula</strong><small>Captura los datos automáticamente</small></span><ChevronRight size={21} aria-hidden="true"/></> : <><ScanLine size={18}/> {open?'Cerrar escáner':'Escanear cédula'}</>}</button>
  {open&&<div className="stack"><p className="muted">Fotografía el reverso con autorización del cliente. La imagen se procesa en este dispositivo y no se guarda. Usa el frente si faltan los nombres.</p>
  {!live&&<button type="button" className="button primary" disabled={busy||disabled} onClick={()=>{setLive(true);setLiveIdentity(null);setFile(null);setResult(null);setStatus("");}}><ScanLine size={17}/> Escanear en vivo</button>}
  {live&&<CustomerLiveScanner initialIdentity={liveIdentity} onClose={()=>setLive(false)} onCapture={(photo,id)=>{setLive(false);setLiveIdentity(id);void analyze(photo,id.mode,id);}}/>}

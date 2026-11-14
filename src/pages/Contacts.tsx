@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowDownToLine, Archive, Building2, Check, ChevronRight, MapPin, MessageCircle, Pencil, Plus, Star, ScanLine, UserRound } from 'lucide-react';
+import { ArrowDownToLine, Archive, Building2, Check, ChevronRight, MapPin, Pencil, Plus, Star, UserRound, Phone, Mail, IdCard, ShoppingCart, ExternalLink, FileText } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Contact, CustomerAddress } from '../lib/contracts';
 import { useRetail } from '../state/useRetail';
 import { useOperation } from '../state/useOperation';
 import { dateTime, documentNumber, downloadCsv, matches, money } from '../lib/format';
 import { WhatsAppComposer } from '../components/WhatsAppComposer';
-import { buildContactWhatsAppMessage } from '../lib/whatsapp';
+import { buildContactWhatsAppMessage, normalizeWhatsAppPhone } from '../lib/whatsapp';
 import { CustomerIdScan } from '../components/CustomerIdScan';
 import { scannedHome, legacyHome, hasHomeAddress } from '../lib/customerHomeAddress';
 import { AddressFields } from '../components/AddressFields';
@@ -24,6 +24,9 @@ import {
 } from '../components/ui';
 
 const initials = (name: string) => name.trim().split(/\s+/).slice(0,2).map(word=>Array.from(word)[0]??'').join('').toLocaleUpperCase('es') || 'C';
+
+function WhatsAppGlyph() { return <span className="customer-whatsapp-glyph" aria-hidden="true"><img className="wa-light" src="/assets/whatsapp-glyph-black.svg" alt="" /><img className="wa-dark" src="/assets/whatsapp-glyph-white.svg" alt="" /></span>; }
+function phoneHref(phone: string | null | undefined) { try { return "tel:+" + normalizeWhatsAppPhone(phone ?? ""); } catch { return null; } }
 
 function ContactEditor({
   kind,
@@ -94,13 +97,14 @@ function ContactEditor({
       <form className="stack" onSubmit={save}>
         <div className={kind === "customer" ? "customer-form-section" : "stack"}>
         {kind === "customer" && <h3>Identificación y contacto</h3>}
-        {kind === "customer" && !contact && <div className="customer-scan-feature"><div className="customer-scan-intro"><span className="customer-address-icon"><ScanLine size={23}/></span><div><strong>Registro inteligente</strong><small>Escanea la cédula para completar los datos.</small></div></div><CustomerIdScan disabled={busy} onApply={(scan) => {
+        {kind === "customer" && !contact && <div className="customer-scan-feature"><CustomerIdScan visualCard disabled={busy} onApply={(scan) => {
           const id = scan.ced.replace(/\D/g, "");
           const address = [scan.address, scan.sector, scan.municipio].filter(Boolean).join(", ");
           if(newCustomer) setHome(previous => {const next=scannedHome(scan.address,scan.sector,scan.municipio,previous.phone||form.phone);return {...previous,...next,reference:previous.reference};});
           setForm(previous => ({ ...previous, ...(id.length === 11 ? {tax_id:id} : {}), ...(scan.full.trim() ? {name:scan.full.trim()} : {}), ...(address ? {address} : {}) }));
         }} /></div>}
         <Field
+          icon={kind === 'customer' ? <UserRound size={20}/> : undefined}
           label={kind === 'customer' ? 'Nombre completo o razón social' : 'Nombre del proveedor'}
         >
           <input
@@ -112,7 +116,7 @@ function ContactEditor({
           />
         </Field>
         <div className="form-grid">
-          <Field label="Teléfono">
+          <Field icon={kind === "customer" ? <Phone size={20}/> : undefined} label="Teléfono">
             <input
               type="tel"
               maxLength={30}
@@ -121,7 +125,7 @@ function ContactEditor({
               onChange={(e) => {field('phone', e.target.value);if(newCustomer)setHome(previous=>({...previous,phone:!previous.phone||previous.phone===form.phone?e.target.value:previous.phone}));}}
             />
           </Field>
-          <Field label="Correo electrónico">
+          <Field icon={kind === "customer" ? <Mail size={20}/> : undefined} label="Correo electrónico">
             <input
               type="email"
               maxLength={254}
@@ -130,7 +134,7 @@ function ContactEditor({
             />
           </Field>
         </div>
-        <Field label="RNC o cédula" hint="Opcional. Escribe la identificación sin guiones.">
+        <Field icon={kind === "customer" ? <IdCard size={20}/> : undefined} label="RNC o cédula" hint="Opcional. Escribe la identificación sin guiones.">
           <input
             inputMode="numeric"
             pattern="[0-9]{9}|[0-9]{11}"
@@ -143,8 +147,8 @@ function ContactEditor({
         {newCustomer ? <section className="customer-address-form stack" aria-label="Dirección de entrega inicial">
           <h3>Dirección de entrega · Casa</h3>
           <p className="muted">Se guardará como primera dirección preferida. Confirma que corresponde al destino de entrega; puedes dejarla vacía para una compra sin entrega.</p>
-          <AddressFields value={home} onChange={setHome} disabled={busy} required={hasHomeAddress(home)} autoMunicipality />
-        </section> : <Field label="Dirección">
+          <AddressFields value={home} onChange={setHome} disabled={busy} required={hasHomeAddress(home)} autoMunicipality customerIcons />
+        </section> : <Field icon={kind === "customer" ? <MapPin size={20}/> : undefined} label="Dirección">
           <textarea
             maxLength={600}
             value={form.address}
@@ -154,7 +158,7 @@ function ContactEditor({
         </Field>}
         <div className={kind === "customer" ? "customer-form-section" : "stack"}>
         {kind === "customer" && <h3>Información adicional</h3>}
-        <Field label="Notas internas">
+        <Field icon={kind === "customer" ? <FileText size={20}/> : undefined} label="Notas internas">
           <textarea
             maxLength={2000}
             value={form.notes}
@@ -179,7 +183,7 @@ function ContactEditor({
             Cancelar
           </button>
           <button className="button primary" disabled={busy}>
-            {busy ? 'Guardando…' : 'Guardar'}
+            {kind === 'customer' && !busy && <Check size={20} aria-hidden="true"/>}{busy ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
       </form>
@@ -288,8 +292,8 @@ function AddressBook({
           <h3 id="customer-addresses-title">Direcciones de entrega</h3>
           <p>La preferida se propone al programar. Cada entrega conserva su propia copia.</p>
         </div>
-        {canEdit && !editing && <button type="button" className="button secondary" disabled={busy} onClick={() => begin()}>
-          <Plus size={16} /> Agregar dirección
+        {canEdit && !editing && <button type="button" className="button secondary customer-add-address" aria-label="Agregar dirección" disabled={busy} onClick={() => begin()}>
+          <Plus size={22} aria-hidden="true" /> <span>Agregar dirección</span>
         </button>}
       </div>
       {addresses.some((address) => !address.active) && <label className="contacts-checkbox">
@@ -309,11 +313,11 @@ function AddressBook({
                 </div>
               </div>
             </div>
-            <p>{addressText(address)}</p>
+            <div className="customer-address-location"><strong>{address.street}</strong><span>{[address.sector,address.city,address.province].filter(Boolean).join(", ")}</span></div>
             <p className="muted">{address.phone}</p>
             {address.reference && <p className="customer-address-reference">{address.reference}</p>}
             <div className="toolbar">
-              {mapUrl && <a className="button ghost" href={mapUrl} target="_blank" rel="noopener noreferrer"><MapPin size={15} /> Ver en Maps</a>}
+              {mapUrl && <a className="button ghost customer-maps-link" href={mapUrl} target="_blank" rel="noopener noreferrer"><MapPin size={20} aria-hidden="true"/> <span>Ver en Maps</span><ExternalLink size={18} aria-hidden="true"/></a>}
               {canEdit && address.active && <>
                 <button type="button" className="button ghost" disabled={busy || editing !== null} onClick={() => begin(address)}><Pencil size={15} /> Editar</button>
                 {!address.is_default && <button type="button" className="button ghost" disabled={busy || editing !== null} onClick={() => void makePreferred(address)}><Star size={15} /> Preferir</button>}
@@ -340,7 +344,7 @@ function AddressBook({
           <Field label="Etiqueta de la dirección" hint="Por ejemplo: Casa, trabajo u oficina.">
             <input required maxLength={45} value={label} onChange={(event) => setLabel(event.target.value)} autoFocus />
           </Field>
-          <AddressFields value={form} onChange={setForm} disabled={busy} />
+          <AddressFields value={form} onChange={setForm} disabled={busy} customerIcons />
           <label className="contacts-checkbox"><input type="checkbox" checked={preferred} onChange={(event) => setPreferred(event.target.checked)} /> Usar como dirección preferida</label>
         </fieldset>
         {stale && <div className="warning-notice">La dirección fue actualizada por otra sesión. Revisa la versión actual antes de guardar.</div>}
@@ -434,7 +438,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
               <ChevronRight className="customer-list-chevron" size={19} aria-hidden="true" />
             </button>
             <div className="customer-directory-actions"><button className="button secondary customer-open-profile" onClick={() => openDetail(contact.id)}>Ver perfil</button>
-              {permitted && <button className="button ghost" aria-label={`Escribir a ${contact.name} por WhatsApp`} onClick={() => setWhatsAppContactId(contact.id)}><MessageCircle size={17} /> WhatsApp</button>}
+              {permitted && <button className="button ghost" aria-label={`Escribir a ${contact.name} por WhatsApp`} onClick={() => setWhatsAppContactId(contact.id)}><WhatsAppGlyph /> WhatsApp</button>}
             </div>
           </article>;
         })}</div>
@@ -452,17 +456,20 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
         <div className="customer-profile-summary"><span className="contact-avatar" aria-hidden="true">{kind === "customer" ? initials(detail.name) : <UserRound size={25} />}</span><div>
           <span className="eyebrow">{kind === 'customer' ? 'PERFIL DEL CLIENTE' : 'PROVEEDOR'}</span>
           {kind === "customer" && <strong className="customer-hero-name">{detail.name}</strong>}
-          <p>{detail.phone || 'Sin teléfono'} · {detail.email || 'Sin correo'}</p>
-          {detail.tax_id && <small>RNC / Cédula: {detail.tax_id}</small>}
+          {kind === 'customer' ? <div className="customer-contact-lines">
+            {phoneHref(detail.phone) ? <a className="customer-contact-line customer-call" href={phoneHref(detail.phone)!}><Phone size={20} aria-hidden="true"/><span>{detail.phone}</span></a> : <span className="customer-contact-line"><Phone size={20} aria-hidden="true"/><span>{detail.phone || 'Sin teléfono'}</span></span>}
+            <span className="customer-contact-line"><Mail size={20} aria-hidden="true"/><span>{detail.email || 'Sin correo'}</span></span>
+            {detail.tax_id && <span className="customer-contact-line"><IdCard size={20} aria-hidden="true"/><span>RNC / Cédula: {detail.tax_id}</span></span>}
+          </div> : <><p>{detail.phone || 'Sin teléfono'} · {detail.email || 'Sin correo'}</p>{detail.tax_id && <small>RNC / Cédula: {detail.tax_id}</small>}</>}
         </div></div>
         {detail.address && <p className="muted customer-profile-address"><MapPin size={15} /> {detail.address}</p>}
         {detail.notes && <p className="note-box">{detail.notes}</p>}
         {!detail.active && <div className="warning-notice">Este contacto está archivado. Reactívalo para nuevas operaciones.</div>}
         <div className="toolbar contact-profile-actions">
-          {kind === 'customer' && permitted && <button className="button secondary" disabled={addressBusy} onClick={() => setWhatsAppContactId(detail.id)}><MessageCircle size={17} /> WhatsApp</button>}
-          {permitted && detail.active && <Link className={`button primary ${addressBusy ? 'contacts-disabled-link' : ''}`} aria-disabled={addressBusy} onClick={(event) => { if (addressBusy) event.preventDefault(); }} to={`/${kind === 'customer' ? 'ventas' : 'compras'}?contacto=${detail.id}&nuevo=1`}>{kind === 'customer' ? 'Nueva venta' : 'Nueva compra'}</Link>}
-          {permitted && <button className="button secondary" disabled={addressBusy} onClick={() => setEditor(detail)}><Pencil size={15} /> Editar datos</button>}
-          {permitted && <button className="button ghost" disabled={addressBusy} onClick={() => setArchiveTarget(detail)}><Archive size={15} /> {detail.active ? 'Archivar' : 'Reactivar'}</button>}
+          {kind === 'customer' && permitted && <button className="button secondary" disabled={addressBusy} onClick={() => setWhatsAppContactId(detail.id)}><WhatsAppGlyph /> WhatsApp</button>}
+          {permitted && detail.active && <Link className={`button primary ${addressBusy ? 'contacts-disabled-link' : ''}`} aria-disabled={addressBusy} onClick={(event) => { if (addressBusy) event.preventDefault(); }} to={`/${kind === 'customer' ? 'ventas' : 'compras'}?contacto=${detail.id}&nuevo=1`}>{kind === 'customer' && <ShoppingCart size={23} aria-hidden="true"/>}{kind === 'customer' ? 'Nueva venta' : 'Nueva compra'}</Link>}
+          {permitted && <button className="button secondary" disabled={addressBusy} onClick={() => setEditor(detail)}><Pencil size={23} /> Editar datos</button>}
+          {permitted && <button className="button ghost" disabled={addressBusy} onClick={() => setArchiveTarget(detail)}><Archive size={23} /> {detail.active ? 'Archivar' : 'Reactivar'}</button>}
         </div>
         {kind === 'customer' && addressFeature && <AddressBook key={detail.id} contact={detail} permitted={permitted} onBusyChange={setAddressBusy} />}
         <section className="contact-history"><div className="contacts-section-heading"><div><h3>Historial de operaciones</h3><p>Documentos registrados para este contacto.</p></div><span className="badge">{documents.length}</span></div>
