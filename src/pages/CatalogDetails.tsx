@@ -52,7 +52,7 @@ export function StockEditor({
     }
   }
   const form = (
-    <form onSubmit={save} className="stack">
+    <form onSubmit={save} className="stack inventory-stock-editor">
       <p>
         Registra el conteo físico de <strong>{variant.name}</strong>. El ajuste quedará asociado a
         tu usuario.
@@ -157,7 +157,7 @@ export function InventoryDetails({
   const canReplenish = data.permissions.purchase && active;
   const aliases = variant.barcode_aliases ?? [];
   return (
-    <Modal title={`${variant.sku} · ${variant.name}`} onClose={onClose} variant="drawer">
+    <Modal title={`${variant.sku} · ${variant.name}`} onClose={onClose} variant="drawer" className="inventory-detail-v1 sl-refined-theme">
       <div className="catalog-detail catalog-detail-compact">
         <div className="catalog-detail-hero">
           <ProductImage

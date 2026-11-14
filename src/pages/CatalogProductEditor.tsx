@@ -320,7 +320,7 @@ export function ProductEditor({
   const knownProduct = data.products.find((row) => row.id === knownVariant?.product_id);
   const blocked = busy || uploading || refreshing;
   return (
-    <Modal title={product ? 'Editar producto' : 'Agregar producto'} onClose={() => { if (!busy && !uploading) onClose(); }} variant="drawer">
+    <Modal title={product ? 'Editar producto' : 'Agregar producto'} onClose={() => { if (!busy && !uploading) onClose(); }} variant="drawer" className="inventory-editor-v1 sl-refined-theme">
       <form ref={form} onSubmit={save} onInvalidCapture={(event) => revealInvalid(event.target)} className="catalog-product-editor stack">
         <section className="catalog-editor-scan" aria-label="Entrada rápida de producto">
           <p>Revisa los datos antes de aplicarlos.</p>
@@ -339,7 +339,7 @@ export function ProductEditor({
           }}>Recalcular con la tasa actual</button>
         </div>}
         <fieldset className="catalog-editor-identity" disabled={blocked}>
-          <legend>Producto</legend>
+          <legend>Identidad del producto</legend>
           <div className="form-grid">
             <Field label="Marca"><input required maxLength={100} value={brand} onChange={(event) => changeIdentity(event.target.value, model)} /></Field>
             <Field label="Modelo"><input required maxLength={160} value={model} onChange={(event) => changeIdentity(brand, event.target.value)} /></Field>

@@ -15,6 +15,7 @@ import { ProductEditor } from './CatalogProductEditor';
 import { InventoryDetails, StockEditor, StockMeter } from './CatalogDetails';
 import { taxRateLabel } from '../lib/format';
 import './catalog.css';
+import './inventory-visual-v1.css';
 export function CatalogPage() {
   const { data, notify } = useRetail();
   const { run, busy, error } = useOperation();
@@ -185,7 +186,7 @@ export function CatalogPage() {
     }
   }
   return (
-    <>
+    <div className="inventory-visual-v1 sl-refined-theme">
       <PageHeader
         eyebrow="CATÁLOGO Y EXISTENCIAS"
         title="Inventario"
@@ -223,7 +224,7 @@ export function CatalogPage() {
       </div>
       {data.permissions.view_costs && (
         <details className="catalog-financial-disclosure">
-          <summary>Resumen financiero del inventario</summary>
+          <summary><span>Resumen financiero del inventario</span><span className="inventory-financial-hint">Ver indicadores</span></summary>
         <div className="catalog-financials">
           <StatCard
             label="Valor del inventario"
@@ -250,6 +251,7 @@ export function CatalogPage() {
         </details>
       )}
       <section className="panel catalog-panel" aria-label="Catálogo de productos">
+        <div className="inventory-catalog-heading"><div><h2>Catálogo</h2><p>Compara existencias y precios por variante.</p></div><span>Precios con ITBIS: {taxRateLabel(data.settings.tax_rate)}</span></div>
         <div className="toolbar table-toolbar catalog-toolbar">
           <SearchInput
             value={query}
@@ -338,9 +340,12 @@ export function CatalogPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Producto / variante</th>
-                    <th>Stock actual</th>
-                    <th>Precio con ITBIS</th>
+                    <th scope="col">Producto / variante</th>
+                    <th scope="col" className="numeric">Disponibles</th>
+                    <th scope="col" className="numeric">En revisión</th>
+                    <th scope="col" className="numeric">Mínimo</th>
+                    <th scope="col" className="numeric">Precio con ITBIS</th>
+                    <th scope="col">Estado</th>
                     <th>
                       <span className="sr-only">Acciones</span>
                     </th>
@@ -372,23 +377,9 @@ export function CatalogPage() {
                             </span>
                           </button>
                         </td>
-                        <td>
-                          <div className="stock-cell">
-                            <strong>
-                              {integer(available)} <small>/ mín. {variant.min_stock}</small>
-                            </strong>
-                            <StockMeter
-                              available={available}
-                              minimum={variant.min_stock}
-                              target={variant.reorder_target}
-                            />
-                            <span
-                              className={`badge ${health === 'out' ? 'danger' : health === 'low' ? 'warning' : 'success'}`}
-                            >
-                              {stockHealthLabels[health]}
-                            </span>
-                          </div>
-                        </td>
+                        <td className="numeric inventory-quantity"><strong>{integer(available)}</strong><StockMeter available={available} minimum={variant.min_stock} target={variant.reorder_target} /></td>
+                        <td className="numeric inventory-quantity">{integer(stock?.quarantine ?? 0)}</td>
+                        <td className="numeric inventory-quantity">{integer(variant.min_stock)}</td>
                         <td className="numeric">
                           {amounts ? (
                             <>
@@ -396,12 +387,12 @@ export function CatalogPage() {
                               <small>ITBIS incluido</small>
                             </>
                           ) : (
-                            '—'
+                            <small>Precio pendiente</small>
                           )}
                         </td>
-
+                        <td><span className={`badge ${!product.active || !variant.active || health === 'out' ? 'danger' : health === 'low' ? 'warning' : 'success'}`}>{!product.active || !variant.active ? 'Archivado' : stockHealthLabels[health]}</span></td>
                         <td>
-                          <div className="row-actions">
+                          <details className="inventory-row-actions"><summary aria-label={`Acciones de ${variant.sku}`} title="Acciones">⋯</summary><div className="row-actions">
                             <button className="button ghost" onClick={() => openDetail(variant)}>
                               Ver ficha
                             </button>
@@ -426,7 +417,7 @@ export function CatalogPage() {
                                 </button>
                               </>
                             )}
-                          </div>
+                          </div></details>
                         </td>
                       </tr>
                     );
@@ -465,7 +456,8 @@ export function CatalogPage() {
                     </span>
                     <span className="catalog-mobile-bottom">
                       <span>
-                        <strong>{integer(available)} unidades</strong>
+                        <strong>{integer(available)} disponibles</strong>
+                        {Boolean(stock?.quarantine) && <small>{integer(stock?.quarantine ?? 0)} en revisión</small>}
                         <StockMeter
                           available={available}
                           minimum={variant.min_stock}
@@ -474,7 +466,7 @@ export function CatalogPage() {
                         <span
                           className={`badge ${health === 'out' ? 'danger' : health === 'low' ? 'warning' : 'success'}`}
                         >
-                          {stockHealthLabels[health]}
+                          {!product.active || !variant.active ? 'Archivado' : stockHealthLabels[health]}
                         </span>
                       </span>
                       <span>
@@ -572,6 +564,6 @@ export function CatalogPage() {
           </div>
         </Modal>
       )}
-    </>
+    </div>
   );
 }
