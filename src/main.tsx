@@ -6,6 +6,7 @@ import './styles.css';
 import './design-system/tokens.css';
 import './design-system/components.css';
 import './design-system/app-theme.css';
+import './design-system/glass-header.css';
 
 const removeValidation = installSpanishValidation();
 import.meta.hot?.dispose(removeValidation);

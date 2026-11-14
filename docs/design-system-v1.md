@@ -125,3 +125,7 @@ Secuencia: 1) Dashboard; 2) Inventario; 3) Ventas; 4) Compras; 5) Entregas. Ante
 - Meta — [WhatsApp brand resources](https://www.meta.com/brand/resources/whatsapp/whatsapp-brand/).
 
 **Registro inicial:** esta versión establece el estándar documental a partir de Clientes V2.1. No modifica código ejecutable, tokens activos, datos, ni inicia el rediseño Dashboard. La extracción y adopción técnica se hará en el próximo módulo con revisión y aceptación.
+
+### Regla transversal — encabezados Glass (Ventas V1)
+
+Todos los encabezados principales `PageHeader` adoptan el material visual de Clientes V2.1 (gradientes navy/cyan, borde y profundidad), incluyendo Resumen, Inventario y Compras. Mantener jerarquía, contenido y acciones existentes. En Ventas usar una variante compacta para priorizar caja. No extender el tratamiento a visores de escaneo, tablas ni comprobantes impresos. La preferencia del usuario es Clientes como referencia principal para nuevos módulos.

@@ -1,0 +1,25 @@
+/* Shared PageHeader material, derived from the approved Clientes V2.1 header.
+ * Keep scanner, modal, print and document headings outside this rule. */
+.app-layout .page-content .page-header.sl-glass-header {
+  --sl-header-ink:#102b4a;--sl-header-muted:#526982;--sl-header-edge:#d7e5f5;
+  --sl-header-material:radial-gradient(ellipse at 88% 4%,#d5f2ff 0,transparent 60%),linear-gradient(145deg,#f4faff,#e0edff);
+  --sl-header-shadow:0 12px 28px rgba(27,75,131,.08);
+  background:var(--sl-header-material);border:1px solid var(--sl-header-edge);border-radius:24px;
+  padding:24px;box-shadow:var(--sl-header-shadow),inset 0 1px rgba(255,255,255,.08);
+  min-width:0;gap:16px;
+}
+.app-layout[data-theme="dark"] .page-content .page-header.sl-glass-header {
+  --sl-header-ink:#f0f8ff;--sl-header-muted:#b2c7df;--sl-header-edge:rgba(132,194,239,.17);
+  --sl-header-material:radial-gradient(ellipse at 93% 0%,rgba(12,146,211,.48),transparent 65%),radial-gradient(ellipse at 0% 100%,rgba(20,82,163,.42),transparent 70%),linear-gradient(135deg,#112847,#0a1c32 72%);
+  --sl-header-shadow:0 14px 30px rgba(0,0,0,.24);
+}
+.app-layout .page-content .page-header.sl-glass-header :is(h1,.eyebrow) {color:var(--sl-header-ink);}
+.app-layout .page-content .page-header.sl-glass-header h1 {letter-spacing:-.045em;}
+.app-layout .page-content .page-header.sl-glass-header p {color:var(--sl-header-muted);}
+.app-layout .page-content .page-header.sl-glass-header .header-actions {min-width:0;flex-wrap:wrap;}
+.app-layout .page-content .sales-visual-v1 .page-header.sl-glass-header {padding:18px 24px;margin-bottom:16px;}
+@media(max-width:640px){
+ .app-layout .page-content .page-header.sl-glass-header,.app-layout .page-content .sales-visual-v1 .page-header.sl-glass-header{padding:18px 16px;border-radius:22px;}
+ .app-layout .page-content .page-header.sl-glass-header > div{min-width:0;}
+}
+@media print{.app-layout .page-content .page-header.sl-glass-header{background:white;box-shadow:none;border-color:#ddd;}}

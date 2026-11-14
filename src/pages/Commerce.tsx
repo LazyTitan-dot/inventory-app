@@ -56,7 +56,9 @@ import {
 import { cashierPrefill, exactCashierMatches } from '../lib/cashier';
 import { getVariantBarcodes } from '../lib/barcode';
 import { PurchaseOrdersList, PurchaseOrderProgress } from './PurchaseVisual';
+import { SalesHistory } from './SalesVisual';
 import './commerce.css';
+import './sales-visual-v1.css';
 import './purchase-visual-v1.css';
 
 type Kind = 'sale' | 'purchase' | 'quote';
@@ -246,7 +248,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
     params.get('vista') !== 'historial';
   if (cashier)
     return (
-      <>
+      <div className="sales-visual-v1 sl-refined-theme">
         <PageHeader
           eyebrow="S-Mart Living / CAJA"
           title="Ventas"
@@ -268,7 +270,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
           onClose={() => setParams({ vista: 'historial' })}
           onCreated={setSelectedId}
         />
-      </>
+      </div>
     );
 
   const content = (
@@ -289,7 +291,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
       {selectedId && !selected && (
         <ErrorNotice message="El documento solicitado no está disponible. Puede que tu rol no tenga acceso o que debas actualizar los datos." />
       )}
-      <div className={`stats-grid commerce-stats${kind === 'purchase' ? ' purchase-kpis' : ''}`}>
+      <div className={`stats-grid commerce-stats${kind === 'purchase' ? ' purchase-kpis' : kind === 'sale' ? ' sales-kpis' : ''}`}>
         <StatCard
           label={
             kind === 'purchase'
@@ -383,7 +385,8 @@ export function CommercePage({ kind }: { kind: Kind }) {
           </div>
         </details>
       )}
-      <section className={kind === 'purchase' ? 'panel purchase-orders-panel' : 'panel'}>
+      <section className={kind === 'purchase' ? 'panel purchase-orders-panel' : kind === 'sale' ? 'panel sales-history-panel' : 'panel'}>
+        {kind === 'sale' && <div className="sales-history-heading"><h2>Historial de ventas</h2><span>{filtered.length} {filtered.length === 1 ? 'venta' : 'ventas'}</span></div>}
         {kind === 'purchase' && <div className="purchase-list-heading"><h2>Órdenes de compra</h2><span>{filtered.length} {filtered.length === 1 ? 'orden' : 'órdenes'}</span></div>}
         <div className="toolbar commerce-toolbar">
           <SearchInput
@@ -469,6 +472,8 @@ export function CommercePage({ kind }: { kind: Kind }) {
           />
         ) : kind === 'purchase' ? (
           <PurchaseOrdersList documents={filtered} items={data.document_items} isLate={purchaseLate} onOpen={setSelectedId} />
+        ) : kind === 'sale' ? (
+          <SalesHistory documents={filtered} onOpen={setSelectedId} />
         ) : (
           <div className="table-wrap">
             <table className="data-table">
@@ -562,7 +567,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
       )}
     </>
   );
-  return kind === 'purchase' ? <div className="purchase-visual-v1 sl-refined-theme">{content}</div> : content;
+  return kind === 'purchase' ? <div className="purchase-visual-v1 sl-refined-theme">{content}</div> : kind === 'sale' ? <div className="sales-visual-v1 sl-refined-theme">{content}</div> : content;
 }
 
 function CreateDocument({
@@ -1133,7 +1138,7 @@ function CreateDocument({
                     />
                   </label>
                 ) : (
-                  <span className="muted">× {money(line.expectedPrice)}</span>
+                  <span className="muted">× {money(line.expectedPrice)}{kind === 'sale' && <small className="sales-before-tax">Antes de ITBIS</small>}</span>
                 )}
                 <strong>
                   {money(
@@ -1156,6 +1161,7 @@ function CreateDocument({
           </div>
         )}
       </div>
+      {kind === 'sale' && <h4 className="sales-section-label">Descuentos y cupón</h4>}
       {kind !== 'purchase' && (
         <div className="form-grid commerce-small-grid">
           <div className="commerce-discount-mode" role="group" aria-label="Tipo de descuento">
@@ -1262,7 +1268,7 @@ function CreateDocument({
       </Field>
       <div className="commerce-totals">
         <div>
-          <span>Subtotal</span>
+          <span>{kind === 'sale' ? 'Subtotal antes de ITBIS' : 'Subtotal'}</span>
           <span>{money(subtotal)}</span>
         </div>
         {kind !== 'purchase' && (
@@ -1272,18 +1278,19 @@ function CreateDocument({
               <span>−{money(discountAmount)}</span>
             </div>
             <div>
-              <span>Impuestos ({taxRate}%)</span>
+              <span>{kind === 'sale' ? 'ITBIS' : 'Impuestos'} ({taxRate}%)</span>
               <span>{money(tax)}</span>
             </div>
           </>
         )}
         <div className="commerce-grand-total">
-          <strong>Total</strong>
+          <strong>{kind === 'sale' ? 'Total a cobrar' : 'Total'}</strong>
           <strong>{money(total)}</strong>
         </div>
       </div>
       {kind === 'sale' && (
         <>
+          <h4 className="sales-section-label">Cobro</h4>
           <Field label="Medio de pago">
             <select value={payment} onChange={(event) => setPayment(event.target.value)}>
               {Object.entries(paymentLabels).map(([value, label]) => (
@@ -1380,6 +1387,7 @@ function CreateDocument({
       <fieldset disabled={busy || refreshing} className="commerce-fieldset">
         <div className="commerce-workbench">
           <section className="commerce-catalog" aria-label="Catálogo de variantes">
+            {kind === 'sale' && <h3 className="sales-catalog-heading">Catálogo</h3>}
             <button
               type="button"
               className="button ghost commerce-refresh"
@@ -1387,6 +1395,7 @@ function CreateDocument({
             >
               {refreshing ? 'Actualizando…' : 'Actualizar catálogo y existencias'}
             </button>
+            <div className={kind === 'sale' ? 'sales-search-actions' : 'commerce-search-actions'}>
             <div className="commerce-catalog-search">
               <Search size={18} />
               <input
@@ -1420,6 +1429,7 @@ function CreateDocument({
               <ScanLine size={17} />
               Escanear código de barras
             </button>
+            </div>
             <div className="commerce-category-row" role="group" aria-label="Filtrar categoría">
               <button
                 type="button"
@@ -1511,6 +1521,7 @@ function CreateDocument({
             checkoutOpen && (
               <Modal
                 title="Pedido y cobro"
+                className="sales-checkout-v1 sl-refined-theme"
                 variant="drawer"
                 onClose={busy ? () => undefined : () => setCheckoutOpen(false)}
               >
@@ -1602,7 +1613,7 @@ function CreateDocument({
       title={editingDocument ? `Editar ${documentNumber(editingDocument)}` : labels[kind].create}
       onClose={busy ? () => undefined : onClose}
       wide
-      className={kind === 'purchase' ? 'purchase-create-v1 sl-refined-theme' : '' }
+      className={kind === 'purchase' ? 'purchase-create-v1 sl-refined-theme' : kind === 'sale' ? 'sales-create-v1 sl-refined-theme' : '' }
     >
       {editor}
     </Modal>
@@ -1785,7 +1796,7 @@ function DocumentDetail({
     );
   }
   return (
-    <Modal title={documentNumber(doc)} onClose={operation.busy ? () => undefined : onClose} wide variant={doc.type === 'purchase' ? 'drawer' : 'dialog'} className={doc.type === 'purchase' ? 'purchase-detail-v1 sl-refined-theme' : ''}>
+    <Modal title={documentNumber(doc)} onClose={operation.busy ? () => undefined : onClose} wide variant={doc.type === 'purchase' || doc.type === 'sale' ? 'drawer' : 'dialog'} className={doc.type === 'purchase' ? 'purchase-detail-v1 sl-refined-theme' : doc.type === 'sale' ? 'sales-detail-v1 sl-refined-theme' : ''}>
       {mode !== 'detail' && (
         <button
           className="button ghost commerce-back"
@@ -2078,6 +2089,7 @@ function DocumentDetail({
             </div>
           )}
           <div className="modal-footer commerce-document-actions">
+            {doc.type === 'sale' && data.permissions.sell && <Link className="button primary" to="/ventas"><Plus size={17}/> Nueva venta</Link>}
             {canShare && (
               <button className="button secondary" onClick={() => setWhatsAppOpen(true)}>
                 <MessageCircle size={17} />
