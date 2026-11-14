@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Archive, ArrowDownToLine, ArrowUpRight, Plus, ScanLine, SlidersHorizontal } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpRight, Plus, ScanLine } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useRetail } from '../state/useRetail';
 import { useOperation } from '../state/useOperation';
@@ -12,6 +12,7 @@ import { BarcodeScanner } from '../components/BarcodeScanner';
 import { barcodeMatches, getVariantBarcodes } from '../lib/barcode';
 import { stockHealth, stockHealthLabels } from '../lib/catalog';
 import { ProductEditor } from './CatalogProductEditor';
+import { InventoryRowActions } from './InventoryRowActions';
 import { InventoryDetails, StockEditor, StockMeter } from './CatalogDetails';
 import { taxRateLabel } from '../lib/format';
 import './catalog.css';
@@ -337,7 +338,8 @@ export function CatalogPage() {
         {visible.length ? (
           <>
             <div className="table-wrap catalog-desktop">
-              <table className="data-table">
+              <table className="data-table inventory-comparison-table">
+                <colgroup><col className="inventory-col-product" /><col className="inventory-col-available" /><col className="inventory-col-quarantine" /><col className="inventory-col-minimum" /><col className="inventory-col-price" /><col className="inventory-col-status" /><col className="inventory-col-actions" /></colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Producto / variante</th>
@@ -346,7 +348,7 @@ export function CatalogPage() {
                     <th scope="col" className="numeric">Mínimo</th>
                     <th scope="col" className="numeric">Precio con ITBIS</th>
                     <th scope="col">Estado</th>
-                    <th>
+                    <th scope="col">
                       <span className="sr-only">Acciones</span>
                     </th>
                   </tr>
@@ -392,32 +394,16 @@ export function CatalogPage() {
                         </td>
                         <td><span className={`badge ${!product.active || !variant.active || health === 'out' ? 'danger' : health === 'low' ? 'warning' : 'success'}`}>{!product.active || !variant.active ? 'Archivado' : stockHealthLabels[health]}</span></td>
                         <td>
-                          <details className="inventory-row-actions"><summary aria-label={`Acciones de ${variant.sku}`} title="Acciones">⋯</summary><div className="row-actions">
-                            <button className="button ghost" onClick={() => openDetail(variant)}>
-                              Ver ficha
-                            </button>
-                            {data.permissions.manage_catalog && (
-                              <>
-                                <button
-                                  className="icon-button"
-                                  aria-label={`Ajustar ${variant.sku}`}
-                                  onClick={() => setAdjustment(variant)}
-                                >
-                                  <SlidersHorizontal size={17} /> Ajustar stock
-                                </button>
-                                <button className="button ghost" onClick={() => setEditor(product)}>
-                                  Editar
-                                </button>
-                                <button
-                                  className="icon-button"
-                                  aria-label={`${product.active ? 'Archivar' : 'Reactivar'} ${product.model}`}
-                                  onClick={() => setArchiving(product)}
-                                >
-                                  <Archive size={16} /> {product.active ? 'Archivar' : 'Reactivar'}
-                                </button>
-                              </>
-                            )}
-                          </div></details>
+                          <InventoryRowActions
+                            sku={variant.sku}
+                            productName={product.model}
+                            active={product.active}
+                            canManage={data.permissions.manage_catalog}
+                            onView={() => openDetail(variant)}
+                            onEdit={() => setEditor(product)}
+                            onAdjust={() => setAdjustment(variant)}
+                            onArchive={() => setArchiving(product)}
+                          />
                         </td>
                       </tr>
                     );
