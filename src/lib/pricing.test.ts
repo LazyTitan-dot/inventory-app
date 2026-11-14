@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculatePriceFromTotal, calculateUnitPrice, isValidCatalogAmount, MAX_CATALOG_PRICE, potentialUnitProfit, suggestFinalPrice } from './pricing';
+import { calculatePriceFromTotal, calculateUnitPrice, inventoryFinancialSummary, isValidCatalogAmount, MAX_CATALOG_PRICE, potentialUnitProfit, suggestFinalPrice } from './pricing';
 
 describe('precio unitario con ITBIS', () => {
   it('muestra base, ITBIS y total sin convertir el precio almacenado en precio incluido', () => {
@@ -77,5 +77,16 @@ describe('final-price entry and cost suggestions', () => {
     expect(potentialUnitProfit(100, 80, 18)).toMatchObject({ finalPrice: 118, profit: 38 });
     expect(potentialUnitProfit(100, 130, 18)?.profit).toBe(-12);
     expect(potentialUnitProfit(0, 80, 18)).toBeNull();
+  });
+});
+
+describe('resumen financiero compartido', () => {
+  it('conserva la convención de Inventario, excluye precios pendientes y usa existencias disponibles', () => {
+    const totals = inventoryFinancialSummary([
+      { available: 3, variant: { price: 8000, cost: 5000 } },
+      { available: 2, variant: { price: 0, cost: 1000 } },
+      { available: 0, variant: { price: 500, cost: 100 } },
+    ], 18);
+    expect(totals).toEqual({value: 17000, revenue: 28320, potentialProfit: 13320});
   });
 });

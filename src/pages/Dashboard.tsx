@@ -14,6 +14,7 @@ import {
   shortDate,
   statusLabels,
 } from '../lib/format';
+import { inventoryFinancialSummary } from '../lib/pricing';
 import { reportForPeriod, stockOverview } from '../lib/reports';
 import { dashboardActivity, dashboardTasks, salesTrend } from '../lib/dashboard';
 import type { RetailData } from '../lib/contracts';
@@ -57,8 +58,8 @@ function SalesTrendChart({ data, today }: { data: RetailData; today: string }) {
         </div>
       </div>
       <div className="sl-sales-total"><div><span>Total del período</span><strong>{money(total)}</strong></div><div><span>Hoy</span><strong>{money(points.at(-1)!.amount)}</strong></div></div>
-      <svg className="sl-sales-chart" viewBox="0 0 660 170" role="img" aria-label={`Ventas netas de los últimos ${days} días: ${money(total)}. Hoy: ${money(points.at(-1)!.amount)}.`}>
-        <title>Ventas netas registradas, últimos {days} días</title>
+      <div className="sl-chart-layout"><div className="sl-chart-axis" aria-hidden="true">{[max,(max+min)/2,min].map((value,index)=><span key={index}>{money(value)}</span>)}</div><svg className="sl-sales-chart" viewBox="0 0 660 170" preserveAspectRatio="none" role="img" aria-label={`Ventas netas de los últimos ${days} días: ${money(total)}. Hoy: ${money(points.at(-1)!.amount)}.`}>
+        <title>{`Ventas netas registradas, últimos ${days} días`}</title>
         <desc>Se descuentan las devoluciones en la fecha de su registro. Los días sin operaciones muestran cero. Las cifras diarias están disponibles debajo del gráfico.</desc>
         <defs><linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity="0.18" /><stop offset="100%" stopColor="currentColor" stopOpacity="0.01" /></linearGradient></defs>
         {[22, 85, 148].map((gridY) => <path key={gridY} d={`M 12 ${gridY} H 648`} className="sl-chart-grid" />)}
@@ -66,7 +67,7 @@ function SalesTrendChart({ data, today }: { data: RetailData; today: string }) {
         <path d={area} fill={`url(#${gradientId})`} />
         <path d={line} fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         <circle cx={coordinates.at(-1)!.x} cy={coordinates.at(-1)!.y} r="4" fill="currentColor" />
-      </svg>
+      </svg></div>
       <div className="sl-plot-dates"><span>{shortDate(`${points[0]!.day}T12:00:00-04:00`)}</span><span>Hoy</span></div>
       <details className="sl-chart-data"><summary>Ver importes diarios</summary><div className="table-wrap"><table className="data-table"><thead><tr><th>Fecha</th><th>Ventas netas RD$</th></tr></thead><tbody>{points.map((point) => <tr key={point.day}><td>{shortDate(`${point.day}T12:00:00-04:00`)}</td><td>{money(point.amount)}</td></tr>)}</tbody></table></div></details>
       <div className="sl-insight-footer"><span>Fechas de República Dominicana</span>{data.permissions.manage_business && <Link className="text-link" to="/reportes">Ver reportes <ArrowRight size={14} /></Link>}</div>
@@ -131,11 +132,12 @@ export function DashboardPage() {
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, 6);
   const recentRoute = commerce ? '/ventas' : '/compras';
+  const financials = data.permissions.view_costs ? inventoryFinancialSummary(inventory, data.settings.tax_rate) : null;
   return (
-    <>
+    <div className="sl-dashboard-v1 sl-refined-theme">
       <PageHeader
         eyebrow={`${shortDate(now.toISOString())} · REPÚBLICA DOMINICANA`}
-        title="Lo importante, primero."
+        title="Resumen"
         description={
           commerce
             ? 'Tu negocio de un vistazo. Esto es lo que necesita tu atención hoy.'
@@ -150,10 +152,11 @@ export function DashboardPage() {
         <div><span className="eyebrow">HOY EN TU TIENDA</span><h2>{tasks.length ? `Tienes ${tasks.length} asuntos por atender.` : 'Tu operación está al día.'}</h2><p>Hola, {data.profile.display_name.trim().split(' ')[0] || 'equipo'}. {tasks.some((task) => task.level === 'urgent') ? 'Empieza por las tareas que necesitan atención.' : 'Todo listo para continuar con tu próxima operación.'}</p></div>
         {data.permissions.sell ? <Link className="button primary" to="/ventas?nuevo=1"><Plus size={18} /> Nueva venta</Link> : purchasing ? <Link className="button primary" to="/compras?nuevo=1"><Plus size={18} /> Nueva compra</Link> : null}
       </section>
-      <div className="stats-grid">
+      <div className="stats-grid sl-dashboard-kpis">
         {commerce && (
           <StatCard
             label="Ventas de hoy"
+            tone="sl-kpi-featured"
             value={money(report.total)}
             hint={`${report.sales.length} ventas · neto de devoluciones`}
           />
@@ -200,15 +203,24 @@ export function DashboardPage() {
         {commerce && <SalesTrendChart data={data} today={today} />}
         <StockHealth data={data} />
       </section>
+      {financials && <section className="panel sl-inventory-financials" aria-label="Resumen financiero del inventario">
+        <div className="section-heading"><div><span className="eyebrow">CAPITAL Y POTENCIAL</span><h2>Valor del inventario</h2><p>Existencias disponibles · estimaciones, no ventas realizadas.</p></div><Link className="text-link" to="/inventario">Ver inventario <ArrowRight size={16}/></Link></div>
+        <div className="sl-financial-grid">
+          <StatCard label="Valor del inventario" value={money(financials.value)} hint="Existencias disponibles a costo"/>
+          <StatCard label="Ingreso potencial" value={money(financials.revenue)} hint="Precio final con ITBIS × unidades disponibles"/>
+          <StatCard label="Ganancia potencial" value={money(financials.potentialProfit)} hint="(Precio final con ITBIS − costo) × unidades con precio"/>
+        </div>
+        <p className="sl-financial-caveat">La ganancia potencial conserva el cálculo de Inventario e incluye ITBIS en el precio final. No equivale a beneficio bruto sin ITBIS ni a utilidad realizada. Los costos sin registrar se consideran cero en esta estimación.</p>
+      </section>}
       <div className="dashboard-grid">
         <section className="panel">
           <div className="section-heading">
             <div>
               <span className="eyebrow">PRIORIDADES</span>
-              <h2>Pendientes de hoy</h2>
+              <h2>Prioridades operativas</h2>
             </div>
             <Link className="text-link" to="/inventario?estado=low">
-              Ver todos <ArrowRight size={15} />
+              Ver reposición <ArrowRight size={15} />
             </Link>
           </div>
           {tasks.length ? (
@@ -278,7 +290,7 @@ export function DashboardPage() {
       <section className="panel sl-quick-actions" aria-label="Accesos rápidos">
         <div><span className="eyebrow">A TU ALCANCE</span><h2>¿Qué quieres hacer?</h2></div>
         <div className="sl-quick-grid">
-          {data.permissions.sell && <Link to="/ventas?nuevo=1"><ShoppingBag size={21} /><span><strong>Registrar una venta</strong><small>Cliente, productos y cobro</small></span><ArrowRight size={16} /></Link>}
+          {data.permissions.sell && <Link to="/ventas?nuevo=1"><ShoppingBag size={21} /><span><strong>Registrar una venta</strong><small>Cliente, productos y medio de pago</small></span><ArrowRight size={16} /></Link>}
           {data.permissions.manage_catalog && <Link to="/inventario?nuevo=1"><Plus size={21} /><span><strong>Agregar producto</strong><small>Crear producto y variantes</small></span><ArrowRight size={16} /></Link>}
           {purchasing && <Link to="/compras?nuevo=1"><ClipboardList size={21} /><span><strong>Registrar compra</strong><small>Ordenar y recibir productos</small></span><ArrowRight size={16} /></Link>}
           <button type="button" onClick={() => window.dispatchEvent(new Event('smartliving:search'))}><Search size={21} /><span><strong>Encontrar algo</strong><small>Productos, contactos y operaciones</small></span><ArrowRight size={16} /></button>
@@ -346,7 +358,7 @@ export function DashboardPage() {
           )}
         </section>
       )}
-    </>
+    </div>
   );
 }
 

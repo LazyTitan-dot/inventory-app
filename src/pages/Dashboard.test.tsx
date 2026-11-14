@@ -61,6 +61,7 @@ describe('dashboard permission boundaries', () => {
     data = fixture('viewer');
     const html = renderPage(DashboardPage);
     expect(html).not.toContain('Ventas de hoy');
+    expect(html).not.toContain('Ganancia potencial');
     expect(html).not.toContain('Compras pendientes');
     expect(html).not.toContain('href="/ventas');
     expect(html).not.toContain('href="/compras');
@@ -72,6 +73,7 @@ describe('dashboard permission boundaries', () => {
     data = fixture('inventory');
     const html = renderPage(DashboardPage);
     expect(html).toContain('Compras recientes');
+    expect(html).toContain('Ganancia potencial');
     expect(html).toContain('href="/compras?nuevo=1"');
     expect(html).toContain('href="/entregas"');
     expect(html).not.toContain('Ventas de hoy');
@@ -82,6 +84,7 @@ describe('dashboard permission boundaries', () => {
     data = fixture('sales');
     const html = renderPage(DashboardPage);
     expect(html).toContain('Ventas de hoy');
+    expect(html).not.toContain('Ganancia potencial');
     expect(html).toContain('href="/ventas?nuevo=1"');
     expect(html).not.toContain('Compras pendientes');
     expect(html).not.toContain('href="/compras');
@@ -92,6 +95,7 @@ describe('dashboard permission boundaries', () => {
     const html = renderPage(DashboardPage);
     expect(html).toContain('Ventas de hoy');
     expect(html).toContain('Compras pendientes');
+    expect(html).toContain('Ganancia potencial');
   });
 
   it('denies financial reports when the page is rendered outside the route guard', () => {

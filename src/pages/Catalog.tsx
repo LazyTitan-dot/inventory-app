@@ -7,7 +7,7 @@ import type { Product, Variant } from '../lib/contracts';
 import { categoryName, downloadCsv, integer, matches, money } from '../lib/format';
 import { EmptyState, ErrorNotice, Modal, PageHeader, SearchInput, StatCard } from '../components/ui';
 import { ProductImage } from '../components/ProductImage';
-import { calculateUnitPrice, potentialUnitProfit } from '../lib/pricing';
+import { calculateUnitPrice, inventoryFinancialSummary } from '../lib/pricing';
 import { BarcodeScanner } from '../components/BarcodeScanner';
 import { barcodeMatches, getVariantBarcodes } from '../lib/barcode';
 import { stockHealth, stockHealthLabels } from '../lib/catalog';
@@ -114,18 +114,9 @@ export function CatalogPage() {
             ),
     );
   const units = activeRows.reduce((sum, row) => sum + (row.stock?.available ?? 0), 0);
-  const value = activeRows.reduce(
-    (sum, row) => sum + (row.stock?.available ?? 0) * (row.variant.cost ?? 0),
-    0,
-  );
-  const revenue = activeRows.reduce(
-    (sum, row) => sum + (row.stock?.available ?? 0) * (potentialUnitProfit(row.variant.price, row.variant.cost ?? 0, data.settings.tax_rate)?.finalPrice ?? 0),
-    0,
-  );
-  const potentialProfit = activeRows.reduce(
-    (sum, row) => sum + (row.stock?.available ?? 0) * (potentialUnitProfit(row.variant.price, row.variant.cost ?? 0, data.settings.tax_rate)?.profit ?? 0),
-    0,
-  );
+  const { value, revenue, potentialProfit } = data.permissions.view_costs
+    ? inventoryFinancialSummary(activeRows.map(row => ({ available: row.stock?.available ?? 0, variant: row.variant })), data.settings.tax_rate)
+    : { value: 0, revenue: 0, potentialProfit: 0 };
   function exportRows() {
     downloadCsv('inventario-s-mart-living.csv', [
       [

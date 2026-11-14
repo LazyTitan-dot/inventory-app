@@ -91,3 +91,18 @@ export function calculateUnitPrice(basePrice: number, taxRate: number): UnitPric
     taxRate,
   };
 }
+
+/** Catalog and dashboard share the same estimate, including the existing gross-price margin convention. */
+export function inventoryFinancialSummary(
+  rows: readonly { available: number; variant: { price: number; cost?: number | null } }[],
+  taxRate: number,
+) {
+  return rows.reduce((totals, row) => {
+    const cost = row.variant.cost ?? 0;
+    const price = potentialUnitProfit(row.variant.price, cost, taxRate);
+    totals.value += row.available * cost;
+    totals.revenue += row.available * (price?.finalPrice ?? 0);
+    totals.potentialProfit += row.available * (price?.profit ?? 0);
+    return totals;
+  }, { value: 0, revenue: 0, potentialProfit: 0 });
+}
