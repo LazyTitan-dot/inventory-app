@@ -44,7 +44,7 @@ test('purchase creation retains supplier, unit cost and exact variant prefill', 
 test('Compras V1.1 desktop separates receipt counts and renders a dated receipt history', async ({page,featureData}) => {
   const doc=featureData.documents.find(d=>d.id===purchaseId)!;
   const item=featureData.document_items.find(i=>i.document_id===purchaseId)!;
-  featureData.purchase_receipts=[{id:'receipt-test',purchase_id:doc.id,operation_id:'operation-test',received_by:featureData.profile.id,notes:'Entrega de prueba',created_at:doc.created_at,items:[{item_id:item.id,variant_id:item.variant_id!,quantity:1,damaged_quantity:0,unit_cost:50}]}];
+  featureData.purchase_receipts=[{id:'20000000-0000-4000-8000-000000000011',purchase_id:doc.id,operation_id:'20000000-0000-4000-8000-000000000012',received_by:featureData.profile.id,notes:'Entrega de prueba',created_at:doc.created_at,items:[{item_id:item.id,variant_id:item.variant_id!,quantity:1,damaged_quantity:0,unit_cost:50}]}];
   await page.setViewportSize({width:1440,height:900});
   await page.goto(`/compras?documento=${purchaseId}`);
   const dialog=page.getByRole('dialog',{name:doc.number,exact:true});
