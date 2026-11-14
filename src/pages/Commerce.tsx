@@ -123,6 +123,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
   const [status, setStatus] = useState('all');
   const [supplierFilter, setSupplierFilter] = useState('all');
   const [purchaseDate, setPurchaseDate] = useState('');
+  const [createdSaleId, setCreatedSaleId] = useState<string | null>(null);
   const [params, setParams] = useSearchParams();
   const creating = params.get('nuevo') === '1';
   const selectedId = params.get('documento');
@@ -142,6 +143,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
     setParams(next);
   };
   const setSelectedId = (id: string | null) => {
+    setCreatedSaleId(null);
     const next = new URLSearchParams(params);
     next.delete('nuevo');
     next.delete('contacto');
@@ -268,7 +270,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
           initialVariantId={params.get('variante') ?? ''}
           initialQuantity={params.get('cantidad') ?? '1'}
           onClose={() => setParams({ vista: 'historial' })}
-          onCreated={setSelectedId}
+          onCreated={(id) => { setSelectedId(id); setCreatedSaleId(id); }}
         />
       </div>
     );
@@ -537,7 +539,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
           initialVariantId={params.get('variante') ?? ''}
           initialQuantity={params.get('cantidad') ?? '1'}
           onClose={() => setCreating(false)}
-          onCreated={(id) => setSelectedId(id)}
+          onCreated={(id) => { setSelectedId(id); if (kind === 'sale') setCreatedSaleId(id); }}
         />
       )}
       {editingQuote ? (
@@ -554,6 +556,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
           <DocumentDetail
             key={selected.id}
             document={selected}
+            justCreated={selected.type === 'sale' && selected.id === createdSaleId}
             onClose={() => setSelectedId(null)}
             onSelect={setSelectedId}
             onEdit={() => {
@@ -1728,11 +1731,13 @@ function DocumentContext({
 
 function DocumentDetail({
   document: doc,
+  justCreated = false,
   onClose,
   onSelect,
   onEdit,
 }: {
   document: RetailDocument;
+  justCreated?: boolean;
   onClose: () => void;
   onSelect: (id: string) => void;
   onEdit: () => void;
@@ -1812,6 +1817,7 @@ function DocumentDetail({
       )}
       {mode === 'detail' ? (
         <>
+          {justCreated && doc.type === 'sale' && doc.status === 'completed' && <section className="sales-confirmation" aria-label="Venta registrada"><Check size={26} aria-hidden="true"/><div><strong>Venta registrada</strong><span>{documentNumber(doc)} · Recibo comercial</span></div><strong>{money(doc.total)}</strong></section>}
           <article className="retail-print commerce-document">
             <DocumentContext document={doc} items={items} />
             <div className="commerce-document-heading">
