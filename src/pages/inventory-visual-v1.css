@@ -130,3 +130,7 @@
   .inventory-visual-v1 .catalog-desktop { display: block !important; }
   .inventory-visual-v1 .catalog-mobile, .inventory-row-actions { display: none !important; }
 }
+
+/* The disclosure expands within its table row; it never clips outside the table scroll region. */
+.inventory-row-actions .row-actions .icon-button { width: auto; min-width: 44px; min-height: 40px; height: auto; padding: 8px 10px; justify-content: flex-start; gap: 8px; white-space: nowrap; font-size: 12px; }
+.inventory-row-actions .row-actions .icon-button svg { flex-shrink: 0; }

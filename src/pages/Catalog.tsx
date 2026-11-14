@@ -403,7 +403,7 @@ export function CatalogPage() {
                                   aria-label={`Ajustar ${variant.sku}`}
                                   onClick={() => setAdjustment(variant)}
                                 >
-                                  <SlidersHorizontal size={17} />
+                                  <SlidersHorizontal size={17} /> Ajustar stock
                                 </button>
                                 <button className="button ghost" onClick={() => setEditor(product)}>
                                   Editar
@@ -413,7 +413,7 @@ export function CatalogPage() {
                                   aria-label={`${product.active ? 'Archivar' : 'Reactivar'} ${product.model}`}
                                   onClick={() => setArchiving(product)}
                                 >
-                                  <Archive size={16} />
+                                  <Archive size={16} /> {product.active ? 'Archivar' : 'Reactivar'}
                                 </button>
                               </>
                             )}
@@ -464,7 +464,7 @@ export function CatalogPage() {
                           target={variant.reorder_target}
                         />
                         <span
-                          className={`badge ${health === 'out' ? 'danger' : health === 'low' ? 'warning' : 'success'}`}
+                          className={`badge ${!product.active || !variant.active || health === 'out' ? 'danger' : health === 'low' ? 'warning' : 'success'}`}
                         >
                           {!product.active || !variant.active ? 'Archivado' : stockHealthLabels[health]}
                         </span>

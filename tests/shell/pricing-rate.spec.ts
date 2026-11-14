@@ -2,6 +2,7 @@ import { test, expect } from './adaptation-fixtures';
 
 test('an editor requires explicit review after a live tax-rate refresh and preserves the final-price intent', async ({ page, featureData }) => {
   await page.goto('/inventario');
+  await page.locator('.inventory-row-actions summary').first().click();
   await page.getByRole('button', { name: 'Editar', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Editar producto' });
   const price = editor.getByRole('spinbutton', { name: /^Precio final con ITBIS/ });

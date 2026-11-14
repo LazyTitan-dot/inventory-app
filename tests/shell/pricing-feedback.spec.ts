@@ -29,6 +29,7 @@ test('new product suggests cost plus25% as final price and preserves a manual ov
 
 test('existing net price survives editor open and cost changes until final price is explicitly edited', async ({ page }) => {
   await page.goto('/inventario');
+  await page.locator('.inventory-row-actions summary').first().click();
   await page.getByRole('button', { name: 'Editar', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Editar producto' });
   const price = editor.getByRole('spinbutton', { name: /^Precio final con ITBIS/ });

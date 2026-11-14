@@ -1,7 +1,7 @@
 import { test, expect } from './adaptation-fixtures';
 
 for (const [width, theme] of [[320, 'light'], [390, 'dark'], [1440, 'light'], [1440, 'dark']] as const) {
-  test(`inventory V1 layout and stock comparison at ${width}px ${theme}`, async ({ page, featureData }) => {
+  test(`inventory V1 layout and stock comparison at ${width}px ${theme}`, async ({ page, featureData }, testInfo) => {
     featureData.stocks[0]!.quarantine = 2;
     await page.emulateMedia({ colorScheme: theme });
     await page.setViewportSize({ width, height: 900 });
@@ -10,6 +10,7 @@ for (const [width, theme] of [[320, 'light'], [390, 'dark'], [1440, 'light'], [1
     await expect(catalog.getByRole('heading', { name: 'Inventario', exact: true })).toBeVisible();
     await expect(catalog.getByRole('button', { name: 'Escanear código', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('inventory-catalog.png'), fullPage: true });
     if (width > 920) {
       const table = catalog.locator('.catalog-desktop');
       await expect(table.getByRole('columnheader', { name: 'En revisión' })).toBeVisible();
@@ -25,5 +26,9 @@ for (const [width, theme] of [[320, 'light'], [390, 'dark'], [1440, 'light'], [1
     await page.goto(`/inventario?variante=${featureData.variants[0]!.id}`);
     await expect(page.getByRole('dialog').getByRole('heading', { name: 'Fixture Nevera de prueba' })).toBeVisible();
     expect(await page.getByRole('dialog').evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('inventory-detail.png'), fullPage: true });
+    await page.getByRole('dialog').getByRole('button', { name: 'Editar ficha', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Editar producto' })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('inventory-editor.png'), fullPage: true });
   });
 }
