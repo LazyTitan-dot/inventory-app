@@ -79,6 +79,8 @@ test('delivery keeps its historical snapshot and new deliveries select the saved
 });
 
 for (const archivedAddress of [false, true]) test(`delivery can be reprogrammed after its saved profile address is ${archivedAddress ? 'archived' : 'edited'}`, async ({ page, featureData }) => {
+  // Keep the scheduled time inside the production validation window, independent of the test run date.
+  featureData.deliveries[0]!.scheduled_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   if (archivedAddress) {
     featureData.customer_addresses![0]!.active = false;
     featureData.customer_addresses![0]!.is_default = false;
