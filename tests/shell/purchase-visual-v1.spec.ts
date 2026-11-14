@@ -40,3 +40,39 @@ test('purchase creation retains supplier, unit cost and exact variant prefill', 
   await expect(dialog.getByRole('button',{name:'Crear orden de compra',exact:true})).toBeVisible();
   await expect(dialog).toContainText('Fixture Nevera de prueba');
 });
+
+test('Compras V1.1 desktop separates receipt counts and renders a dated receipt history', async ({page,featureData}) => {
+  const doc=featureData.documents.find(d=>d.id===purchaseId)!;
+  const item=featureData.document_items.find(i=>i.document_id===purchaseId)!;
+  featureData.purchase_receipts=[{id:'receipt-test',purchase_id:doc.id,operation_id:'operation-test',received_by:featureData.profile.id,notes:'Entrega de prueba',created_at:doc.created_at,items:[{item_id:item.id,variant_id:item.variant_id!,quantity:1,damaged_quantity:0,unit_cost:50}]}];
+  await page.setViewportSize({width:1440,height:900});
+  await page.goto(`/compras?documento=${purchaseId}`);
+  const dialog=page.getByRole('dialog',{name:doc.number,exact:true});
+  const history=dialog.getByRole('region',{name:'Historial de recepciones'});
+  await expect(history).toContainText('1 recepción');
+  await expect(history).toContainText('Entrega de prueba');
+  await expect(history).toContainText('Registrada por');
+  await dialog.getByRole('button',{name:'Recibir mercancía',exact:true}).click();
+  await expect(dialog.locator('.purchase-count-breakdown')).toContainText('4 pendientes');
+  await dialog.getByRole('spinbutton',{name:/Recibir conformes/}).fill('2');
+  await dialog.getByRole('spinbutton',{name:/Recibir dañadas/}).fill('1');
+  await expect(dialog.locator('.purchase-count-breakdown')).toContainText('1 pendientes');
+  await expect(dialog.locator('.purchase-count-breakdown')).toContainText('2 conformes');
+  await expect(dialog.locator('.purchase-count-breakdown')).toContainText('1 dañadas');
+  await expect(dialog.getByRole('button',{name:'Cámara continua',exact:true})).toBeVisible();
+});
+test('Compras V1.1 mobile dock reflects current section without changing other routes', async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/compras');
+  await expect(page.locator('.purchase-visual-v1')).toBeVisible();
+  const more=page.getByRole('button',{name:'Más secciones',exact:true});
+  await expect(more).toHaveClass(/is-current/);
+  await expect(more).toHaveAttribute('aria-description','Sección actual: Compras');
+  const dock=page.getByRole('navigation',{name:'Navegación móvil'});
+  await expect(dock).toBeVisible();
+  expect(await dock.evaluate(node=>getComputedStyle(node).backgroundImage)).toContain('gradient');
+  await dock.getByRole('link',{name:'Inventario',exact:true}).click();
+  await expect(page.locator('.inventory-visual-v1')).toBeVisible();
+  await expect(more).not.toHaveClass(/is-current/);
+  await expect(dock.getByRole('link',{name:'Inventario',exact:true})).toHaveAttribute('aria-current','page');
+});

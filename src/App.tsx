@@ -387,8 +387,9 @@ export function Shell() {
           ) : null}
           <button
             type="button"
-            className={`sl-bottom-tab ${menu ? 'is-current' : ''}`}
+            className={`sl-bottom-tab ${menu || (location.pathname === '/compras' && viewCommerce && p.purchase) ? 'is-current' : ''}`}
             aria-label="Más secciones"
+            aria-description={location.pathname === '/compras' && viewCommerce && p.purchase ? 'Sección actual: Compras' : undefined}
             aria-controls="menu-principal"
             aria-expanded={menu}
             onClick={(event) => openSidebar(event.currentTarget)}

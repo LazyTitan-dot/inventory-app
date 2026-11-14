@@ -179,8 +179,15 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
         )}
         <fieldset disabled={locked} className="purchase-receiving-fieldset">
           <div className="purchase-receiving-summary purchase-receiving-summary-top" role="status" aria-live="polite">
-            <span>Conteo provisional · Sin guardar</span><strong>{countedUnits} / {pendingUnits} unidades · {result.good} conformes{enhanced ? ` · ${result.damaged} dañadas` : ''}</strong>
+            <div className="purchase-count-header"><span>Conteo provisional</span><span className="purchase-unsaved">Sin guardar</span></div>
+            <strong>{countedUnits} / {pendingUnits} unidades</strong>
             <progress aria-label="Progreso del conteo provisional" max={Math.max(1, pendingUnits)} value={countedUnits} />
+            <div className="purchase-count-breakdown">
+              <span><strong>{result.good}</strong> conformes</span>
+              {enhanced && <span><strong>{result.damaged}</strong> dañadas</span>}
+              <span><strong>{Math.max(0, pendingUnits - countedUnits)}</strong> pendientes</span>
+            </div>
+            {result.error && countedUnits > 0 && <span className="purchase-count-validation">{result.error}</span>}
           </div>
           <div className="purchase-receiving-scan">
             <Field label="Código de barras o SKU de esta orden">
@@ -205,6 +212,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
           </p>
           {lastItem && <div role="status" aria-live="polite"><PurchaseReferenceProgress item={lastItem} draft={draft} enhanced={enhanced} recent /></div>}
           <div className="purchase-receiving-lines">
+            <h4 className="purchase-receiving-section-title">Artículos pendientes de recepción</h4>
             {pending.map((item) => {
               const remaining = remainingPurchaseQuantity(item);
               const count = draft[item.id] ?? { quantity: '0', damagedQuantity: '0' };
@@ -236,7 +244,7 @@ export function ReceivePurchase({ document: doc, items, operation, onDone }: Pur
                     <span>Pedidas <strong>{item.quantity}</strong></span>
                     <span>Contabilizadas <strong>{item.received_quantity}</strong></span>
                     <span>Pendientes <strong>{remaining}</strong></span>
-                    {enhanced && damaged > 0 && <span>En cuarentena <strong>{damaged}</strong></span>}
+                    {enhanced && damaged > 0 && <span className="purchase-receipt-damaged">Dañadas registradas <strong>{damaged}</strong></span>}
                   </div>
                   {!item.variant_id && <p className="warning-notice">Vincula esta referencia con el inventario antes de recibirla.</p>}
                   <div className="purchase-receiving-counts">
@@ -350,7 +358,7 @@ export function PurchaseReceiptHistory({ purchaseId }: { purchaseId: string }) {
   const doc = data.documents.find((document) => document.id === purchaseId);
   return (
     <section className="purchase-receiving-history" aria-label="Historial de recepciones">
-      <h3>Historial de recepciones</h3>
+      <div className="purchase-history-heading"><h3>Historial de recepciones</h3><span>{receipts.length} {receipts.length === 1 ? 'recepción' : 'recepciones'}</span></div>
       {!receipts.length && <p className="muted">Aún no hay recepciones registradas.</p>}
       {receipts.map((receipt) => {
         const actor = data.team.find((member) => member.user_id === receipt.received_by);
@@ -358,15 +366,15 @@ export function PurchaseReceiptHistory({ purchaseId }: { purchaseId: string }) {
         const damaged = receipt.items.reduce((sum, line) => sum + line.damaged_quantity, 0);
         return (
           <article className="purchase-receiving-history-item" key={receipt.id}>
-            <header><strong>{dateTime(receipt.created_at)}</strong><span>{actor?.display_name || 'Miembro del equipo'}</span></header>
-            <p>{good} conformes · {damaged} dañadas en cuarentena</p>
+            <header><div><strong>{dateTime(receipt.created_at)}</strong><span>Registrada por {actor?.display_name || 'Miembro del equipo'}</span></div><span className="purchase-history-total">{good + damaged} unidades</span></header>
+            <p className="purchase-history-breakdown">{good} conformes · {damaged} dañadas en cuarentena</p>
             <ul>
               {receipt.items.map((line) => {
                 const item = data.document_items.find((item) => item.id === line.item_id && item.document_id === purchaseId);
                 return <li key={line.item_id}><span>{item ? `${purchaseItemTitle(item)} · ${item.product_snapshot.name}` : 'Referencia de la orden'}: {line.quantity} conformes, {line.damaged_quantity} dañadas</span>{data.permissions.view_costs && <span>{money(line.unit_cost)} / unidad</span>}</li>;
               })}
             </ul>
-            {receipt.notes && <p className="purchase-receiving-note">{receipt.notes}</p>}
+            {receipt.notes && <p className="purchase-receiving-note"><strong>Nota de recepción</strong><span>{receipt.notes}</span></p>}
           </article>
         );
       })}
