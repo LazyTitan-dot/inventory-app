@@ -238,3 +238,57 @@
  .sales-detail-v1 .sales-receipt-logo{width:170px;max-height:65px;padding:0;border-radius:0;background:#fff;}
  .sales-detail-v1 .sales-pdf-ready,.sales-detail-v1 .sales-pdf-error{display:none!important;}
 }
+
+/* V1.2.1 — print only the open sale receipt, not the invisible application.
+ * visibility:hidden alone retains layout and creates trailing blank sheets.
+ * Scope to an open sale receipt; other documents and iOS PDF are unchanged. */
+@media print {
+  html:has(dialog.sales-detail-v1[open] .retail-print),
+  body:has(dialog.sales-detail-v1[open] .retail-print),
+  body:has(dialog.sales-detail-v1[open] .retail-print) :has(dialog.sales-detail-v1[open] .retail-print) {
+    display:block!important;position:static!important;inset:auto!important;
+    width:100%!important;min-width:0!important;max-width:none!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
+    overflow:visible!important;margin:0!important;padding:0!important;
+    border:0!important;box-shadow:none!important;background:white!important;
+    transform:none!important;contain:none!important;
+    break-before:auto!important;break-after:auto!important;break-inside:auto!important;
+  }
+  /* Remove all non-receipt branches from the printed layout, not just their ink. */
+  body:has(dialog.sales-detail-v1[open] .retail-print) *:not(:has(dialog.sales-detail-v1[open] .retail-print)):not(dialog.sales-detail-v1[open]):not(dialog.sales-detail-v1[open] *) {
+    display:none!important;
+  }
+  body dialog.sales-detail-v1[open]:has(.retail-print) {
+    position:static!important;inset:auto!important;display:block!important;
+    width:100%!important;min-width:0!important;max-width:none!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
+    margin:0!important;padding:0!important;overflow:visible!important;
+    border:0!important;border-radius:0!important;box-shadow:none!important;
+    transform:none!important;contain:none!important;
+    break-before:auto!important;break-after:auto!important;break-inside:auto!important;
+  }
+  body dialog.sales-detail-v1[open]::backdrop {display:none!important;}
+  body dialog.sales-detail-v1[open] > .modal-heading,
+  body dialog.sales-detail-v1[open] > .modal-body > :not(.retail-print) {display:none!important;}
+  body dialog.sales-detail-v1[open] > .modal-body {
+    display:block!important;position:static!important;overflow:visible!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
+    margin:0!important;padding:0!important;
+  }
+  body .app-layout dialog.sales-detail-v1[open] .retail-print {
+    position:static!important;inset:auto!important;display:block!important;
+    width:100%!important;min-width:0!important;max-width:none!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
+    margin:0!important;padding:12mm!important;box-sizing:border-box!important;
+    overflow:visible!important;break-before:auto!important;break-after:auto!important;break-inside:auto!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .table-wrap {
+    display:block!important;overflow:visible!important;max-height:none!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .data-table thead {display:table-header-group;}
+  body dialog.sales-detail-v1[open] .retail-print .data-table tr {break-inside:avoid;}
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-summary {
+    break-inside:auto!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-totals {break-inside:avoid;}
+}

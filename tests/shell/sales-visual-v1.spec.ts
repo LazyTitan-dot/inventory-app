@@ -195,3 +195,39 @@ test('Ventas V1.2 long receipt produces a downloadable multipage PDF without los
  }
  await testInfo.attach('recibo-multipagina',{body:file,contentType:'application/pdf'});
 });
+
+test('Ventas V1.2.1 Windows print excludes hidden app layout and creates exactly one sheet',async({page},testInfo)=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto(`/ventas?documento=${saleId}`);
+ const receipt=page.locator('.sales-detail-v1 .retail-print');
+ await expect(receipt).toBeVisible();
+ await expect.poll(()=>receipt.locator('img.sales-receipt-logo').evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(0);
+ // Chromium's real PDF pagination, not merely print-media visibility.
+ for(const format of ['Letter','A4'] as const){
+  const pdf=await page.pdf({format,printBackground:true});
+  const pageCount=(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)||[]).length;
+  expect(pageCount,format).toBe(1);
+  await testInfo.attach(`recibo-${format}`,{body:pdf,contentType:'application/pdf'});
+ }
+ await page.emulateMedia({media:'print'});
+ await expect(receipt).toBeVisible();
+ await expect(page.locator('.sales-visual-v1 .commerce-cashier')).not.toBeVisible();
+ await expect(page.locator('.sales-detail-v1 .commerce-document-actions')).not.toBeVisible();
+ await expect(receipt).toContainText('9,440.00');
+ await page.emulateMedia({media:'screen'});
+ await expect(page.getByRole('button',{name:'Imprimir',exact:true})).toBeVisible();
+});
+test('Ventas V1.2.1 Windows long receipt paginates instead of clipping rows',async({page,featureData},testInfo)=>{
+ const first=featureData.document_items.find(item=>item.document_id===saleId)!;
+ featureData.document_items.push(...Array.from({length:32},(_,i)=>({...first,id:`30000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`,product_snapshot:{...first.product_snapshot,name:`Artículo de prueba ${i+1}`}})));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto(`/ventas?documento=${saleId}`);
+ const receipt=page.locator('.sales-detail-v1 .retail-print');
+ await expect(receipt.locator('tbody tr')).toHaveCount(33);
+ await expect.poll(()=>receipt.locator('img.sales-receipt-logo').evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(0);
+ const pdf=await page.pdf({format:'Letter',printBackground:true});
+ const count=(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)||[]).length;
+ expect(count).toBeGreaterThan(1);
+ expect(count).toBeLessThanOrEqual(6);
+ await testInfo.attach('recibo-largo-windows',{body:pdf,contentType:'application/pdf'});
+});
