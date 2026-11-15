@@ -78,3 +78,14 @@
  .delivery-detail-v1 .delivery-step{font-size:11px;}
  .delivery-detail-v1 .operations-detail-heading > .muted{flex-wrap:wrap;}
 }
+
+/* Match the approved glass header material on drawer surfaces, without changing the shared PageHeader. */
+.app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading{
+ background:color-mix(in srgb,var(--sl-refined-soft) 92%,transparent);
+ backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);
+}
+@media(prefers-reduced-transparency:reduce){
+ .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading{
+  background:var(--sl-refined-surface);backdrop-filter:none;-webkit-backdrop-filter:none;
+ }
+}

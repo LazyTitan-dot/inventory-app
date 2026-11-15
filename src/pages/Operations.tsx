@@ -899,11 +899,6 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           )}
         </section>
         <div className="modal-footer">
-          {canManageDeliveries(data) && (
-            <button className="button secondary" onClick={() => setWhatsAppMode('delivery')}>
-              <MessageCircle size={17} /> WhatsApp
-            </button>
-          )}
           <button className="button secondary" onClick={onClose}>
             Cerrar
           </button>

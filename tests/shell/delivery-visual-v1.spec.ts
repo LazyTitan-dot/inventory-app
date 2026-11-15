@@ -51,3 +51,31 @@ test('Entregas V1 confirmation and failed status require the existing fields',as
  await page.getByRole('button',{name:'Registrar intento fallido'}).click();
  await expect(page.getByRole('dialog',{name:'Registrar intento fallido'}).getByRole('textbox',{name:'Motivo del cambio'})).toHaveAttribute('required','');
 });
+
+test('Entregas V1 state confirmation preserves version, receiver and proof payload',async({page,featureData})=>{
+ featureData.deliveries[0]!.status='in_transit';
+ await page.goto(`/entregas?documento=${deliveryId}`);
+ await page.getByRole('button',{name:'Confirmar entrega',exact:true}).click();
+ const form=page.getByRole('dialog',{name:'Confirmar entrega'});
+ await form.getByRole('textbox',{name:'Nombre de quien recibió'}).fill('Receptor de prueba');
+ await form.getByRole('textbox',{name:'Constancia de recepción'}).fill('Mercancía verificada');
+ let payload:Record<string,unknown>|undefined;
+ await page.route('https://phase5-fixture.supabase.co/rest/v1/rpc/retail_command',async route=>{
+  payload=route.request().postDataJSON();
+  await route.fulfill({status:400,json:{code:'P0001',message:'Prueba de confirmación.'},headers:{'access-control-allow-origin':'*'}});
+ });
+ await form.getByRole('button',{name:'Confirmar entrega',exact:true}).click();
+ await expect(form.getByRole('alert')).toContainText('Prueba de confirmación');
+ expect(payload?.p_payload).toMatchObject({id:deliveryId,expected_updated_at:featureData.deliveries[0]!.updated_at,status:'delivered',received_by:'Receptor de prueba',proof:'Mercancía verificada'});
+ await expect(form.getByRole('textbox',{name:'Constancia de recepción'})).toHaveValue('Mercancía verificada');
+});
+test('Entregas V1 terminal states keep history and do not expose mutation actions',async({page,featureData})=>{
+ featureData.deliveries[0]!.status='delivered';
+ await page.goto(`/entregas?documento=${deliveryId}`);
+ const detail=page.getByRole('dialog',{name:'Entrega · VEN-PRUEBA-001'});
+ await expect(detail.getByRole('region',{name:'Historial de entrega'})).toBeVisible();
+ await expect(detail.getByRole('button',{name:'Iniciar entrega',exact:true})).toHaveCount(0);
+ await expect(detail.getByRole('button',{name:'Editar / reprogramar'})).toHaveCount(0);
+ await expect(detail.getByRole('button',{name:'Cancelar entrega'})).toHaveCount(0);
+ await expect(detail.getByRole('button',{name:'WhatsApp',exact:true})).toHaveCount(1);
+});
