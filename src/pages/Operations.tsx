@@ -32,6 +32,7 @@ import { addressText, addressValidation, emptyAddress } from '../lib/addresses';
 import { buildDeliveryTrackingSummary, deliveryMapsUrl, trackingSteps } from '../lib/deliveryTracking';
 import './operations.css';
 import './delivery-visual-v1.css';
+import { DeliveryItems } from './DeliveryItems';
 
 type DeliveryStatus = Delivery['status'];
 type PromotionState = 'current' | 'upcoming' | 'expired' | 'inactive';
@@ -820,6 +821,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           </div>
           {copyFallback && <Field label="Texto para copiar" hint="El navegador no permitió copiar automáticamente. Selecciona este texto para copiarlo."><textarea readOnly value={copyFallback} rows={6} onFocus={(event) => event.currentTarget.select()} /></Field>}
         </section>
+        <DeliveryItems delivery={delivery} data={data} />
         <section className="delivery-tracking" aria-label="Seguimiento operativo de la entrega">
           <div className="delivery-track-heading">
             <div><span className="eyebrow">SEGUIMIENTO DEL PEDIDO</span><h3>Tu entrega, paso a paso</h3></div>

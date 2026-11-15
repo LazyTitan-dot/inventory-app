@@ -168,6 +168,7 @@ test('fulfilment: address ownership/defaults/versions, immutable snapshots, rece
   await reject('cancel_purchase',{...version(order),reason:'Cancelación tardía'},/ya fue recibida/);
 
   await as('sales');
+  ok((await state()).delivery_items.some(x=>x.delivery_id===deliveryId),'Sales retains logistics access');
   eq((await state()).purchase_receipts,[],'Sales cannot see cost-bearing receipt history');
   eq((await state()).documents.some(x=>x.id===order.id),false,'Sales cannot see purchase metadata');
   await reject('receive_purchase',receiptPayload,/permiso/);
@@ -175,15 +176,30 @@ test('fulfilment: address ownership/defaults/versions, immutable snapshots, rece
   const salesAddress=(await command('save_customer_address',{...addressFields,label:'Oficina',contact_id:customer2})).entity_id;
   ok(salesAddress,'Sales can manage customer delivery addresses');
   await as('inventory');
+  const logistics=await state();
+  const shipment=logistics.delivery_items.find(x=>x.delivery_id===deliveryId);
+  ok(shipment,'Inventory sees logistics for a linked delivery without sales access');
+  eq(shipment.quantity,1,'Original units');eq(shipment.current_quantity,1,'Current units');
+  eq(Object.keys(shipment).sort(),['brand','category','current_quantity','delivery_id','item_id','model','name','quantity','returned_quantity','sku','variant_id'].sort(),'Exact logistics-only allowlist');
+  eq(logistics.documents.some(x=>x.id===sale),false,'Inventory cannot read the linked sale');
+  eq(logistics.document_items.some(x=>x.document_id===sale),false,'Inventory cannot read sale lines');
+  eq(logistics.delivery_items.some(x=>x.delivery_id===sale2),false,'No unrelated sale disclosure');
   eq((await state()).customer_addresses,[],'Inventory cannot enumerate customer address book');
   ok((await state()).purchase_receipts.length,'Inventory retains receipt/cost access');
   await reject('save_customer_address',{...addressFields,contact_id:customer},/permiso/);
   await as('viewer');
+  eq((await state()).delivery_items,[],'Viewer cannot read logistics items');
   eq((await state()).customer_addresses,[],'Viewer sees no customer addresses');eq((await state()).purchase_receipts,[],'Viewer sees no purchase receipts');
   await reject('set_default_address',{id:a.id,expected_updated_at:a.updated_at},/permiso/);
   await assert.rejects(()=>db.query('select * from public.retail_customer_addresses'),/permission denied/);checks++;
   await assert.rejects(()=>db.query('select * from public.retail_purchase_receipts'),/permission denied/);checks++;
   await as('owner');
+  const partialSale=(await command('create_sale',{contact_id:customer,items:[{variant_id:variant,quantity:2}],payment_method:'card'})).entity_id;
+  const partialLine=(await state()).document_items.find(x=>x.document_id===partialSale);
+  await command('return_sale',{id:partialSale,items:[{item_id:partialLine.id,quantity:1,condition:'available'}],reason:'Devolución antes de programar',payment_method:'card'});
+  const partialDelivery=(await command('save_delivery',{sale_id:partialSale,contact_name:'Receptor',scheduled_at:future(),assignee:'Conductor',address_snapshot:originalSnap})).entity_id;
+  const partial=(await state()).delivery_items.find(x=>x.delivery_id===partialDelivery);
+  eq(partial.quantity,2,'Original sale quantity remains available');eq(partial.returned_quantity,1,'Returned quantity');eq(partial.current_quantity,1,'Only outstanding units to transport');
   const cappedContact=(await command('save_contact',{kind:'customer',name:'Cliente límite'})).entity_id;
   const archivedId=(await command('save_customer_address',{...addressFields,contact_id:cappedContact})).entity_id;
   let cappedAddress=(await state()).customer_addresses.find(x=>x.id===archivedId);

@@ -140,6 +140,13 @@ export const movementSchema = z.object({
   created_by: id.nullable(),
   created_at: timestamp,
 });
+export const deliveryItemSchema = z.object({
+  delivery_id: id, item_id: id, variant_id: id.nullable(),
+  category: z.string(), brand: z.string(), model: z.string(), name: z.string(), sku: z.string(),
+  quantity: z.number().int().nonnegative(), returned_quantity: z.number().int().nonnegative(),
+  current_quantity: z.number().int().nonnegative(),
+});
+export type DeliveryItem = z.infer<typeof deliveryItemSchema>;
 export const deliverySchema = z.object({
   id,
   sale_id: id,
@@ -248,6 +255,7 @@ export const bootstrapSchema = z.object({
   document_items: z.array(documentItemSchema),
   movements: z.array(movementSchema),
   deliveries: z.array(deliverySchema),
+  delivery_items: z.array(deliveryItemSchema).optional(),
   promotions: z.array(promotionSchema),
   audit: z.array(auditSchema),
   team: z.array(teamSchema),

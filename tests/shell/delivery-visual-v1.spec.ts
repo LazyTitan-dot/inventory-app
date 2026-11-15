@@ -120,3 +120,41 @@ test('Entregas V1.1 priority, dates, status pills and timeline preserve order an
  await expect(history.locator('.delivery-event-timeline li').last()).toContainText('Reprogramada');
  await expect(history.locator('.delivery-event-icon svg')).toHaveCount(4);
 });
+
+test('Entregas V1.2 inventory sees logistics only and optional load checklist',async({page,featureData})=>{
+ const source=featureData.document_items.find(x=>x.document_id===featureData.deliveries[0]!.sale_id)!;
+ featureData.profile.role='inventory';
+ featureData.permissions={...featureData.permissions,sell:false,purchase:true,refund:false,manage_business:false,manage_team:false,view_audit:false};
+ featureData.documents=featureData.documents.filter(x=>x.type==='purchase');
+ featureData.document_items=featureData.document_items.filter(x=>featureData.documents.some(d=>d.id===x.document_id));
+ const {category,brand,model,name,sku}=source.product_snapshot;
+ featureData.delivery_items=[{delivery_id:deliveryId,item_id:source.id,variant_id:source.variant_id,category,brand,model,name,sku,quantity:3,returned_quantity:1,current_quantity:2}];
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(`/entregas?documento=${deliveryId}`);
+ const card=page.getByRole('region',{name:'Artículos de la entrega'});
+ await expect(card).toContainText('Fixture Nevera de prueba');
+ await expect(card).toContainText('FIXTURE-001');
+ await expect(card).toContainText('2 unidades');
+ await expect(card).toContainText('1 unidad devuelta');
+ await expect(card).not.toContainText('RD$');
+ await expect(card).not.toContainText('8,000');
+ await expect(card.getByRole('checkbox')).toHaveCount(1);
+ await expect(card.getByRole('status')).toContainText('0 de 2');
+ await expect(page.getByRole('button',{name:'Iniciar entrega',exact:true})).toBeEnabled();
+ await card.getByRole('checkbox').check();
+ await expect(card.getByRole('status')).toContainText('2 de 2');
+ await page.reload();
+ await expect(card.getByRole('checkbox')).toBeChecked();
+ await expect(page.getByRole('button',{name:'Iniciar entrega',exact:true})).toBeEnabled();
+});
+test('Entregas V1.2 terminal history is not a loading checklist',async({page,featureData})=>{
+ const source=featureData.document_items[0]!;
+ const {category,brand,model,name,sku}=source.product_snapshot;
+ featureData.deliveries[0]!.status='delivered';
+ featureData.delivery_items=[{delivery_id:deliveryId,item_id:source.id,variant_id:source.variant_id,category,brand,model,name,sku,quantity:3,returned_quantity:1,current_quantity:2}];
+ await page.goto(`/entregas?documento=${deliveryId}`);
+ const card=page.getByRole('region',{name:'Artículos de la entrega'});
+ await expect(card).toContainText('3 unidades');
+ await expect(card).toContainText('Mercancía original');
+ await expect(card.getByRole('checkbox')).toHaveCount(0);
+});
