@@ -85,11 +85,12 @@ test('Ventas V1.1 receipt print and WhatsApp preserve document totals',async({pa
  await detail.getByRole('button',{name:'Imprimir',exact:true}).click();
  await expect(page.locator('html')).toHaveAttribute('data-print-called','true');
  await page.emulateMedia({media:'print',colorScheme:'dark'});
- const receipt=detail.locator('.retail-print');
+ // Print hides the dialog from the accessibility tree; the article remains printable.
+ const receipt=page.locator('.sales-detail-v1 .retail-print');
  await expect(receipt).toBeVisible();
  await expect(receipt).toContainText('9,440.00');
  await expect(receipt).toContainText('No es un comprobante fiscal');
- await expect(detail.locator('.commerce-document-actions')).not.toBeVisible();
+ await expect(page.locator('.sales-detail-v1 .commerce-document-actions')).not.toBeVisible();
  expect(await receipt.locator('table').evaluate(el=>el.scrollWidth<=el.parentElement!.clientWidth+1)).toBe(true);
  await page.emulateMedia({media:'screen',colorScheme:'dark'});
  await detail.getByRole('button',{name:'WhatsApp',exact:true}).click();
