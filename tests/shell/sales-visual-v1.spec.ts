@@ -1,3 +1,4 @@
+import {readFile} from 'node:fs/promises';
 import {test,expect,saleId} from './adaptation-fixtures';
 
 for (const [width,theme] of [[1440,'light'],[1024,'dark'],[390,'dark'],[320,'light']] as const){
@@ -160,4 +161,37 @@ test('Ventas V1.2 PDF fallback works when file sharing is unavailable on iPadOS'
  await expect(detail.getByRole('alert')).toContainText('no permite compartir archivos');
  await expect(ready.getByRole('link',{name:'Abrir PDF',exact:true})).toBeVisible();
  await expect(ready.getByRole('link',{name:'Guardar PDF',exact:true})).toBeVisible();
+});
+
+test('Ventas V1.2 long receipt produces a downloadable multipage PDF without losing pages',async({page,featureData},testInfo)=>{
+ const first=featureData.document_items.find(item=>item.document_id===saleId)!;
+ featureData.document_items.push(...Array.from({length:20},(_,i)=>({...first,id:`30000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`,product_snapshot:{...first.product_snapshot,name:`Variante de prueba ${i+1} con descripción extensa`}})));
+ await page.addInitScript(()=>{
+  Object.defineProperty(navigator,'userAgent',{configurable:true,value:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'});
+ });
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(`/ventas?documento=${saleId}`);
+ const detail=page.getByRole('dialog',{name:'VEN-PRUEBA-001'});
+ await expect(detail.locator('tbody tr')).toHaveCount(21);
+ await detail.getByRole('button',{name:'Imprimir',exact:true}).click();
+ const ready=detail.getByRole('region',{name:'Recibo PDF'});
+ await expect(ready).toContainText('PDF preparado');
+ const downloadPromise=page.waitForEvent('download');
+ await ready.getByRole('link',{name:'Guardar PDF',exact:true}).click();
+ const download=await downloadPromise;
+ expect(download.suggestedFilename()).toBe('Recibo-VEN-PRUEBA-001.pdf');
+ const file=await readFile((await download.path())!);
+ const pdf=file.toString('latin1');
+ expect(pdf.startsWith('%PDF-1.4')).toBe(true);
+ const count=Number(pdf.match(/\/Type \/Pages \/Count (\d+)/)?.[1]);
+ expect(count).toBeGreaterThan(1);
+ expect(pdf.match(/\/Subtype \/Image/g)?.length).toBe(count);
+ const start=Number(pdf.match(/startxref\n(\d+)/)?.[1]);
+ expect(pdf.slice(start,start+4)).toBe('xref');
+ const entries=pdf.slice(start).split('\n').slice(3,3+2+count*3);
+ for(const [index,entry] of entries.entries()){
+  const offset=Number(entry.slice(0,10));
+  expect(pdf.slice(offset,offset+String(index+1).length+6)).toBe(`${index+1} 0 obj`);
+ }
+ await testInfo.attach('recibo-multipagina',{body:file,contentType:'application/pdf'});
 });
