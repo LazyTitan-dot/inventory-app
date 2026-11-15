@@ -233,10 +233,10 @@ export function DeliveriesPage() {
         <>
           <div className="stats-grid delivery-kpis">
             {([
-              { label:'Pendientes para hoy', value:pending.filter(item => businessDate(new Date(item.scheduled_at)) === today).length, hint:`${pending.length} pendientes en total · hora de RD`, icon:CalendarDays, filter:'today' },
-              { label:'En camino', value:deliveries.filter(item => item.status === 'in_transit').length, hint:'Salida registrada', icon:Truck, filter:'transit' },
-              { label:'Requieren seguimiento', value:deliveries.filter(item => item.status === 'failed').length, hint:'Intentos fallidos', icon:AlertCircle, filter:'attention' },
-              { label:'Hora vencida', value:deliveries.filter(item => item.status === 'scheduled' && new Date(item.scheduled_at).getTime() < now).length, hint:'Revisar programación', icon:Clock3, filter:'attention' },
+              { label:'Pendientes para hoy', value:pending.filter(item => businessDate(new Date(item.scheduled_at)) === today).length, hint:`${pending.length} pendientes en total · hora de RD`, icon:CalendarDays },
+              { label:'En camino', value:deliveries.filter(item => item.status === 'in_transit').length, hint:'Salida registrada', icon:Truck },
+              { label:'Requieren seguimiento', value:deliveries.filter(item => item.status === 'failed').length, hint:'Intentos fallidos', icon:AlertCircle },
+              { label:'Hora vencida', value:deliveries.filter(item => item.status === 'scheduled' && new Date(item.scheduled_at).getTime() < now).length, hint:'Revisar programación', icon:Clock3 },
             ] as const).map((metric,index) => <div className="stat-card delivery-metric" key={metric.label} data-tone={index > 1 && metric.value > 0 ? 'warning' : 'normal'}>
               <span className="delivery-metric-icon"><metric.icon size={19} aria-hidden="true"/></span>
               <span className="delivery-metric-label">{metric.label}</span><strong>{metric.value}</strong><small>{metric.hint}</small>
@@ -263,8 +263,8 @@ export function DeliveriesPage() {
               />
               <label className="delivery-order"><span>Ordenar por</span><select aria-label="Ordenar entregas" value={order} onChange={event => setOrder(event.target.value as DeliveryOrder)}>
                 <option value="priority">Prioridad operativa</option>
-                <option value="date_asc">Fecha: próximas primero</option>
-                <option value="date_desc">Fecha: recientes primero</option>
+                <option value="date_asc">Fecha: más antiguas primero</option>
+                <option value="date_desc">Fecha: más recientes primero</option>
                 <option value="status">Estado</option>
               </select></label>
               <label className="operations-date-filter">
@@ -874,7 +874,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
               {[...delivery.history]
                 .sort((a, b) => a.at.localeCompare(b.at))
                 .map((event, index) => {
-                  const Icon = deliveryIcons[event.status] ?? Clock3;
+                  const Icon = Object.prototype.hasOwnProperty.call(deliveryIcons, event.status) ? deliveryIcons[event.status as DeliveryStatus] : Clock3;
                   return <li key={`${event.at}-${index}`} data-status={event.status}>
                     <span className="delivery-event-icon"><Icon size={20} aria-hidden="true"/></span>
                     <div className="delivery-event-body">
