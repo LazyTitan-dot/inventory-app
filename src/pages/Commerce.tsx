@@ -61,6 +61,7 @@ import { cashierPrefill, exactCashierMatches } from '../lib/cashier';
 import { getVariantBarcodes } from '../lib/barcode';
 import { PurchaseOrdersList, PurchaseOrderProgress } from './PurchaseVisual';
 import { SalesHistory } from './SalesVisual';
+import { SalePrintAction, ReceiptBrand } from './SalePrintAction';
 import './commerce.css';
 import './sales-visual-v1.css';
 import './purchase-visual-v1.css';
@@ -1758,6 +1759,7 @@ function DocumentDetail({
   const now = useNow();
   const [mode, setMode] = useState<DetailMode>('detail');
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
+  const receiptRef = useRef<HTMLElement>(null);
   const [linkItemId, setLinkItemId] = useState<string | null>(null);
   const items = data.document_items.filter((item) => item.document_id === doc.id);
   const linkItem = items.find((item) => item.id === linkItemId);
@@ -1829,11 +1831,11 @@ function DocumentDetail({
       {mode === 'detail' ? (
         <>
           {justCreated && doc.type === 'sale' && doc.status === 'completed' && <section className="sales-confirmation" aria-label="Venta registrada"><Check size={26} aria-hidden="true"/><div><strong>Venta registrada</strong><span>{documentNumber(doc)} · Recibo comercial</span></div><strong>{money(doc.total)}</strong></section>}
-          <article className="retail-print commerce-document">
-            <DocumentContext document={doc} items={items} />
+          <article ref={receiptRef} className="retail-print commerce-document">
+            {doc.type !== 'sale' && <DocumentContext document={doc} items={items} />}
             <div className="commerce-document-heading">
               <div>
-                <span className="commerce-document-eyebrow">{data.settings.business_name}</span>
+                {doc.type === 'sale' ? <ReceiptBrand /> : <span className="commerce-document-eyebrow">{data.settings.business_name}</span>}
                 <h2>
                   {doc.type === 'purchase'
                     ? 'Orden de compra'
@@ -1856,6 +1858,7 @@ function DocumentDetail({
                 {data.settings.tax_id && <small>Identificación: {data.settings.tax_id}</small>}
               </div>
             </div>
+            {doc.type === 'sale' && <DocumentContext document={doc} items={items} />}
             <div className="commerce-document-contact">
               <div>
                 <span className="muted">{doc.type === 'purchase' ? 'Proveedor' : 'Cliente'}</span>
@@ -2113,10 +2116,14 @@ function DocumentDetail({
                 WhatsApp
               </button>
             )}
-            <button className="button secondary" onClick={() => window.print()}>
-              <Printer size={17} />
-              Imprimir
-            </button>
+            {doc.type === 'sale' ? (
+              <SalePrintAction key={doc.id} receiptRef={receiptRef} number={documentNumber(doc)} />
+            ) : (
+              <button className="button secondary" onClick={() => window.print()}>
+                <Printer size={17} />
+                Imprimir
+              </button>
+            )}
             {doc.type === 'purchase' &&
               data.permissions.purchase &&
               ['pending', 'partial'].includes(doc.status) && (

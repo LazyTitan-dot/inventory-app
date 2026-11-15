@@ -217,3 +217,24 @@
  .app-layout .sales-detail-v1 .retail-print .data-table :is(th,td){overflow-wrap:anywhere;white-space:normal!important;color:#152641!important;}
  .app-layout .sales-detail-v1 > .modal-body > :not(.retail-print){display:none!important;}
 }
+
+/* V1.2: official wordmark on a white field, independent of theme. */
+.sales-detail-v1 .sales-receipt-logo {
+ display:block;width:min(190px,100%);height:auto;max-height:76px;object-fit:contain;object-position:left center;
+ padding:4px 8px;border-radius:8px;background:#fff;box-sizing:border-box;margin-bottom:14px;
+}
+.sales-detail-v1 .commerce-document-heading > div:first-child{min-width:0;}
+.sales-detail-v1 .sales-pdf-ready,.sales-detail-v1 .sales-pdf-error{flex:1 1 100%;min-width:0;}
+.sales-pdf-ready{display:grid;gap:12px;padding:16px;border:1px solid var(--sl-refined-edge);background:var(--sl-refined-soft);border-radius:14px;}
+.sales-pdf-ready p{margin:6px 0 0;color:var(--sl-refined-muted);font-size:13px;line-height:1.5;}
+.sales-pdf-actions{display:flex;flex-wrap:wrap;gap:8px;}
+.sales-pdf-actions > :is(button,a){flex:1 1 130px;min-height:44px;white-space:normal;}
+@media screen and (max-width:640px){
+ .sales-detail-v1 .sales-receipt-logo{width:170px;max-height:72px;}
+ .sales-pdf-actions{display:grid;grid-template-columns:1fr 1fr;}
+ .sales-pdf-actions > .button.primary{grid-column:1/-1;}
+}
+@media print{
+ .sales-detail-v1 .sales-receipt-logo{width:170px;max-height:65px;padding:0;border-radius:0;background:#fff;}
+ .sales-detail-v1 .sales-pdf-ready,.sales-detail-v1 .sales-pdf-error{display:none!important;}
+}

@@ -88,6 +88,7 @@ test('Ventas V1.1 receipt print and WhatsApp preserve document totals',async({pa
  // Print hides the dialog from the accessibility tree; the article remains printable.
  const receipt=page.locator('.sales-detail-v1 .retail-print');
  await expect(receipt).toBeVisible();
+ await expect(receipt.locator('.sales-receipt-logo')).toBeVisible();
  await expect(receipt).toContainText('9,440.00');
  await expect(receipt).toContainText('No es un comprobante fiscal');
  await expect(page.locator('.sales-detail-v1 .commerce-document-actions')).not.toBeVisible();
@@ -100,4 +101,63 @@ test('Ventas V1.1 receipt print and WhatsApp preserve document totals',async({pa
  const url=new URL((await composer.getByRole('link',{name:'Enviar por WhatsApp',exact:true}).getAttribute('href'))!);
  expect(url.pathname).toBe('/18095550101');
  expect(url.searchParams.get('text')).toBe(await message.inputValue());
+});
+
+test('Ventas V1.2 iPhone prepares an actual PDF and shares it only on a second tap',async({page})=>{
+ await page.addInitScript(()=>{
+  Object.defineProperty(navigator,'userAgent',{configurable:true,value:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'});
+  Object.defineProperty(navigator,'canShare',{configurable:true,value:(data:ShareData)=>Boolean(data.files?.[0]?.type==='application/pdf')});
+  Object.defineProperty(navigator,'share',{configurable:true,value:async(data:ShareData)=>{
+   const file=data.files?.[0]; if(!file)throw new Error('Missing file');
+   document.documentElement.dataset.sharedFile=file.name;
+   document.documentElement.dataset.sharedType=file.type;
+  }});
+  window.print=()=>{document.documentElement.dataset.printCalled='true';};
+ });
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(`/ventas?documento=${saleId}`);
+ const detail=page.getByRole('dialog',{name:'VEN-PRUEBA-001'});
+ const logo=detail.getByRole('img',{name:'S-mart Living',exact:true});
+ await expect(logo).toHaveAttribute('src','/brand/alternate_light.png');
+ await expect.poll(()=>logo.evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(0);
+ await detail.getByRole('button',{name:'Imprimir',exact:true}).click();
+ const ready=detail.getByRole('region',{name:'Recibo PDF'});
+ await expect(ready).toContainText('PDF preparado');
+ await expect(page.locator('html')).not.toHaveAttribute('data-print-called','true');
+ await expect(page.locator('html')).not.toHaveAttribute('data-shared-file',/./);
+ const href=await ready.getByRole('link',{name:'Abrir PDF',exact:true}).getAttribute('href');
+ expect(href).toMatch(/^blob:/);
+ const pdf=await page.evaluate(async(url)=>{
+  const response=await fetch(url!);const b=new Uint8Array(await response.arrayBuffer());
+  const content=new TextDecoder('latin1').decode(b);
+  const start=Number(content.match(/startxref\n(\d+)/)?.[1]);
+  const jpegStart=b.findIndex((v,i)=>v===255&&b[i+1]===216);
+  const jpegEnd=b.findIndex((v,i)=>i>jpegStart&&v===255&&b[i+1]===217);
+  const bitmap=await createImageBitmap(new Blob([b.slice(jpegStart,jpegEnd+2)],{type:'image/jpeg'}));
+  const result={type:response.headers.get('content-type'),header:content.slice(0,8),xref:content.slice(start,start+4),pages:content.includes('/Type /Pages /Count 1'),width:bitmap.width,height:bitmap.height};
+  bitmap.close();return result;
+ },href);
+ expect(pdf).toEqual({type:'application/pdf',header:'%PDF-1.4',xref:'xref',pages:true,width:1190,height:1684});
+ await ready.getByRole('button',{name:'Compartir / imprimir PDF'}).click();
+ await expect(page.locator('html')).toHaveAttribute('data-shared-file','Recibo-VEN-PRUEBA-001.pdf');
+ await expect(page.locator('html')).toHaveAttribute('data-shared-type','application/pdf');
+ await expect(ready.getByRole('link',{name:'Guardar PDF'})).toHaveAttribute('download','Recibo-VEN-PRUEBA-001.pdf');
+});
+test('Ventas V1.2 PDF fallback works when file sharing is unavailable on iPadOS',async({page})=>{
+ await page.addInitScript(()=>{
+  Object.defineProperty(navigator,'platform',{configurable:true,value:'MacIntel'});
+  Object.defineProperty(navigator,'maxTouchPoints',{configurable:true,value:5});
+  Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>false});
+  Object.defineProperty(navigator,'share',{configurable:true,value:undefined});
+ });
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(`/ventas?documento=${saleId}`);
+ const detail=page.getByRole('dialog',{name:'VEN-PRUEBA-001'});
+ await detail.getByRole('button',{name:'Imprimir',exact:true}).click();
+ const ready=detail.getByRole('region',{name:'Recibo PDF'});
+ await expect(ready).toContainText('PDF preparado');
+ await ready.getByRole('button',{name:'Compartir / imprimir PDF'}).click();
+ await expect(detail.getByRole('alert')).toContainText('no permite compartir archivos');
+ await expect(ready.getByRole('link',{name:'Abrir PDF',exact:true})).toBeVisible();
+ await expect(ready.getByRole('link',{name:'Guardar PDF',exact:true})).toBeVisible();
 });
