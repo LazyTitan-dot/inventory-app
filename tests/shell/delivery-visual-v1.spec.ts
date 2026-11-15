@@ -79,3 +79,44 @@ test('Entregas V1 terminal states keep history and do not expose mutation action
  await expect(detail.getByRole('button',{name:'Cancelar entrega'})).toHaveCount(0);
  await expect(detail.getByRole('button',{name:'WhatsApp',exact:true})).toHaveCount(1);
 });
+
+test('Entregas V1.1 priority, dates, status pills and timeline preserve order and data',async({page,featureData})=>{
+ const first=featureData.deliveries[0]!;
+ first.scheduled_at=new Date(Date.now()+86400000).toISOString();
+ featureData.deliveries.push(
+  {...first,id:'20000000-0000-4000-8000-000000000011',contact_name:'En ruta prueba',status:'in_transit',scheduled_at:new Date(Date.now()+3600000).toISOString()},
+  {...first,id:'20000000-0000-4000-8000-000000000012',contact_name:'Entregada prueba',status:'delivered',scheduled_at:'2025-01-01T12:00:00Z'},
+  {...first,id:'20000000-0000-4000-8000-000000000013',contact_name:'Fallida prueba',status:'failed',scheduled_at:new Date(Date.now()-3600000).toISOString()}
+ );
+ first.history=[
+  {at:'2026-11-11T12:00:00Z',actor:featureData.profile.id,status:'scheduled',note:'Coordinada'},
+  {at:'2026-11-11T13:00:00Z',actor:featureData.profile.id,status:'in_transit',note:'Salida registrada'},
+  {at:'2026-11-11T14:00:00Z',actor:featureData.profile.id,status:'failed',note:'Sin respuesta'},
+  {at:'2026-11-11T15:00:00Z',actor:featureData.profile.id,status:'scheduled',note:'Reprogramada'}
+ ];
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/entregas');
+ const root=page.locator('.delivery-visual-v1'), rows=root.locator('.delivery-desktop-table tbody tr');
+ await expect(rows).toHaveCount(4);
+ await expect(rows.first()).toContainText('En ruta prueba');
+ await expect(rows.nth(1)).toContainText('Fallida prueba');
+ await expect(rows.last()).toContainText('Entregada prueba');
+ await root.getByRole('combobox',{name:'Ordenar entregas'}).selectOption('date_asc');
+ await expect(rows.first()).toContainText('Entregada prueba');
+ await root.getByRole('combobox',{name:'Ordenar entregas'}).selectOption('date_desc');
+ await expect(rows.first()).toContainText('Cliente de prueba');
+ await root.getByRole('combobox',{name:'Ordenar entregas'}).selectOption('status');
+ await expect(rows.first()).toContainText('En ruta prueba');
+ const filters=root.getByRole('group',{name:'Filtrar entregas por estado'});
+ await filters.getByRole('button',{name:'En camino',exact:true}).click();
+ await expect(rows).toHaveCount(1);
+ await expect(rows.first()).toContainText('En ruta prueba');
+ await expect(filters.getByRole('button',{name:'En camino',exact:true})).toHaveAttribute('aria-pressed','true');
+ await filters.getByRole('button',{name:'Programada',exact:true}).click();
+ await rows.getByRole('button',{name:'Ver entrega a Cliente de prueba'}).click();
+ const history=page.getByRole('region',{name:'Historial de entrega'});
+ await expect(history.locator('.delivery-event-timeline li')).toHaveCount(4);
+ await expect(history.locator('.delivery-event-timeline li').first()).toContainText('Coordinada');
+ await expect(history.locator('.delivery-event-timeline li').last()).toContainText('Reprogramada');
+ await expect(history.locator('.delivery-event-icon svg')).toHaveCount(4);
+});

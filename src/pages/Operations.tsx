@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, Check, Clock3, Copy, MapPin, MessageCircle, Pencil, Phone, Plus, Tag, Truck } from 'lucide-react';
+import { AlertCircle, CalendarCheck, CalendarDays, Check, CheckCircle2, Clock3, Copy, List, MapPin, MessageCircle, Pencil, Phone, Plus, Tag, Truck, XCircle } from 'lucide-react';
 import {
   EmptyState,
   ErrorNotice,
@@ -49,6 +49,9 @@ const deliveryActions: Record<DeliveryStatus, DeliveryStatus[]> = {
   delivered: [],
   cancelled: [],
 };
+const deliveryIcons = { scheduled: CalendarCheck, in_transit: Truck, failed: AlertCircle, delivered: CheckCircle2, cancelled: XCircle };
+const deliveryPriority: Record<DeliveryStatus, number> = { in_transit: 0, failed: 1, scheduled: 2, delivered: 3, cancelled: 4 };
+type DeliveryOrder = 'priority' | 'date_asc' | 'date_desc' | 'status';
 const actionLabels: Record<DeliveryStatus, string> = {
   scheduled: 'Volver a programar',
   in_transit: 'Iniciar entrega',
@@ -145,6 +148,7 @@ export function DeliveriesPage() {
   const [status, setStatus] = useState('all');
   const [date, setDate] = useState('');
   const [quick, setQuick] = useState<'all' | 'today' | 'pending' | 'transit' | 'attention'>('all');
+  const [order, setOrder] = useState<DeliveryOrder>('priority');
   const [creatingLocal, setCreating] = useState(false);
   const creating = creatingLocal || (params.get('nuevo') === '1' && data.permissions.sell);
   const selectedId = params.get('documento');
@@ -168,9 +172,17 @@ export function DeliveriesPage() {
   const saleMap = new Map(
     data.documents.filter((sale) => sale.type === 'sale').map((sale) => [sale.id, sale]),
   );
-  const deliveries = [...data.deliveries].sort((a, b) =>
-    a.scheduled_at.localeCompare(b.scheduled_at),
-  );
+  const deliveries = [...data.deliveries].sort((a, b) => {
+    const dateOrder = a.scheduled_at.localeCompare(b.scheduled_at);
+    if (order === 'date_asc') return dateOrder || a.id.localeCompare(b.id);
+    if (order === 'date_desc') return -dateOrder || a.id.localeCompare(b.id);
+    const active = (item: Delivery) => deliveryPriority[item.status] < 3;
+    if (order === 'priority') {
+      const group = (item: Delivery) => item.status === 'in_transit' ? 0 : item.status === 'failed' ? 1 : item.status === 'scheduled' && new Date(item.scheduled_at).getTime() < now ? 2 : item.status === 'scheduled' ? 3 : 4;
+      return group(a) - group(b) || (active(a) ? dateOrder : -dateOrder) || a.id.localeCompare(b.id);
+    }
+    return deliveryPriority[a.status] - deliveryPriority[b.status] || (active(a) ? dateOrder : -dateOrder) || a.id.localeCompare(b.id);
+  });
   const filtered = deliveries.filter((delivery) => {
     const sale = saleMap.get(delivery.sale_id);
     return (
@@ -220,42 +232,28 @@ export function DeliveriesPage() {
       ) : (
         <>
           <div className="stats-grid delivery-kpis">
-            <StatCard
-              label="Pendientes para hoy"
-              value={
-                pending.filter(
-                  (delivery) => businessDate(new Date(delivery.scheduled_at)) === today,
-                ).length
-              }
-              hint="Hora de República Dominicana"
-            />
-            <StatCard
-              label="En camino"
-              value={deliveries.filter((delivery) => delivery.status === 'in_transit').length}
-              hint="Esperando confirmación de recepción"
-            />
-            <StatCard
-              label="Requieren seguimiento"
-              value={deliveries.filter((delivery) => delivery.status === 'failed').length}
-              hint="Intentos fallidos por reprogramar"
-              tone="warning"
-            />
-            <StatCard
-              label="Programadas con hora vencida"
-              value={
-                deliveries.filter(
-                  (delivery) =>
-                    delivery.status === 'scheduled' &&
-                    new Date(delivery.scheduled_at).getTime() < now,
-                ).length
-              }
-              hint="Revisa el horario o inicia la entrega"
-            />
+            {([
+              { label:'Pendientes para hoy', value:pending.filter(item => businessDate(new Date(item.scheduled_at)) === today).length, hint:`${pending.length} pendientes en total · hora de RD`, icon:CalendarDays, filter:'today' },
+              { label:'En camino', value:deliveries.filter(item => item.status === 'in_transit').length, hint:'Salida registrada', icon:Truck, filter:'transit' },
+              { label:'Requieren seguimiento', value:deliveries.filter(item => item.status === 'failed').length, hint:'Intentos fallidos', icon:AlertCircle, filter:'attention' },
+              { label:'Hora vencida', value:deliveries.filter(item => item.status === 'scheduled' && new Date(item.scheduled_at).getTime() < now).length, hint:'Revisar programación', icon:Clock3, filter:'attention' },
+            ] as const).map((metric,index) => <div className="stat-card delivery-metric" key={metric.label} data-tone={index > 1 && metric.value > 0 ? 'warning' : 'normal'}>
+              <span className="delivery-metric-icon"><metric.icon size={19} aria-hidden="true"/></span>
+              <span className="delivery-metric-label">{metric.label}</span><strong>{metric.value}</strong><small>{metric.hint}</small>
+            </div>)}
           </div>
           <section className="panel delivery-agenda">
             <div className="delivery-agenda-heading"><h2>{quick === 'today' ? 'Agenda de hoy' : 'Agenda de entregas'}</h2><span>{filtered.length} {filtered.length === 1 ? 'entrega' : 'entregas'}</span></div>
-            <div className="delivery-quick-filters" aria-label="Filtros rápidos de entregas">
-              {([{value:'all',label:'Todas'},{value:'today',label:'Hoy'},{value:'pending',label:'Pendientes'},{value:'transit',label:'En camino'},{value:'attention',label:'Requieren atención'}] as const).map(item => <button type="button" key={item.value} className="button secondary" aria-pressed={quick === item.value} onClick={() => { setQuick(item.value); setStatus('all'); setDate(''); }}>{item.label}</button>)}
+            <div className="delivery-filter-bar">
+              <div className="delivery-quick-filters" role="group" aria-label="Filtros rápidos de entregas">
+                {([{value:'all',label:'Todas',icon:List},{value:'today',label:'Hoy',icon:CalendarDays},{value:'pending',label:'Pendientes',icon:Clock3},{value:'attention',label:'Requieren atención',icon:AlertCircle}] as const).map(item => <button type="button" key={item.value} className="button secondary" aria-pressed={quick === item.value && status === 'all'} onClick={() => { setQuick(item.value); setStatus('all'); setDate(''); }}><item.icon size={16} aria-hidden="true"/>{item.label}</button>)}
+              </div>
+              <div className="delivery-status-filters" role="group" aria-label="Filtrar entregas por estado">
+                {(['scheduled','in_transit','failed','delivered','cancelled'] as const).map(value => {
+                  const Icon = deliveryIcons[value];
+                  return <button type="button" className="button secondary" key={value} data-status={value} aria-pressed={status === value} onClick={() => {setStatus(status === value ? 'all' : value);setQuick('all');}}><Icon size={16} aria-hidden="true"/>{statusLabels[value]}</button>;
+                })}
+              </div>
             </div>
             <div className="toolbar operations-toolbar">
               <SearchInput
@@ -263,18 +261,12 @@ export function DeliveriesPage() {
                 onChange={setQuery}
                 placeholder="Buscar venta, contacto, dirección o responsable…"
               />
-              <select
-                aria-label="Filtrar entregas por estado"
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-              >
-                <option value="all">Todos los estados</option>
-                {Object.keys(deliveryActions).map((value) => (
-                  <option key={value} value={value}>
-                    {statusLabels[value]}
-                  </option>
-                ))}
-              </select>
+              <label className="delivery-order"><span>Ordenar por</span><select aria-label="Ordenar entregas" value={order} onChange={event => setOrder(event.target.value as DeliveryOrder)}>
+                <option value="priority">Prioridad operativa</option>
+                <option value="date_asc">Fecha: próximas primero</option>
+                <option value="date_desc">Fecha: recientes primero</option>
+                <option value="status">Estado</option>
+              </select></label>
               <label className="operations-date-filter">
                 <span>Fecha</span>
                 <input
@@ -363,7 +355,7 @@ export function DeliveriesPage() {
                           <td>
                             <StatusBadge status={delivery.status} />
                           </td>
-                          <td>{delivery.assignee || 'Sin asignar'}</td>
+                          <td><span className={delivery.assignee ? 'delivery-assignee' : 'delivery-assignee unassigned'}>{delivery.assignee || 'Sin asignar'}</span></td>
                           <td>
                             <button
                               className="button ghost"
@@ -876,27 +868,29 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           </div>
         )}
         <section className="delivery-history-card" aria-label="Historial de entrega">
-          <h3>Historial de seguimiento</h3>
+          <div className="delivery-history-heading"><h3>Historial de seguimiento</h3><span className="badge">{delivery.history.length} {delivery.history.length === 1 ? 'evento' : 'eventos'}</span></div>
           {delivery.history.length ? (
-            <ol className="operations-timeline">
+            <ol className="delivery-event-timeline">
               {[...delivery.history]
                 .sort((a, b) => a.at.localeCompare(b.at))
-                .map((event, index) => (
-                  <li key={`${event.at}-${index}`}>
-                    <div>
-                      <StatusBadge status={event.status} />
-                      <time dateTime={event.at}>{dateTime(event.at)}</time>
+                .map((event, index) => {
+                  const Icon = deliveryIcons[event.status] ?? Clock3;
+                  return <li key={`${event.at}-${index}`} data-status={event.status}>
+                    <span className="delivery-event-icon"><Icon size={20} aria-hidden="true"/></span>
+                    <div className="delivery-event-body">
+                      <strong>{statusLabels[event.status] ?? event.status}</strong>
+                      <div className="delivery-event-meta"><time dateTime={event.at}>{dateTime(event.at)}</time><span aria-hidden="true">·</span><span>{actorName(event.actor)}</span></div>
+                      {event.note && <p>{event.note}</p>}
+                      {event.received_by && <p>Recibió: {event.received_by}</p>}
+                      {event.proof && <p>Constancia: {event.proof}</p>}
                     </div>
-                    {event.note && <p>{event.note}</p>}
-                    {event.received_by && <p>Recibió: {event.received_by}</p>}
-                    {event.proof && <p>Constancia: {event.proof}</p>}
-                    <small>{actorName(event.actor)}</small>
-                  </li>
-                ))}
+                  </li>;
+                })}
             </ol>
           ) : (
             <p className="muted">No hay eventos registrados.</p>
           )}
+          <p className="delivery-history-caption">Registro cronológico de fechas, actores, notas y constancias de recepción.</p>
         </section>
         <div className="modal-footer">
           <button className="button secondary" onClick={onClose}>
