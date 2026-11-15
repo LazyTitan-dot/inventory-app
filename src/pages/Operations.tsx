@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, Check, Clock3, Copy, MapPin, MessageCircle, Pencil, Plus, Tag, Truck } from 'lucide-react';
+import { CalendarDays, Check, Clock3, Copy, MapPin, MessageCircle, Pencil, Phone, Plus, Tag, Truck } from 'lucide-react';
 import {
   EmptyState,
   ErrorNotice,
@@ -31,6 +31,7 @@ import { AddressFields } from '../components/AddressFields';
 import { addressText, addressValidation, emptyAddress } from '../lib/addresses';
 import { buildDeliveryTrackingSummary, deliveryMapsUrl, trackingSteps } from '../lib/deliveryTracking';
 import './operations.css';
+import './delivery-visual-v1.css';
 
 type DeliveryStatus = Delivery['status'];
 type PromotionState = 'current' | 'upcoming' | 'expired' | 'inactive';
@@ -143,6 +144,7 @@ export function DeliveriesPage() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [date, setDate] = useState('');
+  const [quick, setQuick] = useState<'all' | 'today' | 'pending' | 'transit' | 'attention'>('all');
   const [creatingLocal, setCreating] = useState(false);
   const creating = creatingLocal || (params.get('nuevo') === '1' && data.permissions.sell);
   const selectedId = params.get('documento');
@@ -172,6 +174,7 @@ export function DeliveriesPage() {
   const filtered = deliveries.filter((delivery) => {
     const sale = saleMap.get(delivery.sale_id);
     return (
+      (quick === 'all' || (quick === 'today' && businessDate(new Date(delivery.scheduled_at)) === today) || (quick === 'pending' && ['scheduled', 'in_transit', 'failed'].includes(delivery.status)) || (quick === 'transit' && delivery.status === 'in_transit') || (quick === 'attention' && (delivery.status === 'failed' || (delivery.status === 'scheduled' && new Date(delivery.scheduled_at).getTime() < now)))) &&
       (status === 'all' || delivery.status === status) &&
       (!date || businessDate(new Date(delivery.scheduled_at)) === date) &&
       matches(
@@ -200,7 +203,7 @@ export function DeliveriesPage() {
     ) : undefined;
 
   return (
-    <>
+    <div className="delivery-visual-v1 sl-refined-theme">
       <PageHeader
         eyebrow="OPERACIONES"
         title="Entregas"
@@ -216,7 +219,7 @@ export function DeliveriesPage() {
         </section>
       ) : (
         <>
-          <div className="stats-grid">
+          <div className="stats-grid delivery-kpis">
             <StatCard
               label="Pendientes para hoy"
               value={
@@ -249,7 +252,11 @@ export function DeliveriesPage() {
               hint="Revisa el horario o inicia la entrega"
             />
           </div>
-          <section className="panel">
+          <section className="panel delivery-agenda">
+            <div className="delivery-agenda-heading"><h2>{quick === 'today' ? 'Agenda de hoy' : 'Agenda de entregas'}</h2><span>{filtered.length} {filtered.length === 1 ? 'entrega' : 'entregas'}</span></div>
+            <div className="delivery-quick-filters" aria-label="Filtros rápidos de entregas">
+              {([{value:'all',label:'Todas'},{value:'today',label:'Hoy'},{value:'pending',label:'Pendientes'},{value:'transit',label:'En camino'},{value:'attention',label:'Requieren atención'}] as const).map(item => <button type="button" key={item.value} className="button secondary" aria-pressed={quick === item.value} onClick={() => { setQuick(item.value); setStatus('all'); setDate(''); }}>{item.label}</button>)}
+            </div>
             <div className="toolbar operations-toolbar">
               <SearchInput
                 value={query}
@@ -277,13 +284,14 @@ export function DeliveriesPage() {
                   onChange={(event) => setDate(event.target.value)}
                 />
               </label>
-              {(query || status !== 'all' || date) && (
+              {(query || status !== 'all' || date || quick !== 'all') && (
                 <button
                   className="button ghost"
                   onClick={() => {
                     setQuery('');
                     setStatus('all');
                     setDate('');
+                    setQuick('all');
                   }}
                 >
                   Limpiar filtros
@@ -316,7 +324,8 @@ export function DeliveriesPage() {
                     <span className="delivery-card-top"><strong>{delivery.contact_name}</strong><StatusBadge status={delivery.status} /></span>
                     <span className="operations-table-meta">{sale ? documentNumber(sale) : 'Venta vinculada'} · {dateTime(delivery.scheduled_at)}</span>
                     <span className="delivery-card-address"><MapPin size={15} />{delivery.address}</span>
-                    <span className="delivery-card-bottom"><span><Truck size={15} /> {delivery.assignee || 'Sin asignar'}</span><strong>Ver seguimiento →</strong></span>
+                    <span className="delivery-card-bottom"><span><Truck size={15} /> {delivery.assignee || 'Sin asignar'}</span><strong>Ver entrega →</strong></span>
+                    {delivery.status === 'scheduled' && new Date(delivery.scheduled_at).getTime() < now && <span className="delivery-overdue"><Clock3 size={15}/> Hora vencida</span>}
                   </button>;
                 })}
               </div><div className="table-wrap delivery-desktop-table">
@@ -345,6 +354,7 @@ export function DeliveriesPage() {
                           <td>
                             {dateTime(delivery.scheduled_at)}
                             <small className="operations-table-meta">Hora de RD</small>
+                            {delivery.status === 'scheduled' && new Date(delivery.scheduled_at).getTime() < now && <small className="delivery-overdue">Hora vencida</small>}
                           </td>
                           <td>
                             <span className="operations-address">{delivery.address}</span>
@@ -392,7 +402,7 @@ export function DeliveriesPage() {
           }}
         />
       )}
-    </>
+    </div>
   );
 }
 
@@ -557,9 +567,11 @@ function DeliveryEditor({
       }}
       wide
       variant="drawer"
+      className="delivery-editor-v1 sl-refined-theme"
     >
-      <form className="stack" onSubmit={submit}>
+      <form className="stack delivery-editor-form" onSubmit={submit}>
         <fieldset className="operations-fields stack" disabled={busy}>
+          <section className="delivery-form-section"><h3>Venta vinculada</h3>
           {delivery ? (
             <p>
               Venta:{' '}
@@ -581,6 +593,8 @@ function DeliveryEditor({
               </select>
             </Field>
           )}
+          </section>
+          <section className="delivery-form-section"><h3>Contacto y destino</h3>
           <div className="form-grid">
             <Field label="Persona de contacto">
               <input
@@ -641,6 +655,9 @@ function DeliveryEditor({
               onChange={(event) => setAddress(event.target.value)}
             />
           </Field>}
+          </section>
+          <section className="delivery-form-section"><h3>Programación</h3>
+          {delivery && <p className="operations-callout">Horario anterior: {dateTime(delivery.scheduled_at)} · hora de RD. Al guardar quedará Programada.</p>}
           <div className="form-grid">
             <Field label="Fecha y hora de entrega" hint="Hora de República Dominicana (UTC−04:00).">
               <input
@@ -663,6 +680,8 @@ function DeliveryEditor({
               />
             </Field>
           </div>
+          </section>
+          <section className="delivery-form-section"><h3>Instrucciones</h3>
           <Field label="Instrucciones para la entrega (opcional)">
             <textarea
               rows={3}
@@ -672,6 +691,7 @@ function DeliveryEditor({
               placeholder="Ej. Llamar al llegar; edificio sin ascensor."
             />
           </Field>
+          </section>
         </fieldset>
         <ErrorNotice message={validation || error} />
         <div className="modal-footer">
@@ -748,36 +768,16 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
       onClose={onClose}
       wide
       variant="drawer"
+      className="delivery-detail-v1 sl-refined-theme"
     >
-      <div className="stack">
+      <div className="stack delivery-detail-content">
         <div className="operations-detail-heading">
           <StatusBadge status={delivery.status} />
           <span className="muted">
             <CalendarDays size={16} /> {dateTime(delivery.scheduled_at)} · hora de RD
           </span>
         </div>
-        <section className="delivery-tracking" aria-label="Seguimiento operativo de la entrega">
-          <div className="delivery-track-heading">
-            <div><span className="eyebrow">SEGUIMIENTO DEL PEDIDO</span><h3>Tu entrega, paso a paso</h3></div>
-            <span className="badge">{delivery.history.filter((event) => event.status === 'failed').length} intentos fallidos</span>
-          </div>
-          <ol className="delivery-progress">
-            {steps.map((step, index) => <li key={step.label} className={`delivery-step ${step.state}`} aria-current={step.state === 'current' ? 'step' : undefined}>
-              <span aria-hidden="true">{step.state === 'done' ? <Check size={16} /> : index + 1}</span><strong>{step.label}</strong>
-            </li>)}
-          </ol>
-          <p className={delivery.status === 'failed' ? 'error-notice' : 'muted'}>
-            {delivery.status === 'delivered' ? 'Recepción confirmada en el registro.' : delivery.status === 'in_transit' ? 'Salida registrada por el equipo de entrega.' : delivery.status === 'failed' ? 'La entrega requiere seguimiento. Revisa el intento fallido y acuerda una nueva programación.' : delivery.status === 'cancelled' ? 'Esta entrega fue cancelada. Se conserva su historial.' : 'La entrega está programada; el equipo aún no ha registrado la salida.'}
-          </p>
-          <div className="operations-actions">
-            {mapUrl && <a className="button secondary" href={mapUrl} target="_blank" rel="noopener noreferrer"><MapPin size={16} /> Ver destino en Maps</a>}
-            {canManageDeliveries(data) && <button className="button secondary" onClick={() => setWhatsAppMode('tracking')}><MessageCircle size={16} /> Enviar seguimiento por WhatsApp</button>}
-            <button className="button ghost" onClick={() => void copyDetails([delivery.address, delivery.address_snapshot?.reference, delivery.phone].filter(Boolean).join('\n'), 'Dirección copiada.')}><Copy size={16} /> Copiar dirección</button>
-          </div>
-          <small>Eventos registrados por el equipo. Esta vista no muestra GPS, velocidad, distancias ni una hora estimada de llegada.</small>
-          {copyFallback && <Field label="Texto para copiar" hint="El navegador no permitió copiar automáticamente. Selecciona este texto para copiarlo."><textarea readOnly value={copyFallback} rows={6} onFocus={(event) => event.currentTarget.select()} /></Field>}
-        </section>
-        <dl className="operations-detail-grid">
+        <section className="delivery-destination-card"><h3>Destino de la entrega</h3><dl className="operations-detail-grid">
           <div>
             <dt>Contacto</dt>
             <dd>{delivery.contact_name}</dd>
@@ -819,6 +819,30 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           )}
           {delivery.proof && <div className="operations-full"><dt>Constancia de recepción</dt><dd>{delivery.proof}</dd></div>}
         </dl>
+          <div className="operations-actions delivery-contact-actions">
+            {mapUrl && <a className="button primary delivery-map-action" href={mapUrl} target="_blank" rel="noopener noreferrer"><MapPin size={16} /> Ver destino en Maps</a>}
+            {delivery.phone && <a className="button secondary" href={`tel:${delivery.phone.replace(/[^+0-9]/g, '')}`}><Phone size={16}/> Llamar</a>}
+            {canManageDeliveries(data) && <button className="button secondary" onClick={() => setWhatsAppMode('delivery')}><MessageCircle size={16}/> WhatsApp</button>}
+            {canManageDeliveries(data) && <button className="button secondary" onClick={() => setWhatsAppMode('tracking')}><MessageCircle size={16} /> Enviar seguimiento por WhatsApp</button>}
+            <button className="button ghost" onClick={() => void copyDetails([delivery.address, delivery.address_snapshot?.reference, delivery.phone].filter(Boolean).join('\n'), 'Dirección copiada.')}><Copy size={16} /> Copiar dirección</button>
+          </div>
+          {copyFallback && <Field label="Texto para copiar" hint="El navegador no permitió copiar automáticamente. Selecciona este texto para copiarlo."><textarea readOnly value={copyFallback} rows={6} onFocus={(event) => event.currentTarget.select()} /></Field>}
+        </section>
+        <section className="delivery-tracking" aria-label="Seguimiento operativo de la entrega">
+          <div className="delivery-track-heading">
+            <div><span className="eyebrow">SEGUIMIENTO DEL PEDIDO</span><h3>Tu entrega, paso a paso</h3></div>
+            <span className="badge">{delivery.history.filter((event) => event.status === 'failed').length} intentos fallidos</span>
+          </div>
+          <ol className="delivery-progress">
+            {steps.map((step, index) => <li key={step.label} className={`delivery-step ${step.state}`} aria-current={step.state === 'current' ? 'step' : undefined}>
+              <span aria-hidden="true">{step.state === 'done' ? <Check size={16} /> : index + 1}</span><strong>{step.label}</strong>
+            </li>)}
+          </ol>
+          <p className={delivery.status === 'failed' ? 'error-notice' : 'muted'}>
+            {delivery.status === 'delivered' ? 'Recepción confirmada en el registro.' : delivery.status === 'in_transit' ? 'Salida registrada por el equipo de entrega.' : delivery.status === 'failed' ? 'La entrega requiere seguimiento. Revisa el intento fallido y acuerda una nueva programación.' : delivery.status === 'cancelled' ? 'Esta entrega fue cancelada. Se conserva su historial.' : 'La entrega está programada; el equipo aún no ha registrado la salida.'}
+          </p>
+          <small>Eventos registrados por el equipo. Esta vista no muestra GPS, velocidad, distancias ni una hora estimada de llegada.</small>
+        </section>
         {sale && !saleIsCurrent(sale) && (
           <p className="operations-callout">
             La venta vinculada ya no está vigente. El historial se conserva y no admite cambios de
@@ -826,7 +850,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           </p>
         )}
         {canManage && (
-          <div className="operations-actions">
+          <div className="operations-actions delivery-state-actions">
             {['scheduled', 'failed'].includes(delivery.status) && (
               <button className="button secondary" onClick={() => setMode('edit')}>
                 <Pencil size={16} />
@@ -851,7 +875,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
               ))}
           </div>
         )}
-        <section aria-label="Historial de entrega">
+        <section className="delivery-history-card" aria-label="Historial de entrega">
           <h3>Historial de seguimiento</h3>
           {delivery.history.length ? (
             <ol className="operations-timeline">
@@ -972,12 +996,13 @@ function DeliveryTransition({
   return (
     <Modal
       title={actionLabels[status]}
+      className="delivery-transition-v1 sl-refined-theme"
       onClose={() => {
         if (!busy) onBack();
       }}
     >
-      <form onSubmit={submit} className="stack">
-        <p>
+      <form onSubmit={submit} className="stack delivery-transition-form">
+        <p className="operations-callout">
           Entrega a <strong>{delivery.contact_name}</strong> en {delivery.address}.
         </p>
         <fieldset disabled={busy} className="operations-fields stack">

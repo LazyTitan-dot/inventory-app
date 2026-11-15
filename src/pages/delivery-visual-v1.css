@@ -1,0 +1,80 @@
+/* Entregas V1: scoped to delivery surfaces; Promotions/other modules unchanged. */
+.delivery-visual-v1,.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1{
+ min-width:0;--ink:var(--sl-refined-ink);--muted:var(--sl-refined-muted);--line:var(--sl-refined-edge);--border:var(--sl-refined-edge);--surface:var(--sl-refined-surface);--primary:var(--sl-refined-accent);
+ color:var(--sl-refined-ink);
+}
+.app-layout .delivery-visual-v1 .delivery-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.app-layout .delivery-visual-v1 .delivery-kpis .stat-card{min-width:0;background:var(--sl-refined-surface);border:1px solid var(--sl-refined-edge);border-radius:16px;padding:16px;display:grid;grid-template-rows:minmax(32px,auto) auto 1fr;gap:6px;box-shadow:none;}
+.delivery-kpis .stat-card strong{font-size:clamp(23px,2vw,32px);font-variant-numeric:tabular-nums;}
+.app-layout .delivery-visual-v1 .delivery-agenda{background:var(--sl-refined-surface);border:1px solid var(--sl-refined-edge);border-radius:18px;min-width:0;box-shadow:none;}
+.delivery-agenda-heading{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:18px 20px 0;}
+.delivery-agenda-heading h2{font-size:19px;letter-spacing:-.025em;margin:0;}
+.delivery-agenda-heading span{font-size:12px;color:var(--sl-refined-muted);}
+.delivery-quick-filters{display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px 0;}
+.app-layout .delivery-quick-filters .button{border-radius:999px;min-height:36px;color:var(--sl-refined-muted);background:var(--sl-refined-surface);border-color:var(--sl-refined-edge);font-size:12px;}
+.app-layout .delivery-quick-filters .button[aria-pressed=true]{background:var(--sl-refined-soft);color:var(--sl-refined-accent);border-color:var(--sl-refined-accent);font-weight:650;}
+.delivery-agenda .operations-toolbar{padding:12px 20px;gap:10px;}
+.delivery-agenda .operations-toolbar .search-field{min-width:0;flex:1 1 230px;}
+.delivery-agenda .operations-date-filter input{min-width:0;}
+.delivery-agenda .delivery-desktop-table .data-table{table-layout:fixed;min-width:750px;}
+.delivery-agenda .data-table th{background:var(--sl-refined-soft);color:var(--sl-refined-muted);font-size:12px;white-space:normal;}
+.delivery-agenda .data-table td{padding:14px 12px;white-space:normal;vertical-align:middle;overflow-wrap:anywhere;border-color:var(--sl-refined-edge);}
+.delivery-agenda .data-table th:nth-child(1){width:20%}.delivery-agenda .data-table th:nth-child(2){width:20%}.delivery-agenda .data-table th:nth-child(3){width:24%}.delivery-agenda .data-table th:nth-child(4){width:14%}.delivery-agenda .data-table th:nth-child(5){width:12%}.delivery-agenda .data-table th:nth-child(6){width:10%}
+.delivery-agenda .data-table .button{white-space:normal;padding:6px;font-size:12px;}
+.delivery-overdue{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--sl-warning);font-weight:650;margin-top:4px;}
+.delivery-agenda .delivery-list-card{background:var(--sl-refined-surface);border-color:var(--sl-refined-edge);color:var(--sl-refined-ink);gap:9px;border-radius:14px;min-width:0;}
+.delivery-agenda .delivery-card-top strong{min-width:0;overflow-wrap:anywhere;}
+.delivery-agenda .delivery-card-address,.delivery-agenda .delivery-card-bottom > span{color:var(--sl-refined-muted);overflow-wrap:anywhere;}
+.delivery-agenda .delivery-card-bottom{border-color:var(--sl-refined-edge);}
+.delivery-agenda .delivery-card-bottom strong{color:var(--sl-refined-accent);}
+.app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1).modal{background:var(--sl-refined-surface);color:var(--sl-refined-ink);border-color:var(--sl-refined-edge);}
+.app-layout :is(.delivery-editor-v1,.delivery-detail-v1).modal.detail-drawer{width:min(780px,calc(100vw - 32px));}
+.app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading{background:var(--sl-refined-soft);border-color:var(--sl-refined-edge);padding:18px 24px;}
+.delivery-detail-content{gap:16px;}
+.delivery-detail-v1 .operations-detail-heading{padding:16px;border-radius:16px;background:var(--sl-refined-soft);border:1px solid var(--sl-refined-edge);}
+.delivery-destination-card,.delivery-history-card,.delivery-form-section{border:1px solid var(--sl-refined-edge);border-radius:16px;padding:18px;background:var(--sl-refined-surface);min-width:0;}
+.delivery-destination-card h3,.delivery-history-card h3,.delivery-form-section h3{font-size:17px;margin:0 0 14px;letter-spacing:-.02em;}
+.delivery-destination-card .operations-detail-grid{gap:14px;}
+.delivery-contact-actions{margin-top:16px;gap:8px;}
+.delivery-contact-actions .button{min-height:44px;white-space:normal;}
+.delivery-contact-actions .delivery-map-action{flex:1 1 100%;justify-content:center;}
+.delivery-detail-v1 .delivery-tracking{background:var(--sl-refined-soft);border-color:var(--sl-refined-edge);padding:18px;}
+.delivery-detail-v1 .delivery-step > span{border-color:var(--sl-refined-edge);}
+.delivery-detail-v1 .delivery-step:is(.done,.current)>span{background:var(--sl-refined-cta);color:white;}
+.delivery-detail-v1 .delivery-progress{margin:18px 0;}
+.delivery-detail-v1 .operations-timeline{border-color:var(--sl-refined-edge);}
+.delivery-detail-v1 .operations-timeline li::before{background:var(--sl-refined-accent);}
+.delivery-detail-v1 .operations-timeline p{overflow-wrap:anywhere;}
+.delivery-state-actions{padding:12px;border:1px solid var(--sl-refined-edge);border-radius:14px;display:flex;gap:8px;}
+.delivery-state-actions .button{min-height:44px;flex:1 1 auto;white-space:normal;}
+.delivery-state-actions .button.primary{order:-1;}
+.delivery-form-section{display:grid;gap:12px;}
+.delivery-form-section h3{margin:0;}
+.delivery-form-section .delivery-destination{border:0;padding:0;}
+.delivery-editor-v1 .operations-callout,.delivery-transition-v1 .operations-callout{background:var(--sl-refined-soft);border-color:var(--sl-refined-edge);overflow-wrap:anywhere;}
+.delivery-editor-v1 .operations-fields,.delivery-editor-v1 .form-grid{min-width:0;}
+.delivery-editor-v1 .field :is(input,select,textarea),.delivery-transition-v1 .field :is(input,textarea){min-width:0;max-width:100%;}
+@media(max-width:1100px){.app-layout .delivery-visual-v1 .delivery-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:920px){.delivery-agenda .delivery-desktop-table{display:none;}.delivery-agenda .delivery-card-list{display:grid;padding:0 12px 14px;gap:8px;}}
+@media(max-width:640px){
+ .app-layout .delivery-visual-v1 .delivery-kpis{gap:8px;}
+ .app-layout .delivery-visual-v1 .delivery-kpis .stat-card{padding:12px;grid-template-rows:minmax(30px,auto) auto 1fr;}
+ .delivery-agenda-heading{padding:16px 12px 0;}
+ .delivery-agenda .operations-toolbar{padding:12px;}
+ .delivery-quick-filters{padding:12px 12px 0;gap:6px;}
+ .app-layout .delivery-quick-filters .button{min-height:44px;padding:8px 12px;}
+ .delivery-agenda .operations-date-filter{min-width:0;}
+ .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1).modal{position:fixed;inset:0;width:100%;max-width:none;height:100dvh;max-height:100dvh;margin:0;border-radius:0;padding-bottom:env(safe-area-inset-bottom,0px);}
+ .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading{position:sticky;top:0;z-index:3;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;}
+ .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-body{padding:16px;}
+ .delivery-destination-card,.delivery-history-card,.delivery-form-section{padding:14px;}
+ .delivery-editor-v1 .form-grid{grid-template-columns:minmax(0,1fr);}
+ .delivery-editor-v1 .field :is(input,select,textarea),.delivery-transition-v1 .field :is(input,textarea){font-size:16px;min-height:44px;width:100%;}
+ .delivery-contact-actions .button{flex:1 1 120px;}
+ .delivery-state-actions .button{flex:1 1 100%;}
+ .delivery-editor-v1 .modal-footer,.delivery-detail-v1 .modal-footer,.delivery-transition-v1 .modal-footer{display:grid;gap:8px;}
+ .delivery-editor-v1 .modal-footer .button,.delivery-detail-v1 .modal-footer .button,.delivery-transition-v1 .modal-footer .button{min-height:44px;white-space:normal;}
+ .delivery-editor-v1 .modal-footer .button.primary,.delivery-transition-v1 .modal-footer .button.primary{grid-row:1;}
+ .delivery-detail-v1 .delivery-step{font-size:11px;}
+ .delivery-detail-v1 .operations-detail-heading > .muted{flex-wrap:wrap;}
+}

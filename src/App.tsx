@@ -387,9 +387,9 @@ export function Shell() {
           ) : null}
           <button
             type="button"
-            className={`sl-bottom-tab ${menu || (location.pathname === '/compras' && viewCommerce && p.purchase) ? 'is-current' : ''}`}
+            className={`sl-bottom-tab ${menu || location.pathname === '/entregas' || (location.pathname === '/compras' && viewCommerce && p.purchase) ? 'is-current' : ''}`}
             aria-label="Más secciones"
-            aria-description={location.pathname === '/compras' && viewCommerce && p.purchase ? 'Sección actual: Compras' : undefined}
+            aria-description={location.pathname === '/entregas' ? 'Sección actual: Entregas' : location.pathname === '/compras' && viewCommerce && p.purchase ? 'Sección actual: Compras' : undefined}
             aria-controls="menu-principal"
             aria-expanded={menu}
             onClick={(event) => openSidebar(event.currentTarget)}
