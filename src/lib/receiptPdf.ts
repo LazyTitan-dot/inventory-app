@@ -94,8 +94,9 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
 
   const canvas = document.createElement('canvas');
   canvas.width = PAGE_W * SCALE; canvas.height = PAGE_H * SCALE;
-  const ctx = canvas.getContext('2d', { alpha: false });
-  if (!ctx) throw new Error('Canvas unavailable');
+  const context = canvas.getContext('2d', { alpha: false });
+  if (!context) throw new Error('Canvas unavailable');
+  const ctx: CanvasRenderingContext2D = context;
   ctx.scale(SCALE, SCALE);
   const images: Uint8Array[] = [];
   let y = MARGIN, page = 0;
