@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, CalendarCheck, CalendarDays, Check, CheckCircle2, Clock3, Copy, List, MapPin, MessageCircle, Pencil, Phone, Plus, Tag, Truck, XCircle } from 'lucide-react';
+import { AlertCircle, CalendarCheck, CalendarDays, Check, CheckCircle2, Clock3, Copy, List, MapPin, MessageCircle, Pencil, Phone, Plus, Tag, Truck, UserRoundPlus, XCircle } from 'lucide-react';
 import {
   EmptyState,
   ErrorNotice,
@@ -709,6 +709,11 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
   const [transition, setTransition] = useState<DeliveryStatus | null>(null);
   const [whatsAppMode, setWhatsAppMode] = useState<'delivery' | 'tracking' | null>(null);
   const [copyFallback, setCopyFallback] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [responsible, setResponsible] = useState(delivery.assignee ?? '');
+  const [assignmentVersion, setAssignmentVersion] = useState(delivery.updated_at);
+  const [actionError, setActionError] = useState('');
+  const { run, busy, error, clearError } = useOperation();
   const { notify } = useRetail();
   const sale = data.documents.find((item) => item.id === delivery.sale_id);
   const steps = trackingSteps(delivery);
@@ -724,6 +729,52 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
     }
   }
   const canManage = canManageDeliveries(data) && (!sale || saleIsCurrent(sale));
+  const canAssign = canManage && ['scheduled', 'failed'].includes(delivery.status);
+  const hasResponsible = Boolean(delivery.assignee?.trim() && delivery.assignee.trim().toLowerCase() !== 'sin asignar');
+  function openAssignment() {
+    setResponsible(hasResponsible ? delivery.assignee ?? '' : '');
+    setAssignmentVersion(delivery.updated_at);
+    setActionError('');
+    clearError();
+    setAssigning(true);
+  }
+  async function assignResponsible(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setActionError('');
+    clearError();
+    const name = responsible.trim();
+    if (!name || name.toLowerCase() === 'sin asignar') {
+      setActionError('Escribe el nombre del responsable.');
+      return;
+    }
+    if (!canAssign || delivery.updated_at !== assignmentVersion) {
+      setActionError('La entrega cambió. Vuelve a abrir la asignación para actualizarla.');
+      return;
+    }
+    try {
+      await run('assign_delivery', {id: delivery.id, expected_updated_at: assignmentVersion, assignee: name});
+      setAssigning(false);
+      notify('Responsable guardado.');
+    } catch (cause) { setActionError(errorMessage(cause)); }
+  }
+  async function startDelivery() {
+    setActionError('');
+    clearError();
+    if (!canManage || delivery.status !== 'scheduled') return;
+    if (!hasResponsible) { openAssignment(); return; }
+    if (delivery.address_snapshot && addressValidation(delivery.address_snapshot)) {
+      setActionError('Completa el destino en la programación antes de iniciar la entrega.');
+      return;
+    }
+    if (!delivery.address.trim() || !delivery.phone.trim()) {
+      setActionError('Completa la dirección y el teléfono de entrega antes de iniciar.');
+      return;
+    }
+    try {
+      await run('status_delivery', {id: delivery.id, expected_updated_at: delivery.updated_at, status: 'in_transit', note: 'Salida registrada.'});
+      notify('Entrega en camino.');
+    } catch (cause) { setActionError(errorMessage(cause)); }
+  }
   const actorName = (id: string | null) =>
     id === data.profile.id
       ? data.profile.display_name || data.profile.email
@@ -758,7 +809,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
   return (
     <Modal
       title={sale ? `Entrega · ${documentNumber(sale)}` : 'Detalle de entrega'}
-      onClose={onClose}
+      onClose={() => { if (!busy) onClose(); }}
       wide
       variant="drawer"
       className="delivery-detail-v1 sl-refined-theme"
@@ -786,7 +837,8 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           {delivery.address_snapshot?.reference && <div className="operations-full"><dt>Referencia para llegar</dt><dd>{delivery.address_snapshot.reference}</dd></div>}
           <div>
             <dt>Responsable</dt>
-            <dd>{delivery.assignee || 'Sin asignar'}</dd>
+            <dd>{hasResponsible ? delivery.assignee : 'Sin asignar'}</dd>
+            {canAssign && <button type="button" className="button secondary delivery-assign-button" disabled={busy || assigning} onClick={openAssignment}><UserRoundPlus size={16} aria-hidden="true"/>{hasResponsible ? 'Cambiar responsable' : 'Asignar responsable'}</button>}
           </div>
           <div>
             <dt>Registrada</dt>
@@ -812,6 +864,12 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           )}
           {delivery.proof && <div className="operations-full"><dt>Constancia de recepción</dt><dd>{delivery.proof}</dd></div>}
         </dl>
+          {assigning && canAssign && <form className="delivery-assignment-form stack" onSubmit={assignResponsible} aria-label="Asignar responsable">
+            <Field label="Nombre del responsable"><input required maxLength={160} autoComplete="off" autoFocus value={responsible} onChange={event=>setResponsible(event.target.value)} placeholder="Nombre del conductor o equipo" disabled={busy}/></Field>
+            <div className="operations-actions"><button type="button" className="button secondary" disabled={busy} onClick={()=>{setAssigning(false);setActionError('');clearError();}}>Cancelar</button><button type="submit" className="button primary" disabled={busy}>{busy ? 'Guardando…' : 'Guardar responsable'}</button></div>
+            <small>No cambia el horario, destino ni estado de la entrega.</small>
+          </form>}
+          {assigning && <ErrorNotice message={actionError || error}/>}
           <div className="operations-actions delivery-contact-actions">
             {mapUrl && <a className="button primary delivery-map-action" href={mapUrl} target="_blank" rel="noopener noreferrer"><MapPin size={16} /> Ver destino en Maps</a>}
             {delivery.phone && <a className="button secondary" href={`tel:${delivery.phone.replace(/[^+0-9]/g, '')}`}><Phone size={16}/> Llamar</a>}
@@ -846,7 +904,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
         {canManage && (
           <div className="operations-actions delivery-state-actions">
             {['scheduled', 'failed'].includes(delivery.status) && (
-              <button className="button secondary" onClick={() => setMode('edit')}>
+              <button className="button secondary" disabled={busy || assigning} onClick={() => setMode('edit')}>
                 <Pencil size={16} />
                 Editar / reprogramar
               </button>
@@ -857,18 +915,20 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
                 <button
                   key={status}
                   className={`button ${status === 'cancelled' || status === 'failed' ? 'ghost' : 'primary'}`}
-                  onClick={() => setTransition(status)}
+                  disabled={busy || assigning}
+                  onClick={() => status === 'in_transit' ? void startDelivery() : setTransition(status)}
                 >
                   {status === 'in_transit' ? (
                     <Truck size={16} />
                   ) : status === 'delivered' ? (
                     <Check size={16} />
                   ) : null}
-                  {actionLabels[status]}
+                  {status === 'in_transit' && busy ? 'Iniciando…' : actionLabels[status]}
                 </button>
               ))}
           </div>
         )}
+        {!assigning && <ErrorNotice message={actionError || error}/>}
         <section className="delivery-history-card" aria-label="Historial de entrega">
           <div className="delivery-history-heading"><h3>Historial de seguimiento</h3><span className="badge">{delivery.history.length} {delivery.history.length === 1 ? 'evento' : 'eventos'}</span></div>
           {delivery.history.length ? (
@@ -876,11 +936,11 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
               {[...delivery.history]
                 .sort((a, b) => a.at.localeCompare(b.at))
                 .map((event, index) => {
-                  const Icon = Object.prototype.hasOwnProperty.call(deliveryIcons, event.status) ? deliveryIcons[event.status as DeliveryStatus] : Clock3;
+                  const Icon = event.status === 'assignment' ? UserRoundPlus : Object.prototype.hasOwnProperty.call(deliveryIcons, event.status) ? deliveryIcons[event.status as DeliveryStatus] : Clock3;
                   return <li key={`${event.at}-${index}`} data-status={event.status}>
                     <span className="delivery-event-icon"><Icon size={20} aria-hidden="true"/></span>
                     <div className="delivery-event-body">
-                      <strong>{statusLabels[event.status] ?? event.status}</strong>
+                      <strong>{event.status === 'assignment' ? 'Responsable asignado' : statusLabels[event.status] ?? event.status}</strong>
                       <div className="delivery-event-meta"><time dateTime={event.at}>{dateTime(event.at)}</time><span aria-hidden="true">·</span><span>{actorName(event.actor)}</span></div>
                       {event.note && <p>{event.note}</p>}
                       {event.received_by && <p>Recibió: {event.received_by}</p>}
@@ -895,7 +955,7 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
           <p className="delivery-history-caption">Registro cronológico de fechas, actores, notas y constancias de recepción.</p>
         </section>
         <div className="modal-footer">
-          <button className="button secondary" onClick={onClose}>
+          <button className="button secondary" disabled={busy} onClick={onClose}>
             Cerrar
           </button>
         </div>

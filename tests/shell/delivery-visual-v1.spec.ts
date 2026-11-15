@@ -158,3 +158,40 @@ test('Entregas V1.2 terminal history is not a loading checklist',async({page,fea
  await expect(card).toContainText('Mercancía original');
  await expect(card.getByRole('checkbox')).toHaveCount(0);
 });
+
+test('Entregas V1.2.1 direct start uses existing transition without observation dialog',async({page,featureData})=>{
+ const d=featureData.deliveries[0]!;
+ let payload:Record<string,unknown>|undefined;
+ await page.goto(`/entregas?documento=${deliveryId}`);
+ await page.route('https://phase5-fixture.supabase.co/rest/v1/rpc/retail_command',async route=>{
+  payload=route.request().postDataJSON();
+  d.status='in_transit';d.history.push({at:new Date().toISOString(),actor:featureData.profile.id,status:'in_transit',note:'Salida registrada.'});
+  await route.fulfill({status:200,json:{operation_id:'fixture-start',action:'status_delivery',entity_id:deliveryId,result:{}},headers:{'access-control-allow-origin':'*'}});
+ });
+ await page.getByRole('button',{name:'Iniciar entrega',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Iniciar entrega',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Confirmar entrega',exact:true})).toBeVisible();
+ expect(payload?.p_action).toBe('status_delivery');
+ expect(payload?.p_payload).toMatchObject({id:deliveryId,status:'in_transit',expected_updated_at:d.updated_at,note:'Salida registrada.'});
+ await expect(page.getByRole('region',{name:'Historial de entrega'})).toContainText('Salida registrada.');
+});
+test('Entregas V1.2.1 missing responsible opens inline assignment only',async({page,featureData})=>{
+ const d=featureData.deliveries[0]!; d.assignee='';
+ let payload:Record<string,unknown>|undefined;
+ await page.goto(`/entregas?documento=${deliveryId}`);
+ await page.route('https://phase5-fixture.supabase.co/rest/v1/rpc/retail_command',async route=>{
+  payload=route.request().postDataJSON();
+  d.assignee='Conductor de prueba';
+  d.history.push({at:new Date().toISOString(),actor:featureData.profile.id,status:'assignment',note:'Responsable: Conductor de prueba'});
+  await route.fulfill({status:200,json:{operation_id:'fixture-assign',action:'assign_delivery',entity_id:deliveryId,result:{}},headers:{'access-control-allow-origin':'*'}});
+ });
+ await page.getByRole('button',{name:'Iniciar entrega',exact:true}).click();
+ expect(payload).toBeUndefined();
+ await page.getByRole('textbox',{name:'Nombre del responsable'}).fill('Conductor de prueba');
+ await page.getByRole('button',{name:'Guardar responsable',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Cambiar responsable',exact:true})).toBeVisible();
+ expect(payload?.p_action).toBe('assign_delivery');
+ expect(payload?.p_payload).toEqual({id:deliveryId,expected_updated_at:d.updated_at,assignee:'Conductor de prueba'});
+ await expect(page.getByRole('region',{name:'Historial de entrega'})).toContainText('Responsable asignado');
+ await expect(page.getByRole('button',{name:'Iniciar entrega',exact:true})).toBeEnabled();
+});

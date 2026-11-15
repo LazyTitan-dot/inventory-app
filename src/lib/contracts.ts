@@ -294,6 +294,7 @@ export type Action =
   | 'void_sale'
   | 'save_delivery'
   | 'status_delivery'
+  | 'assign_delivery'
   | 'save_promotion'
   | 'save_settings'
   | 'set_member_role'

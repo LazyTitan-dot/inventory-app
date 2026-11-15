@@ -91,6 +91,20 @@ test('fulfilment: address ownership/defaults/versions, immutable snapshots, rece
   const originalSnap=delivery.address_snapshot;
   await command('save_customer_address',{...a,...version(a),street:'Dirección futura'});
   eq((await state()).deliveries.find(x=>x.id===deliveryId).address_snapshot,originalSnap,'Editing address book never rewrites delivery destination');
+  const originalDelivery=structuredClone(delivery);
+  const assignOp=randomUUID(),assignPayload={...version(delivery),assignee:'Conductor asignado'};
+  await as('inventory');
+  const assigned=await command('assign_delivery',assignPayload,assignOp);
+  eq(await command('assign_delivery',assignPayload,assignOp),assigned,'Assignment idempotent replay');
+  delivery=(await state()).deliveries.find(x=>x.id===deliveryId);
+  eq(delivery.assignee,'Conductor asignado','Inventory can assign responsible');
+  eq(delivery.scheduled_at,originalDelivery.scheduled_at,'Assignment preserves schedule');
+  eq(delivery.address_snapshot,originalDelivery.address_snapshot,'Assignment preserves historical destination');
+  eq(delivery.status,originalDelivery.status,'Assignment preserves state');
+  eq(delivery.history.at(-1).status,'assignment','Assignment distinct history event');
+  await reject('assign_delivery',{...assignPayload,assignee:'Otro'},/Otra operación/);
+  await as('viewer');await reject('assign_delivery',{...version(delivery),assignee:'No autorizado'},/permiso/);
+  await as('owner');
   const transitionOp=randomUUID(),transitionPayload={...version(delivery),status:'in_transit'};
   const transitioned=await command('status_delivery',transitionPayload,transitionOp);
   eq(await command('status_delivery',transitionPayload,transitionOp),transitioned,'Transition retry is idempotent');
@@ -108,6 +122,7 @@ test('fulfilment: address ownership/defaults/versions, immutable snapshots, rece
   await command('status_delivery',deliveredPayload);
   delivery=(await state()).deliveries.find(x=>x.id===deliveryId);
   eq(delivery.proof,deliveredPayload.proof,'Receipt evidence persisted');
+  await reject('assign_delivery',{...version(delivery),assignee:'Otro'},/programada o no entregada/);
   eq(delivery.history.at(-1).received_by,'Cliente Uno','Delivery history keeps receiver snapshot');
   eq(delivery.history.filter(x=>x.status==='failed').length,1,'Failed-attempt history retained');
   await reject('save_delivery',{...delivery,...version(delivery),sale_id:sale,scheduled_at:future()},/no se puede editar/);
