@@ -9,7 +9,7 @@ test('cashier scans an exact variant and sends the percentage discount as a pret
   await expect(page.getByRole('spinbutton', { name: 'Cantidad de Nevera de prueba Blanco' })).toHaveValue('1');
   await page.getByRole('button', { name: 'Porcentaje %', exact: true }).click();
   await page.getByRole('spinbutton', { name: /^Descuento %/ }).fill('10');
-  await page.getByRole('combobox', { name: 'Medio de pago', exact: true }).selectOption('transfer');
+  await page.getByText('Transferencia', { exact: true }).click();
   let command: Record<string, unknown> | undefined;
   await page.route('https://phase5-fixture.supabase.co/rest/v1/rpc/retail_command', async route => {
     command = route.request().postDataJSON();

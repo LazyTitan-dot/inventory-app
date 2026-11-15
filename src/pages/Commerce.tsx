@@ -2,6 +2,10 @@ import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type React
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  Banknote,
+  CreditCard,
+  Landmark,
+  Wallet,
   Check,
   Barcode,
   ChevronDown,
@@ -1140,14 +1144,16 @@ function CreateDocument({
                       }
                     />
                   </label>
+                ) : kind === 'sale' ? (
+                  <div className="sales-line-price">
+                    <strong>{money(round(line.expectedPrice * (1 + taxRate / 100)))}</strong>
+                    <small>Precio final / ud.</small>
+                    {line.quantity > 1 && <span className="sales-line-extended">{money(round(line.quantity * line.expectedPrice * (1 + taxRate / 100)))}<small>Importe antes de descuentos</small></span>}
+                  </div>
                 ) : (
-                  <span className="muted">× {money(line.expectedPrice)}{kind === 'sale' && <small className="sales-before-tax">Antes de ITBIS</small>}</span>
+                  <span className="muted">× {money(line.expectedPrice)}</span>
                 )}
-                <strong>
-                  {money(
-                    line.quantity * (kind === 'purchase' ? line.unitCost : line.expectedPrice),
-                  )}
-                </strong>
+                {kind !== 'sale' && <strong>{money(line.quantity * (kind === 'purchase' ? line.unitCost : line.expectedPrice))}</strong>}
               </div>
               {kind === 'sale' && line.quantity > (stock.get(line.variantId) || 0) && (
                 <p className="commerce-error-text">
@@ -1294,15 +1300,17 @@ function CreateDocument({
       {kind === 'sale' && (
         <>
           <h4 className="sales-section-label">Cobro</h4>
-          <Field label="Medio de pago">
-            <select value={payment} onChange={(event) => setPayment(event.target.value)}>
-              {Object.entries(paymentLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
+          <fieldset className="sales-payment-options">
+            <legend>Medio de pago</legend>
+            <div className="sales-payment-grid">
+              {([{ value: 'cash', Icon: Banknote }, { value: 'card', Icon: CreditCard }, { value: 'transfer', Icon: Landmark }, { value: 'other', Icon: Wallet }]).map(({ value, Icon }) => (
+                <label className="sales-payment-option" key={value}>
+                  <input type="radio" name={`${formId}-payment`} value={value} checked={payment === value} onChange={() => setPayment(value)} />
+                  <span className="sales-payment-tile"><Icon size={21} aria-hidden="true" /><span>{paymentLabels[value]}</span>{payment === value && <Check className="sales-payment-check" size={16} aria-hidden="true" />}</span>
+                </label>
               ))}
-            </select>
-          </Field>
+            </div>
+          </fieldset>
           {payment === 'cash' ? (
             <div className="commerce-cash">
               <Field label="Efectivo recibido RD$">
@@ -1310,6 +1318,7 @@ function CreateDocument({
                   type="number"
                   min={total}
                   step="0.01"
+                  inputMode="decimal"
                   required
                   value={tendered}
                   onChange={(event) => setTendered(event.target.value)}
@@ -1338,6 +1347,35 @@ function CreateDocument({
         <p className="commerce-inline-note">La cotización no reserva ni descuenta existencias.</p>
       )}
     </>
+  );
+  const regularActions = (
+    <div className="modal-footer">
+          <button type="button" className="button secondary" disabled={busy} onClick={onClose}>
+            Cancelar
+          </button>
+          <button
+            className="button primary"
+            type="submit"
+            disabled={
+              busy ||
+              refreshing ||
+              changedDocument ||
+              !cart.length ||
+              (kind === 'purchase' && !contacts.length)
+            }
+          >
+            <Check size={17} />
+            {busy
+              ? 'Guardando…'
+              : editingDocument
+                ? 'Guardar cambios de cotización'
+                : kind === 'sale'
+                  ? `Completar venta · ${money(total)}`
+                  : kind === 'purchase'
+                    ? 'Crear orden de compra'
+                    : 'Guardar cotización'}
+          </button>
+        </div>
   );
   const editor = (
     <form
@@ -1556,11 +1594,12 @@ function CreateDocument({
           ) : (
             <section className="commerce-cart" aria-label="Documento actual">
               {cartContent}
+              {kind === 'sale' && <div className="sales-desktop-actions"><ErrorNotice message={validation || error} />{regularActions}</div>}
             </section>
           )}
         </div>
       </fieldset>
-      <ErrorNotice message={validation || error} />
+      {(kind !== 'sale' || (inline && compact && !checkoutOpen)) && <ErrorNotice message={validation || error} />}
       {inline && compact && (
         <div className="commerce-mobile-checkout">
           <div>
@@ -1576,35 +1615,7 @@ function CreateDocument({
           </button>
         </div>
       )}
-      {!(inline && compact) && (
-        <div className="modal-footer">
-          <button type="button" className="button secondary" disabled={busy} onClick={onClose}>
-            Cancelar
-          </button>
-          <button
-            className="button primary"
-            type="submit"
-            disabled={
-              busy ||
-              refreshing ||
-              changedDocument ||
-              !cart.length ||
-              (kind === 'purchase' && !contacts.length)
-            }
-          >
-            <Check size={17} />
-            {busy
-              ? 'Guardando…'
-              : editingDocument
-                ? 'Guardar cambios de cotización'
-                : kind === 'sale'
-                  ? `Completar venta · ${money(total)}`
-                  : kind === 'purchase'
-                    ? 'Crear orden de compra'
-                    : 'Guardar cotización'}
-          </button>
-        </div>
-      )}
+      {kind !== 'sale' && !(inline && compact) && regularActions}
     </form>
   );
   const content: ReactNode = inline ? (
@@ -1886,9 +1897,9 @@ function DocumentDetail({
                     <th className="number">Cantidad</th>
                     {doc.type === 'purchase' && <th className="number">Recibido</th>}
                     <th className="number">
-                      {doc.type === 'purchase' ? 'Costo unitario' : 'Precio unitario'}
+                      {doc.type === 'purchase' ? 'Costo unitario' : doc.type === 'sale' ? 'Precio unitario sin ITBIS' : 'Precio unitario'}
                     </th>
-                    <th className="number">Importe</th>
+                    <th className="number">{doc.type === 'sale' ? 'Importe con ITBIS' : 'Importe'}</th>
                   </tr>
                 </thead>
                 <tbody>
