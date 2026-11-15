@@ -766,10 +766,6 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
       setActionError('Completa el destino en la programación antes de iniciar la entrega.');
       return;
     }
-    if (!delivery.address.trim() || !delivery.phone.trim()) {
-      setActionError('Completa la dirección y el teléfono de entrega antes de iniciar.');
-      return;
-    }
     try {
       await run('status_delivery', {id: delivery.id, expected_updated_at: delivery.updated_at, status: 'in_transit', note: 'Salida registrada.'});
       notify('Entrega en camino.');

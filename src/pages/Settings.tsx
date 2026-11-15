@@ -364,6 +364,7 @@ const actionLabels: Record<Action | 'legacy_import' | 'qa_cleanup', string> = {
   void_sale: 'Venta anulada',
   save_delivery: 'Entrega guardada',
   status_delivery: 'Estado de entrega',
+  assign_delivery: 'Asignación de responsable',
   save_promotion: 'Promoción guardada',
   save_settings: 'Configuración actualizada',
   set_member_role: 'Permisos actualizados',
