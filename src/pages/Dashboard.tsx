@@ -1,18 +1,14 @@
-import { ArrowDownToLine, ArrowRight, Bell, ClipboardList, PackageCheck, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowRight, Bell, ClipboardList, PackageCheck, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useId, useState } from 'react';
 import { useRetail } from '../state/useRetail';
 import {
   businessDate,
-  categoryName,
   dateTime,
   documentNumber,
-  downloadCsv,
   integer,
   money,
-  paymentLabels,
   shortDate,
-  statusLabels,
 } from '../lib/format';
 import { inventoryFinancialSummary } from '../lib/pricing';
 import { reportForPeriod, stockOverview } from '../lib/reports';
@@ -21,8 +17,6 @@ import type { RetailData } from '../lib/contracts';
 import './dashboard.css';
 import {
   EmptyState,
-  ErrorNotice,
-  Field,
   PageHeader,
   StatCard,
   StatusBadge,
@@ -362,221 +356,4 @@ export function DashboardPage() {
   );
 }
 
-export function ReportsPage() {
-  const { data } = useRetail();
-  const { today } = useBusinessDay();
-  const [from, setFrom] = useState(`${today.slice(0, 7)}-01`);
-  const [to, setTo] = useState(today);
-  const allowed =
-    data.permissions.manage_business && ['owner', 'admin'].includes(data.profile.role);
-  const validRange = Boolean(from && to && from <= to && to <= today);
-  const report = reportForPeriod(data, from, to);
-  const inventory = stockOverview(data);
-  function exportReport() {
-    if (!allowed || !validRange) return;
-    downloadCsv(`ventas-${from}-${to}.csv`, [
-      [
-        'Documento',
-        'Fecha',
-        'Tipo',
-        'Estado',
-        'Base sin impuesto RD$',
-        'ITBIS RD$',
-        'Total RD$',
-        'Medio de pago',
-      ],
-      ...report.included.map((doc) => {
-        const sign = doc.type === 'return' ? -1 : 1;
-        return [
-          documentNumber(doc),
-          dateTime(doc.created_at),
-          doc.type === 'return' ? 'Devolución' : 'Venta',
-          statusLabels[doc.status] ?? doc.status,
-          (doc.total - doc.tax) * sign,
-          doc.tax * sign,
-          doc.total * sign,
-          paymentLabels[doc.payment_method ?? 'other'] ?? 'Otro',
-        ];
-      }),
-    ]);
-  }
-  const maxCategory = Math.max(1, ...report.categories.map(([, amount]) => Math.abs(amount)));
-  if (!allowed)
-    return (
-      <>
-        <PageHeader title="Reportes" description="Información de gestión del negocio." />
-        <section className="panel">
-          <EmptyState
-            title="Tu rol no tiene acceso a los reportes financieros"
-            description="Puedes seguir consultando el inventario y las funciones habilitadas para tu cuenta."
-            action={
-              <Link className="button secondary" to="/inventario">
-                Ir al inventario
-              </Link>
-            }
-          />
-        </section>
-      </>
-    );
-  return (
-    <>
-      <PageHeader
-        eyebrow="DATOS PARA DECIDIR"
-        title="Reportes"
-        description="Ventas y devoluciones conciliadas, con fechas de República Dominicana."
-        actions={
-          <button className="button secondary" disabled={!validRange} onClick={exportReport}>
-            <ArrowDownToLine size={17} /> Exportar detalle
-          </button>
-        }
-      />
-      <section className="panel report-filters">
-        <Field label="Desde">
-          <input
-            type="date"
-            value={from}
-            max={to || today}
-            onChange={(event) => setFrom(event.target.value)}
-          />
-        </Field>
-        <Field label="Hasta">
-          <input
-            type="date"
-            value={to}
-            min={from}
-            max={today}
-            onChange={(event) => setTo(event.target.value)}
-          />
-        </Field>
-        <p>Incluye devoluciones registradas en el período. Excluye ventas anuladas.</p>
-      </section>
-      {!validRange ? (
-        <ErrorNotice message="Selecciona un rango completo: la fecha inicial debe ser anterior o igual a la final, y la fecha final no puede ser posterior a hoy." />
-      ) : (
-        <>
-          <div className="stats-grid">
-            <StatCard
-              label="Ingresos netos sin ITBIS"
-              value={money(report.netRevenue)}
-              hint={`${report.sales.length} ${report.sales.length === 1 ? 'venta' : 'ventas'} / ${report.refunds.length} ${report.refunds.length === 1 ? 'devolución' : 'devoluciones'}`}
-            />
-            <StatCard
-              label="ITBIS neto registrado"
-              value={money(report.tax)}
-              hint="Según la configuración de cada operación"
-            />
-            <StatCard
-              label="Cobros netos registrados"
-              value={money(report.total)}
-              hint="Incluye ITBIS; descuenta reembolsos"
-            />
-            {data.permissions.view_costs && (
-              <StatCard
-                label="Beneficio bruto"
-                value={money(report.profit)}
-                hint="Ingresos sin impuesto menos costo vendido"
-              />
-            )}
-          </div>
-          <div className="dashboard-grid">
-            <section className="panel">
-              <div className="section-heading">
-                <h2>Ingresos por categoría</h2>
-              </div>
-              {report.categories.length ? (
-                <div className="bar-chart">
-                  {report.categories.map(([category, amount]) => (
-                    <div className="bar-row" key={category}>
-                      <div>
-                        <span>{categoryName(category)}</span>
-                        <strong>{money(amount)}</strong>
-                      </div>
-                      <div className="bar-track">
-                        <span style={{ width: `${(Math.abs(amount) / maxCategory) * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  title="Sin ventas en este período"
-                  description="Selecciona otro rango para consultar el historial."
-                />
-              )}
-            </section>
-            <section className="panel">
-              <div className="section-heading">
-                <h2>Medios de pago</h2>
-              </div>
-              <div className="payment-list">
-                {report.payments.map(([method, amount]) => (
-                  <div key={method}>
-                    <span>{paymentLabels[method] ?? method}</span>
-                    <strong>{money(amount)}</strong>
-                  </div>
-                ))}
-                {!report.payments.length && (
-                  <EmptyState
-                    title="Sin cobros registrados"
-                    description="Los medios de pago aparecerán al registrar ventas."
-                  />
-                )}
-              </div>
-            </section>
-          </div>
-        </>
-      )}
-      <section className="panel">
-        <div className="section-heading">
-          <div>
-            <h2>Reposición recomendada</h2>
-            <p>
-              El cálculo considera las existencias y las compras pendientes de recibir. Refleja el
-              inventario actual, independientemente del rango de ventas.
-            </p>
-          </div>
-        </div>
-        {inventory.some((row) => row.suggested > 0) ? (
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Disponible</th>
-                  <th>En camino</th>
-                  <th>Objetivo</th>
-                  <th>Sugerido</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inventory
-                  .filter((row) => row.suggested > 0)
-                  .map((row) => (
-                    <tr key={row.variant.id}>
-                      <td>
-                        {row.product.brand} {row.product.model}
-                        <small>
-                          {row.variant.name} · {row.variant.sku}
-                        </small>
-                      </td>
-                      <td>{row.available}</td>
-                      <td>{row.incoming}</td>
-                      <td>{row.variant.reorder_target}</td>
-                      <td>
-                        <strong>{row.suggested}</strong>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState
-            title="Sin reposición pendiente"
-            description="Las existencias y las compras en camino cubren el objetivo de los productos con stock bajo."
-          />
-        )}
-      </section>
-    </>
-  );
-}
+export { ReportsPage } from './Reports';

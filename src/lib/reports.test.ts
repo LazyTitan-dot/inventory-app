@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DocumentItem, RetailDocument } from './contracts';
 import { businessDate, matches, money } from './format';
-import { reportForPeriod, stockOverview } from './reports';
+import { reportForPeriod, stockOverview, reportAnalytics, grossMargin, reportPeriod } from './reports';
 
 const createdAt = '2026-09-24T15:00:00Z';
 function document(id: string, patch: Partial<RetailDocument> = {}): RetailDocument {
@@ -176,4 +176,23 @@ describe('presentación dominicana', () => {
     expect(money(1250.5)).toContain('RD$');
     expect(money(1250.5)).toContain('1,250.50');
   });
+});
+
+describe('Reportes V1 analytics reconciliation',()=>{
+ it('reconciles trend and products including prior-period returns, negative totals and historical items',()=>{
+  const data={documents:[document('sale'),document('return',{type:'return',created_at:'2026-09-25T02:00:00Z',subtotal:500,discount:50,tax:81,total:531,parent_id:'sale'}),document('other',{created_at:'2026-09-25T04:00:00Z'})],document_items:[item('sale-item','sale',{variant_id:null}),item('return-item','return',{variant_id:null,parent_item_id:'sale-item',quantity:1,tax:81,line_total:531})]};
+  const a=reportAnalytics(data,'2026-09-24','2026-09-24');
+  expect(a.report.netRevenue).toBe(450);expect(a.rows).toHaveLength(1);expect(a.rows[0]?.revenue).toBe(450);expect(a.rows[0]?.profit).toBe(150);expect(a.trend[0]?.amount).toBe(450);expect(a.residual).toBe(0);
+  const refund=reportAnalytics(data,'2026-09-25','2026-09-25');expect(refund.missingLines).toBe(1);expect(refund.residual).toBe(900);
+ });
+ it('warns on absent cost and keeps zero/negative margin undefined',()=>{
+  const a=reportAnalytics({documents:[document('sale')],document_items:[item('line','sale',{unit_cost:undefined})]},'2026-09-24','2026-09-24');
+  expect(a.incompleteCost).toBe(1);expect(a.rows[0]?.incomplete).toBe(true);expect(grossMargin(0,0)).toBeNull();expect(grossMargin(-1,-1)).toBeNull();expect(grossMargin(100,-5)).toBe(-5);
+ });
+ it('uses date presets and weekly/monthly grouping without losing totals',()=>{
+  expect(reportPeriod('2026-01-03','previous')).toEqual({from:'2025-12-01',to:'2025-12-31'});
+  expect(reportPeriod('2026-01-03','7')).toEqual({from:'2025-12-28',to:'2026-01-03'});
+  const data={documents:[document('sale')],document_items:[item('line','sale')]};
+  for(const from of ['2026-08-01','2025-01-01']){const a=reportAnalytics(data,from,'2026-09-30');expect(a.trend.reduce((s,p)=>s+p.amount,0)).toBe(a.report.netRevenue);}
+ });
 });

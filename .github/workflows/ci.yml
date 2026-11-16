@@ -133,3 +133,28 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  reportes-visual-v1:
+    if: github.ref == 'refs/heads/codex/reportes-visual-refinement-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:shell:types
+      - run: npx playwright test reports-visual-v1 delivery-visual-v1 sales-visual-v1 cashier adaptation purchase-visual-v1 inventory-visual-v1 dashboard-polish dashboard-v1 scanner whatsapp-feedback
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reportes-visual-v1-browser-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
