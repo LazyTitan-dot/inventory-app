@@ -256,10 +256,15 @@
   .delivery-visual-v1 .delivery-card-bottom {
     padding-top: 12px;
   }
-  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1).modal {
+  /* Override the older .modal.detail-drawer width:calc(100vw - 32px).
+   * Match its specificity to give iPhone a genuine edge-to-edge page. */
+  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1).modal.detail-drawer,
+  .app-layout .delivery-transition-v1.modal {
+    box-sizing: border-box;
     position: fixed;
     inset: 0;
-    width: 100%;
+    width: 100vw;
+    min-width: 100vw;
     height: 100dvh;
     max-height: 100dvh;
     max-width: none;
