@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, CalendarCheck, CalendarDays, Check, CheckCircle2, Clock3, Copy, List, MapPin, MessageCircle, Pencil, Phone, Plus, Tag, Truck, UserRoundPlus, XCircle } from 'lucide-react';
+import { AlertCircle, CalendarCheck, CalendarDays, Check, CheckCircle2, Clock3, Copy, List, MapPin, MessageCircle, Pencil, Phone, Plus, SlidersHorizontal, Tag, Truck, UserRoundPlus, XCircle } from 'lucide-react';
 import {
   EmptyState,
   ErrorNotice,
@@ -150,6 +150,7 @@ export function DeliveriesPage() {
   const [date, setDate] = useState('');
   const [quick, setQuick] = useState<'all' | 'today' | 'pending' | 'transit' | 'attention'>('all');
   const [order, setOrder] = useState<DeliveryOrder>('priority');
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [creatingLocal, setCreating] = useState(false);
   const creating = creatingLocal || (params.get('nuevo') === '1' && data.permissions.sell);
   const selectedId = params.get('documento');
@@ -203,6 +204,13 @@ export function DeliveriesPage() {
   const pending = deliveries.filter((delivery) =>
     ['scheduled', 'in_transit', 'failed'].includes(delivery.status),
   );
+  const overdue = deliveries.filter((delivery) =>
+    delivery.status === 'scheduled' && new Date(delivery.scheduled_at).getTime() < now,
+  ).length;
+  const failed = deliveries.filter((delivery) => delivery.status === 'failed').length;
+  const attentionCount = failed + overdue;
+  const advancedCount = Number(status !== 'all') + Number(Boolean(date)) +
+    Number(order !== 'priority');
   const createButton =
     canManage && data.permissions.sell ? (
       <button
@@ -236,9 +244,9 @@ export function DeliveriesPage() {
             {([
               { label:'Pendientes para hoy', value:pending.filter(item => businessDate(new Date(item.scheduled_at)) === today).length, hint:`${pending.length} pendientes en total · hora de RD`, icon:CalendarDays },
               { label:'En camino', value:deliveries.filter(item => item.status === 'in_transit').length, hint:'Salida registrada', icon:Truck },
-              { label:'Requieren seguimiento', value:deliveries.filter(item => item.status === 'failed').length, hint:'Intentos fallidos', icon:AlertCircle },
-              { label:'Hora vencida', value:deliveries.filter(item => item.status === 'scheduled' && new Date(item.scheduled_at).getTime() < now).length, hint:'Revisar programación', icon:Clock3 },
-            ] as const).map((metric,index) => <div className="stat-card delivery-metric" key={metric.label} data-tone={index > 1 && metric.value > 0 ? 'warning' : 'normal'}>
+              { label:'Requieren atención', value:attentionCount, hint:`${failed} fallidas · ${overdue} vencidas`, icon:AlertCircle },
+              { label:'Entregadas', value:deliveries.filter(item => item.status === 'delivered').length, hint:'Total histórico confirmado', icon:CheckCircle2 },
+            ] as const).map((metric,index) => <div className="stat-card delivery-metric" key={metric.label} data-tone={index === 2 && metric.value > 0 ? 'warning' : 'normal'}>
               <span className="delivery-metric-icon"><metric.icon size={19} aria-hidden="true"/></span>
               <span className="delivery-metric-label">{metric.label}</span><strong>{metric.value}</strong><small>{metric.hint}</small>
             </div>)}
@@ -247,49 +255,57 @@ export function DeliveriesPage() {
             <div className="delivery-agenda-heading"><h2>{quick === 'today' ? 'Agenda de hoy' : 'Agenda de entregas'}</h2><span>{filtered.length} {filtered.length === 1 ? 'entrega' : 'entregas'}</span></div>
             <div className="delivery-filter-bar">
               <div className="delivery-quick-filters" role="group" aria-label="Filtros rápidos de entregas">
-                {([{value:'all',label:'Todas',icon:List},{value:'today',label:'Hoy',icon:CalendarDays},{value:'pending',label:'Pendientes',icon:Clock3},{value:'attention',label:'Requieren atención',icon:AlertCircle}] as const).map(item => <button type="button" key={item.value} className="button secondary" aria-pressed={quick === item.value && status === 'all'} onClick={() => { setQuick(item.value); setStatus('all'); setDate(''); }}><item.icon size={16} aria-hidden="true"/>{item.label}</button>)}
+                {([{value:'all',label:'Todas',icon:List},{value:'today',label:'Hoy',icon:CalendarDays},{value:'pending',label:'Pendientes',icon:Clock3},{value:'attention',label:'Requieren atención',icon:AlertCircle}] as const).map(item =>
+                  <button type="button" key={item.value} className="button secondary" aria-pressed={quick === item.value && status === 'all'} onClick={() => { setQuick(item.value); setStatus('all'); setDate(''); }}><item.icon size={16} aria-hidden="true"/>{item.label}</button>
+                )}
               </div>
-              <div className="delivery-status-filters" role="group" aria-label="Filtrar entregas por estado">
-                {(['scheduled','in_transit','failed','delivered','cancelled'] as const).map(value => {
-                  const Icon = deliveryIcons[value];
-                  return <button type="button" className="button secondary" key={value} data-status={value} aria-pressed={status === value} onClick={() => {setStatus(status === value ? 'all' : value);setQuick('all');}}><Icon size={16} aria-hidden="true"/>{statusLabels[value]}</button>;
-                })}
-              </div>
-            </div>
-            <div className="toolbar operations-toolbar">
-              <SearchInput
-                value={query}
-                onChange={setQuery}
-                placeholder="Buscar venta, contacto, dirección o responsable…"
-              />
-              <label className="delivery-order"><span>Ordenar por</span><select aria-label="Ordenar entregas" value={order} onChange={event => setOrder(event.target.value as DeliveryOrder)}>
-                <option value="priority">Prioridad operativa</option>
-                <option value="date_asc">Fecha: más antiguas primero</option>
-                <option value="date_desc">Fecha: más recientes primero</option>
-                <option value="status">Estado</option>
-              </select></label>
-              <label className="operations-date-filter">
-                <span>Fecha</span>
-                <input
-                  aria-label="Fecha de entrega en República Dominicana"
-                  type="date"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
+              <div className="delivery-search-row">
+                <SearchInput
+                  value={query}
+                  onChange={setQuery}
+                  placeholder="Buscar venta, contacto, dirección o responsable…"
                 />
-              </label>
-              {(query || status !== 'all' || date || quick !== 'all') && (
                 <button
-                  className="button ghost"
-                  onClick={() => {
-                    setQuery('');
-                    setStatus('all');
-                    setDate('');
-                    setQuick('all');
-                  }}
+                  type="button"
+                  className="button secondary delivery-filter-toggle"
+                  aria-controls="delivery-advanced-filters"
+                  aria-expanded={advancedFiltersOpen}
+                  onClick={() => setAdvancedFiltersOpen(open => !open)}
                 >
-                  Limpiar filtros
+                  <SlidersHorizontal size={17} aria-hidden="true" />
+                  Filtros{advancedCount > 0 ? ` (${advancedCount})` : ''}
                 </button>
-              )}
+                {(query || status !== 'all' || date || quick !== 'all' || order !== 'priority') && (
+                  <button type="button" className="button ghost delivery-clear-filters" onClick={() => {
+                    setQuery('');setStatus('all');setDate('');setQuick('all');setOrder('priority');
+                  }}>Limpiar filtros</button>
+                )}
+              </div>
+              <div className="delivery-advanced-filters" id="delivery-advanced-filters" data-open={advancedFiltersOpen}>
+                <div className="delivery-status-filters" role="group" aria-label="Filtrar entregas por estado">
+                  {(['scheduled','in_transit','failed','delivered','cancelled'] as const).map(value => {
+                    const Icon = deliveryIcons[value];
+                    return <button type="button" className="button secondary" key={value} data-status={value} aria-pressed={status === value} onClick={() => {setStatus(status === value ? 'all' : value);setQuick('all');}}><Icon size={16} aria-hidden="true"/>{statusLabels[value]}</button>;
+                  })}
+                </div>
+                <div className="toolbar operations-toolbar">
+                  <label className="delivery-order"><span>Ordenar por</span><select aria-label="Ordenar entregas" value={order} onChange={event => setOrder(event.target.value as DeliveryOrder)}>
+                    <option value="priority">Prioridad operativa</option>
+                    <option value="date_asc">Fecha: más antiguas primero</option>
+                    <option value="date_desc">Fecha: más recientes primero</option>
+                    <option value="status">Estado</option>
+                  </select></label>
+                  <label className="operations-date-filter">
+                    <span>Fecha</span>
+                    <input
+                      aria-label="Fecha de entrega en República Dominicana"
+                      type="date"
+                      value={date}
+                      onChange={(event) => setDate(event.target.value)}
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
             {!filtered.length ? (
               <EmptyState
