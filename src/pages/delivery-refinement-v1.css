@@ -1,0 +1,381 @@
+/*
+ * S-mart Living — Entregas Glass Refinement V1 (approved proposal).
+ * Presentation only: no shared CSS selectors, business operations, print,
+ * customer snapshots, stock, scanner or backend changes.
+ */
+.delivery-visual-v1 .delivery-agenda {
+  overflow: clip;
+}
+.delivery-visual-v1 .delivery-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 20px 0;
+}
+.delivery-visual-v1 .delivery-search-row .search-field {
+  flex: 1 1 320px;
+  min-width: 0;
+  margin: 0;
+}
+.delivery-visual-v1 .delivery-search-row .search-field input {
+  min-width: 0;
+}
+.app-layout .delivery-visual-v1 .delivery-filter-toggle {
+  display: none;
+}
+.app-layout .delivery-visual-v1 .delivery-clear-filters {
+  min-height: 44px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.delivery-visual-v1 .delivery-advanced-filters {
+  display: grid;
+  gap: 10px;
+  padding: 0 20px 18px;
+  min-width: 0;
+}
+.delivery-visual-v1 .delivery-advanced-filters .operations-toolbar {
+  padding: 0;
+  gap: 10px;
+}
+.delivery-visual-v1 .delivery-advanced-filters .delivery-order {
+  flex: 0 1 335px;
+}
+.delivery-visual-v1 .delivery-advanced-filters .operations-date-filter {
+  flex: 0 1 220px;
+}
+.delivery-visual-v1 .delivery-advanced-filters :is(select,input) {
+  min-height: 44px;
+}
+.delivery-visual-v1 .delivery-desktop-table {
+  max-height: min(66vh, 720px);
+  overflow: auto;
+}
+.delivery-visual-v1 .delivery-desktop-table .data-table {
+  min-width: 810px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.delivery-visual-v1 .delivery-desktop-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 13px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 650;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--sl-refined-edge);
+  background: var(--sl-refined-soft);
+}
+.delivery-visual-v1 .delivery-desktop-table .data-table td {
+  padding: 16px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--sl-refined-edge);
+}
+.delivery-visual-v1 .delivery-desktop-table .data-table th:nth-child(1) { width: 19%; }
+.delivery-visual-v1 .delivery-desktop-table .data-table th:nth-child(2) { width: 18%; }
+.delivery-visual-v1 .delivery-desktop-table .data-table th:nth-child(3) { width: 28%; }
+.delivery-visual-v1 .delivery-desktop-table .data-table th:nth-child(4) { width: 13%; }
+.delivery-visual-v1 .delivery-desktop-table .data-table th:nth-child(5) { width: 12%; }
+.delivery-visual-v1 .delivery-desktop-table .data-table th:nth-child(6) { width: 10%; }
+.delivery-visual-v1 .delivery-desktop-table .delivery-table-time {
+  display: block;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.delivery-visual-v1 .delivery-desktop-table .data-table td:last-child .button {
+  min-height: 44px;
+  width: 100%;
+  border-radius: 10px;
+}
+.delivery-visual-v1 .delivery-desktop-table tbody tr:focus-within {
+  background: var(--sl-refined-soft);
+}
+.delivery-visual-v1 .delivery-desktop-table .data-table td:first-child small,
+.delivery-visual-v1 .delivery-desktop-table .data-table td:nth-child(3) small {
+  display: block;
+  margin-top: 4px;
+}
+.delivery-visual-v1 .delivery-metric:nth-child(4) .delivery-metric-icon {
+  color: #16804e;
+}
+.delivery-detail-v1 .delivery-detail-overview {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: center;
+  gap: 9px;
+  border-color: var(--sl-refined-edge);
+}
+.delivery-detail-v1 .delivery-overview-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.delivery-detail-v1 .delivery-overview-sale {
+  color: var(--sl-refined-ink);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.delivery-detail-v1 .delivery-detail-overview .muted,
+.delivery-detail-v1 .delivery-overview-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--sl-refined-muted);
+  overflow-wrap: anywhere;
+}
+.delivery-detail-v1 .delivery-detail-overview :is(.muted,.delivery-overview-assignee) svg {
+  color: var(--sl-refined-accent);
+  flex: none;
+}
+.delivery-detail-v1 .delivery-contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.delivery-detail-v1 .delivery-contact-actions .button {
+  align-items: center;
+  gap: 8px;
+}
+.delivery-detail-v1 .delivery-history-card,
+.delivery-detail-v1 .delivery-items-card,
+.delivery-detail-v1 .delivery-destination-card {
+  min-width: 0;
+}
+.app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) .customer-mobile-back {
+  display: none;
+}
+
+@media (max-width: 920px) {
+  .app-layout .delivery-visual-v1 .delivery-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .delivery-visual-v1 .delivery-advanced-filters:not([data-open="true"]) {
+    display: none;
+  }
+  .delivery-visual-v1 .delivery-advanced-filters[data-open="true"] {
+    display: grid;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--sl-refined-edge);
+  }
+  .delivery-visual-v1 .delivery-advanced-filters .operations-toolbar {
+    align-items: flex-end;
+  }
+}
+@media (max-width: 640px) {
+  .delivery-visual-v1 .delivery-agenda {
+    overflow: visible;
+  }
+  .delivery-visual-v1 .delivery-filter-bar {
+    gap: 12px;
+    padding: 12px 0 0;
+    min-width: 0;
+  }
+  .delivery-visual-v1 .delivery-quick-filters {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding: 0 12px 3px;
+    gap: 8px;
+  }
+  .delivery-visual-v1 .delivery-quick-filters::-webkit-scrollbar {
+    display: none;
+  }
+  .delivery-visual-v1 .delivery-quick-filters .button {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+  .delivery-visual-v1 .delivery-search-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 12px;
+  }
+  .delivery-visual-v1 .delivery-search-row .search-field {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+  }
+  .app-layout .delivery-visual-v1 .delivery-filter-toggle {
+    flex: 1 1 auto;
+  }
+  .app-layout .delivery-visual-v1 .delivery-clear-filters {
+    flex: 0 1 auto;
+  }
+  .delivery-visual-v1 .delivery-advanced-filters[data-open="true"] {
+    padding: 14px 12px 16px;
+  }
+  .delivery-visual-v1 .delivery-advanced-filters .operations-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    width: 100%;
+    gap: 12px;
+  }
+  .delivery-visual-v1 .delivery-advanced-filters .delivery-order,
+  .delivery-visual-v1 .delivery-advanced-filters .operations-date-filter {
+    width: 100%;
+    min-width: 0;
+    flex: none;
+  }
+  .delivery-visual-v1 .delivery-advanced-filters :is(select,input) {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+  }
+  .delivery-visual-v1 .delivery-status-filters {
+    gap: 8px;
+  }
+  .delivery-visual-v1 .delivery-status-filters .button {
+    min-height: 44px;
+  }
+  .delivery-visual-v1 .delivery-list-card {
+    padding: 16px;
+    gap: 11px;
+  }
+  .delivery-visual-v1 .delivery-card-top {
+    align-items: flex-start;
+  }
+  .delivery-visual-v1 .delivery-card-bottom {
+    padding-top: 12px;
+  }
+  /* Override the older .modal.detail-drawer width:calc(100vw - 32px).
+   * Match its specificity to give iPhone a genuine edge-to-edge page. */
+  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1).modal.detail-drawer,
+  .app-layout .delivery-transition-v1.modal {
+    box-sizing: border-box;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    min-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    padding-bottom: env(safe-area-inset-bottom,0px);
+    overscroll-behavior: contain;
+  }
+  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    min-height: 76px;
+    padding: calc(14px + env(safe-area-inset-top,0px)) 18px 14px;
+    border-bottom: 1px solid var(--sl-refined-edge);
+  }
+  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading > h2 {
+    flex: 1 1 130px;
+    min-width: 0;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading .icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    min-height: 44px;
+    width: auto;
+    min-width: 44px;
+    padding: 6px 9px;
+  }
+  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading .modal-close-icon {
+    display: none;
+  }
+  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading .customer-mobile-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--sl-refined-accent);
+    font-size: 12px;
+    font-weight: 650;
+    white-space: normal;
+  }
+  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-body {
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom,0px));
+  }
+  .delivery-detail-v1 .delivery-detail-overview {
+    padding: 17px;
+    border-radius: 16px;
+  }
+  .delivery-detail-v1 .delivery-overview-main {
+    gap: 8px;
+  }
+  .delivery-detail-v1 .delivery-destination-card,
+  .delivery-detail-v1 .delivery-history-card,
+  .delivery-detail-v1 .delivery-items-card {
+    padding: 17px;
+    border-radius: 17px;
+  }
+  .delivery-detail-v1 .delivery-contact-actions {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 8px;
+  }
+  .delivery-detail-v1 .delivery-contact-actions .button {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    justify-content: center;
+    padding: 10px;
+    white-space: normal;
+  }
+  .delivery-detail-v1 .delivery-contact-actions .delivery-map-action {
+    grid-column: 1/-1;
+  }
+  .delivery-detail-v1 .delivery-state-actions {
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    gap: 9px;
+    padding: 13px;
+  }
+  .delivery-detail-v1 .delivery-state-actions .button {
+    width: 100%;
+    min-height: 48px;
+    white-space: normal;
+  }
+  .delivery-editor-v1 .delivery-form-section {
+    padding: 17px;
+    gap: 14px;
+  }
+  .delivery-editor-v1 .modal-footer,
+  .delivery-transition-v1 .modal-footer {
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+}
+@media (max-width: 360px) {
+  .delivery-visual-v1 .delivery-search-row .delivery-clear-filters {
+    flex: 1 1 auto;
+  }
+  .delivery-detail-v1 .delivery-contact-actions {
+    grid-template-columns: minmax(0,1fr);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-layout :is(.delivery-editor-v1,.delivery-detail-v1,.delivery-transition-v1) > .modal-heading {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--sl-refined-surface);
+  }
+}
