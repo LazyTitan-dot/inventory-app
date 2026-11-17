@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Barcode, Camera, CheckCircle2, History, Keyboard, Pencil, ScanLine, Trash2 } from 'lucide-react';
 import { BarcodeScanner } from '../components/BarcodeScanner';
 import { ErrorNotice, Field, Modal } from '../components/ui';
@@ -8,6 +8,7 @@ import { useOperation } from '../state/useOperation';
 import { useRetail } from '../state/useRetail';
 import { dateTime } from '../lib/format';
 import { serialCandidates } from '../lib/serials';
+import { generateInternalBarcode, getVariantBarcodes } from '../lib/barcode';
 import './variant-identifiers.css';
 
 type Source = 'manual' | 'barcode' | 'qr' | 'ocr' | 'usb';
@@ -38,6 +39,8 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
  const [serial,setSerial] = useState('');
  const [source,setSource] = useState<Source>('manual');
  const [scanner,setScanner] = useState<'serial'|'barcode'|null>(null);
+ const [captureNotice,setCaptureNotice] = useState('');
+ const audio = useRef<AudioContext|null>(null);
  const [editing,setEditing] = useState<SerialRow|null>(null);
  const [reason,setReason] = useState('');
  const [historyId,setHistoryId] = useState<string|null>(null);
@@ -59,7 +62,7 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
    else { setSnapshot(response.data as Snapshot); setError(''); }
    setLoading(false);
  },[variant.id,query,offset]);
- useEffect(() => { let alive=true; void (async()=>{
+ useEffect(() => { let alive=true; setLoading(true); void (async()=>{
     if (!supabase) { if(alive) {setError('No hay conexión configurada.');setLoading(false);}return; }
     const response=await supabase.rpc('retail_identifiers',{p_variant_id:variant.id,p_search:query,p_offset:offset});
     if (!alive) return;
@@ -127,9 +130,28 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
      await load();
    }catch{ /* operation notice */ }
  }
+ function unlockAudio() {
+   try {
+     audio.current ??= new window.AudioContext();
+     void audio.current.resume();
+   } catch { /* Camera and keyboard remain usable without sound. */ }
+ }
+ function playCaptureSound() {
+   const context=audio.current;
+   if (!context || context.state!=='running') return;
+   const note=context.createOscillator(),gain=context.createGain();
+   note.type='sine';note.frequency.value=880;
+   gain.gain.setValueAtTime(.0001,context.currentTime);
+   gain.gain.exponentialRampToValueAtTime(.12,context.currentTime+.015);
+   gain.gain.exponentialRampToValueAtTime(.0001,context.currentTime+.17);
+   note.connect(gain);gain.connect(context.destination);
+   note.start();note.stop(context.currentTime+.18);
+ }
  function chooseScan(value:string) {
    if(scanner==='serial'){setSerial(clean(value));setSource('barcode');}
    else setNewCode(clean(value));
+   setCaptureNotice('Código capturado. Revisa y confirma antes de guardar.');
+   playCaptureSound();
    setScanner(null);
  }
  const canManage=data.permissions.manage_catalog;
@@ -142,6 +164,7 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
      <button type="button" aria-pressed={tab==='serials'} onClick={()=>{setTab('serials');clearError();}}><ScanLine size={17}/> Números de serie</button>
      <button type="button" aria-pressed={tab==='codes'} onClick={()=>{setTab('codes');clearError();}}><Barcode size={17}/> Códigos de barras</button>
     </div>
+    {captureNotice&&<p className="sl-identifiers-help" role="status">{captureNotice}</p>}
     {tab==='serials' ? <>
      <div className="sl-identifiers-stats" aria-label="Identificación progresiva">
       <div><span>Disponibles</span><strong>{snapshot?.available??'—'}</strong></div>
@@ -207,7 +230,11 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
       <strong>{replacing?'Reemplazar código':'Añadir código de barras'}</strong>
       {replacing && <p>Reemplazando <code>{replacing}</code>. El historial se conservará.</p>}
       <Field label="Código de barras"><input autoComplete="off" spellCheck={false} autoCapitalize="off" maxLength={80} value={newCode} onChange={e=>setNewCode(e.target.value)} placeholder="Introduce o escanea el código" /></Field>
-      <div className="sl-identifiers-actions"><button type="button" className="button secondary" disabled={busy} onClick={()=>setScanner('barcode')}><ScanLine size={16}/> Escanear código</button></div>
+      <div className="sl-identifiers-actions"><button type="button" className="button secondary" disabled={busy} onClick={()=>setScanner('barcode')}><ScanLine size={16}/> Escanear código</button>
+       <button type="button" className="button secondary" disabled={busy} onClick={()=>{
+         try { setNewCode(generateInternalBarcode(variant.id,data.variants.flatMap(getVariantBarcodes)));setKind('internal');setCaptureNotice('Código interno generado. Revisa y confirma antes de guardar.'); }
+         catch (cause) { setError(readError(cause)); }
+       }}><Barcode size={16}/> Generar código interno</button></div>
       <Field label="Tipo de código"><select value={kind} onChange={e=>setKind(e.target.value as CodeKind)}>
        <option value="manufacturer">Código del fabricante</option><option value="internal">Código interno</option>
       </select></Field>
@@ -246,7 +273,7 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
     <ErrorNotice message={error||commandError}/>
     <div className="sl-identifiers-footer"><Keyboard size={15}/><span>Compatible con cámara de iPhone y lectores USB en Windows.</span></div>
    </div>
-   {scanner && <BarcodeScanner title={scanner==='serial'?'Escanear número de serie':'Escanear código de producto'} onDetected={value=>chooseScan(value)} onClose={()=>setScanner(null)} />}
+   {scanner && <BarcodeScanner title={scanner==='serial'?'Escanear número de serie':'Escanear código de producto'} onDetected={value=>chooseScan(value)} onClose={()=>setScanner(null)} onActivate={unlockAudio} />}
   </Modal>
  );
 }
