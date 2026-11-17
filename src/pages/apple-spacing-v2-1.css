@@ -346,3 +346,20 @@
   .inventory-visual-v1 .catalog-filter-tabs button,
   .sales-visual-v1 .commerce-product { transition:none; }
 }
+
+
+/* iPhone compact sizes: never break payment names in the middle of a word.
+ * Apple's grouped Settings rows prioritize readable labels over card density.
+ * Wider phones and Windows keep the approved two-column grid.
+ */
+@media screen and (min-width:361px) and (max-width:400px) {
+  .app-layout .sales-checkout-v1 .sales-payment-grid {
+    grid-template-columns: minmax(0,1fr);
+    gap: 10px;
+  }
+  .app-layout .sales-checkout-v1 .sales-payment-tile {
+    min-height: 64px;
+    padding: 14px 18px;
+    gap: 12px;
+  }
+}
