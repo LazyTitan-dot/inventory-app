@@ -298,3 +298,31 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  windows-sales-visual-v2-3:
+    if: github.ref == 'refs/heads/feature/windows-sales-logo-trash-v2-3' || github.head_ref == 'feature/windows-sales-logo-trash-v2-3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:shell:types
+      - run: npx playwright test windows-sales-visual-v2-3 sales-visual-v1 inventory-sales-glass-v2 sales-checkout-inner-spacing-v2-2 apple-spacing-v2-1 serial-sales-v2 serial-barcode-v1 scanner
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-sales-visual-v2-3-browser-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
