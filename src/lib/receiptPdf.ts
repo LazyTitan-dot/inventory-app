@@ -378,8 +378,8 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   // White summary card with a navy TOTAL ribbon (print only).
   const summaryX = MARGIN + 224;
   const summaryW = contentEnd - summaryX;
-  const normalHeight = 29;
-  const totalHeight = 43;
+  const normalHeight = 27;
+  const totalHeight = 41;
   const summaryHeight = 20 + totalRows.reduce((sum, row) =>
     sum + (row[0]?.trim().toLocaleLowerCase('es') === 'total' ? totalHeight : normalHeight), 0) + 9;
   const noteLines = linesFor(notes, 'italic 10px Arial, sans-serif', summaryX - MARGIN - 22);
