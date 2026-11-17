@@ -342,6 +342,10 @@ export function SettingsPage() {
 }
 
 const actionLabels: Record<Action | 'legacy_import' | 'qa_cleanup', string> = {
+  add_unit_serial: 'Número de serie registrado',
+  correct_unit_serial: 'Número de serie corregido',
+  remove_unit_serial: 'Número de serie desvinculado',
+  manage_variant_barcode: 'Código de barras actualizado',
   save_product: 'Producto guardado',
   archive_product: 'Estado del producto',
   save_contact: 'Contacto guardado',
