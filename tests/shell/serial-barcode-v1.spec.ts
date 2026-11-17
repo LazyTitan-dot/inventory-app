@@ -2,8 +2,8 @@ import { test, expect } from './adaptation-fixtures';
 
 const stamp='2026-11-17T00:00:00Z';
 const firstId='30000000-0000-4000-8000-000000000021';
-for (const [width, theme] of [[390,'dark'],[1280,'light']] as const) {
- test('identifiers V1: progressive scan entry, barcode choices and responsive shell '+width+'px '+theme,async({page,featureData})=>{
+for (const [width, theme] of [[320,'dark'],[390,'dark'],[1280,'light'],[1280,'dark']] as const) {
+ test('identifiers V1: progressive scan entry, barcode choices and responsive glass shell '+width+'px '+theme,async({page,featureData},testInfo)=>{
   await page.emulateMedia({colorScheme:theme});
   await page.setViewportSize({width,height:900});
   const variant=featureData.variants[0]!;
@@ -31,8 +31,29 @@ for (const [width, theme] of [[390,'dark'],[1280,'light']] as const) {
   await page.goto('/inventario?variante='+variant.id);
   await expect(page.getByRole('dialog').getByRole('button',{name:'Gestionar series y códigos'})).toBeVisible();
   await page.getByRole('dialog').getByRole('button',{name:'Gestionar series y códigos'}).click();
-  const modal=page.getByRole('dialog',{name:'Identificación · '+variant.sku});
+  const modal=page.getByRole('dialog',{name:'Identificación',exact:true});
   await expect(modal).toBeVisible();
+  await expect(modal.getByText('Fixture Nevera de prueba', { exact: true })).toBeVisible();
+  await expect(modal.getByText('SKU: '+variant.sku,{exact:false})).toBeVisible();
+  const glass=await modal.evaluate(el=>{
+   const heading=el.querySelector(':scope > .modal-heading')!;
+   const hero=el.querySelector('.sl-identifiers-hero')!;
+   const styles=getComputedStyle(el);
+   return {
+    width:el.getBoundingClientRect().width,
+    headerBlur:getComputedStyle(heading).backdropFilter,
+    heroBackground:getComputedStyle(hero).backgroundImage,
+    segmentedRadius:getComputedStyle(el.querySelector('.sl-identifiers-tabs')!).borderRadius,
+    canvas:styles.backgroundColor,
+    overflow:el.scrollWidth>el.clientWidth,
+   };
+  });
+  expect(glass.headerBlur).toContain('blur(');
+  expect(glass.heroBackground).toContain('gradient(');
+  expect(glass.segmentedRadius).toBe('999px');
+  expect(glass.overflow).toBe(false);
+  if(width<=760)expect(glass.width).toBeGreaterThanOrEqual(width-1);
+  await page.screenshot({path:testInfo.outputPath('identifier-glass-'+width+'-'+theme+'.png')});
   await expect(modal.getByText('1 de 3 unidades identificadas')).toBeVisible();
   await expect(modal.getByText('TV-00123')).toBeVisible();
   expect(await modal.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
