@@ -127,7 +127,8 @@ describe('Phase 5 permission-aware application shell', () => {
     data = fixture('viewer');
     const html = renderShell();
     expect(html).toContain('src="/brand/primary_dark.png" alt="S-Mart Living"');
-    expect(html).toContain('src="/brand/square_icon.png" alt=""');
+    expect(html).toContain('src="/icons/s-mart-living-v4-192.png" alt=""');
+    expect(html).not.toContain('/brand/square_icon.png');
     expect(html).toContain('Negocio de prueba');
     expect(html).toContain('href="#contenido"');
     expect(html).toContain('id="contenido" tabindex="-1"');

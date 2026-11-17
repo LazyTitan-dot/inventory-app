@@ -8,7 +8,8 @@ describe('branded startup screen', () => {
     ['Preparando tu tienda', 'Estamos cargando tus productos, operaciones y permisos.'],
   ])('uses the approved icon and accessible loading status for %s', (title, message) => {
     const html = renderToStaticMarkup(<StartupScreen title={title} message={message} />);
-    expect(html).toContain('/brand/square_icon.png');
+    expect(html).toContain('/icons/s-mart-living-v4-512.png');
+    expect(html).not.toContain('/brand/square_icon.png');
     expect(html).toContain('S-Mart Living');
     expect(html).toContain('role="status"');
     expect(html).toContain('sl-startup-progress');
