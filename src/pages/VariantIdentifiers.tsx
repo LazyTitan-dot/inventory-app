@@ -62,7 +62,7 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
    else { setSnapshot(response.data as Snapshot); setError(''); }
    setLoading(false);
  },[variant.id,query,offset]);
- useEffect(() => { let alive=true; setLoading(true); void (async()=>{
+ useEffect(() => { let alive=true; void (async()=>{
     if (!supabase) { if(alive) {setError('No hay conexión configurada.');setLoading(false);}return; }
     const response=await supabase.rpc('retail_identifiers',{p_variant_id:variant.id,p_search:query,p_offset:offset});
     if (!alive) return;
