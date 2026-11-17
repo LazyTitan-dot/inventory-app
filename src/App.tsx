@@ -170,7 +170,7 @@ export function Shell() {
         </button>
         <div className="business-switch">
           <span className="business-avatar">
-            <img src="/brand/square_icon.png" alt="" />
+            <img src="/icons/s-mart-living-v4-192.png" alt="" />
           </span>
           <span>
             <strong>{displayBusinessName(data.settings.business_name)}</strong>
