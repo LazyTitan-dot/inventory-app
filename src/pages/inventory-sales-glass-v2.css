@@ -1,0 +1,760 @@
+/*
+ * S-mart Living · Inventory & Sales Glass Refinement V2
+ * Visual-only layer. Inspired by the APPROVED Clientes V2.1 / Identificación Glass V1.1.
+ * Scoped to Inventory and Sales (not Purchases, Quotes, Customers or After-sales).
+ * Screen-only is intentional: never alter the validated receipt / PDF print sheets.
+ */
+@media screen {
+  :is(.inventory-visual-v1,.inventory-detail-v1,.inventory-editor-v1,
+      .sales-visual-v1,.sales-checkout-v1,.sales-create-v1,.sales-detail-v1) {
+    --gl-canvas:#eef4fc;
+    --gl-card:#fff;
+    --gl-ink:#102b4a;
+    --gl-muted:#526982;
+    --gl-accent:#086cae;
+    --gl-edge:#d7e5f5;
+    --gl-glass:rgba(235,246,255,.83);
+    --gl-soft:rgba(217,234,253,.76);
+    --gl-lens:linear-gradient(135deg,#e9f6ff,#dceaff);
+    --gl-hero:radial-gradient(ellipse at 90% 3%,#d5f2ff 0%,transparent 62%),linear-gradient(145deg,#f4faff,#e0edff);
+    --gl-cta:linear-gradient(116deg,#0655b9 0%,#096fc0 52%,#007ba8 100%);
+    --gl-shadow:0 12px 28px rgba(27,75,131,.09);
+    --gl-inner:inset 0 1px rgba(255,255,255,.36);
+    --gl-ring:rgba(5,129,198,.45);
+    --gl-rise:0 8px 20px rgba(7,56,105,.17);
+    --gl-transparency:blur(17px) saturate(1.34);
+    color:var(--gl-ink);
+    min-width:0;
+    color-scheme:light;
+  }
+  .app-layout[data-theme="dark"] :is(.inventory-visual-v1,.inventory-detail-v1,.inventory-editor-v1,
+      .sales-visual-v1,.sales-checkout-v1,.sales-create-v1,.sales-detail-v1) {
+    --gl-canvas:#061322;
+    --gl-card:#0d2036;
+    --gl-ink:#f0f8ff;
+    --gl-muted:#b2c7df;
+    --gl-accent:#79e1ff;
+    --gl-edge:rgba(132,194,239,.23);
+    --gl-glass:rgba(12,30,52,.81);
+    --gl-soft:rgba(23,57,91,.83);
+    --gl-lens:radial-gradient(ellipse at 65% 12%,#2876b8 0,transparent 68%),linear-gradient(145deg,#163b68,#11223d);
+    --gl-hero:radial-gradient(ellipse at 93% 0%,rgba(12,146,211,.48),transparent 65%),radial-gradient(ellipse at 0% 100%,rgba(20,82,163,.42),transparent 70%),linear-gradient(135deg,#112847,#0a1c32 72%);
+    --gl-cta:linear-gradient(112deg,#1460c6 0%,#086db7 54%,#007b96 100%);
+    --gl-shadow:0 14px 30px rgba(0,0,0,.25);
+    --gl-inner:inset 0 1px rgba(255,255,255,.13);
+    --gl-ring:rgba(121,225,255,.45);
+    --gl-rise:0 8px 22px rgba(0,0,0,.29);
+    color-scheme:dark;
+  }
+  /* Preserve the approved page structure; upgrade only materials and hierarchy. */
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1) .page-header.sl-glass-header {
+    padding:clamp(18px,2.4vw,26px);
+    border:1px solid var(--gl-edge);
+    border-radius:26px;
+    background:var(--gl-hero);
+    color:var(--gl-ink);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+  }
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1) .page-header.sl-glass-header :is(h1,.eyebrow) {
+    color:var(--gl-ink);
+    letter-spacing:-.038em;
+  }
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1) .page-header.sl-glass-header .eyebrow {
+    color:var(--gl-accent);
+    letter-spacing:.12em;
+  }
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1) .page-header.sl-glass-header p {
+    color:var(--gl-muted);
+    line-height:1.5;
+  }
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1) .page-header.sl-glass-header .button {
+    min-height:44px;
+  }
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1,.inventory-detail-v1,.inventory-editor-v1,
+    .sales-checkout-v1,.sales-create-v1,.sales-detail-v1) .button.primary {
+    color:#fff;
+    background:var(--gl-cta);
+    border:1px solid rgba(164,225,255,.27);
+    border-radius:999px;
+    box-shadow:var(--gl-rise),var(--gl-inner);
+    font-weight:650;
+  }
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1,.inventory-detail-v1,.inventory-editor-v1,
+    .sales-checkout-v1,.sales-create-v1,.sales-detail-v1) .button.primary:hover:not(:disabled) {
+    filter:brightness(1.075);
+  }
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1,.inventory-detail-v1,.inventory-editor-v1,
+    .sales-checkout-v1,.sales-create-v1,.sales-detail-v1) .button.secondary {
+    color:var(--gl-ink);
+    background:var(--gl-glass);
+    border:1px solid var(--gl-edge);
+    border-radius:999px;
+    box-shadow:var(--gl-inner);
+  }
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1,.inventory-detail-v1,.inventory-editor-v1,
+    .sales-checkout-v1,.sales-create-v1,.sales-detail-v1) .button:disabled {
+    box-shadow:none;
+    opacity:.52;
+    cursor:not-allowed;
+    filter:none;
+  }
+  :is(.inventory-visual-v1,.sales-visual-v1,.inventory-detail-v1,.inventory-editor-v1,
+    .sales-checkout-v1,.sales-create-v1,.sales-detail-v1)
+    :is(button,summary,input,select,textarea,a):focus-visible {
+    outline:3px solid var(--gl-accent);
+    outline-offset:3px;
+  }
+  :is(.inventory-visual-v1,.sales-visual-v1) .stats-grid { gap:12px; }
+  .app-layout :is(.inventory-visual-v1,.sales-visual-v1) .stats-grid .stat-card {
+    min-width:0;
+    padding:18px;
+    border:1px solid var(--gl-edge);
+    border-radius:21px;
+    color:var(--gl-ink);
+    background:linear-gradient(155deg,rgba(255,255,255,.085),transparent 74%),var(--gl-glass);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+  }
+  :is(.inventory-visual-v1,.sales-visual-v1) .stats-grid .stat-card > strong {
+    color:var(--gl-ink);
+    letter-spacing:-.035em;
+    font-variant-numeric:tabular-nums;
+    overflow-wrap:anywhere;
+  }
+  :is(.inventory-visual-v1,.sales-visual-v1) .stats-grid .stat-card :is(span,small) { color:var(--gl-muted); }
+  /* Inventory: polished financial disclosure without changing the amounts. */
+  .app-layout .inventory-visual-v1 .catalog-financial-disclosure {
+    margin-block:14px 20px;
+    padding:0;
+    overflow:hidden;
+    border:1px solid var(--gl-edge);
+    border-radius:22px;
+    background:var(--gl-glass);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+  }
+  .inventory-visual-v1 .catalog-financial-disclosure > summary {
+    min-height:58px;
+    padding:15px 18px;
+    color:var(--gl-ink);
+    font-weight:680;
+    cursor:pointer;
+  }
+  .inventory-visual-v1 .catalog-financial-disclosure[open] > summary {
+    border-bottom:1px solid var(--gl-edge);
+  }
+  .inventory-visual-v1 .catalog-financial-disclosure .catalog-financials { padding:15px; }
+  .inventory-visual-v1 .catalog-financial-disclosure .inventory-financial-hint { color:var(--gl-accent); }
+  .app-layout .inventory-visual-v1 .catalog-financial-note {
+    border:1px solid var(--gl-edge);
+    background:var(--gl-soft);
+    color:var(--gl-muted);
+    border-radius:15px;
+  }
+  .app-layout .inventory-visual-v1 .catalog-panel {
+    border:1px solid var(--gl-edge);
+    border-radius:24px;
+    background:var(--gl-glass);
+    color:var(--gl-ink);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+    min-width:0;
+  }
+  .inventory-visual-v1 .inventory-catalog-heading h2 { color:var(--gl-ink);letter-spacing:-.03em; }
+  .inventory-visual-v1 .inventory-catalog-heading :is(p,span) { color:var(--gl-muted); }
+  .app-layout .inventory-visual-v1 .catalog-toolbar :is(.search-field,select),
+  .app-layout .sales-visual-v1 .commerce-toolbar :is(.search-field,select,input) {
+    min-width:0;
+    min-height:44px;
+    border:1px solid var(--gl-edge);
+    border-radius:15px;
+    color:var(--gl-ink);
+    background:var(--gl-card);
+    box-shadow:var(--gl-inner);
+  }
+  :is(.inventory-visual-v1,.sales-visual-v1) .search-field input {
+    min-height:40px;
+    color:var(--gl-ink);
+    background:transparent;
+  }
+  .app-layout .inventory-visual-v1 .catalog-toolbar :is(input,select)::placeholder,
+  .app-layout .sales-visual-v1 .commerce-toolbar :is(input,select)::placeholder {
+    color:var(--gl-muted);
+    opacity:1;
+  }
+  .inventory-visual-v1 .catalog-filter-tabs { gap:8px; }
+  .app-layout .inventory-visual-v1 .catalog-filter-tabs button {
+    min-height:44px;
+    border:1px solid var(--gl-edge);
+    border-radius:999px;
+    color:var(--gl-muted);
+    background:var(--gl-card);
+    box-shadow:var(--gl-inner);
+    transition:border-color .14s ease,background-color .14s ease;
+  }
+  .app-layout .inventory-visual-v1 .catalog-filter-tabs button[aria-pressed="true"] {
+    border-color:var(--gl-ring);
+    color:#fff;
+    background:var(--gl-cta);
+    box-shadow:var(--gl-rise),var(--gl-inner);
+  }
+  .inventory-visual-v1 .catalog-desktop {
+    border-radius:17px;
+    border:1px solid var(--gl-edge);
+    background:var(--gl-card);
+  }
+  .app-layout .inventory-visual-v1 .catalog-desktop .data-table th {
+    background:var(--gl-soft);
+    color:var(--gl-muted);
+    border-color:var(--gl-edge);
+    font-weight:680;
+    letter-spacing:.025em;
+  }
+  .app-layout .inventory-visual-v1 .catalog-desktop .data-table td {
+    background:var(--gl-card);
+    border-color:var(--gl-edge);
+    color:var(--gl-ink);
+  }
+  .app-layout .inventory-visual-v1 .catalog-desktop .data-table tr:hover td { background:var(--gl-soft); }
+  .inventory-visual-v1 .catalog-desktop .product-cell strong { color:var(--gl-ink); }
+  .inventory-visual-v1 .catalog-row-sku { color:var(--gl-muted);overflow-wrap:anywhere; }
+  .app-layout .inventory-visual-v1 .inventory-action-trigger {
+    border-radius:999px;
+    border:1px solid var(--gl-edge);
+    color:var(--gl-accent);
+    background:var(--gl-lens);
+  }
+  .app-layout .inventory-visual-v1 .catalog-mobile-product {
+    min-width:0;
+    border:1px solid var(--gl-edge);
+    border-radius:21px;
+    padding:16px;
+    background:var(--gl-glass);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+    color:var(--gl-ink);
+  }
+  .inventory-visual-v1 .catalog-mobile-product :is(strong,.badge) { overflow-wrap:anywhere; }
+  .inventory-visual-v1 .catalog-mobile-product :is(small,.catalog-mobile-bottom > span) { color:var(--gl-muted); }
+  .inventory-visual-v1 .catalog-mobile-product .product-thumbnail {
+    border:1px solid var(--gl-edge);
+    border-radius:15px;
+    background:var(--gl-lens);
+  }
+  .inventory-visual-v1 .catalog-mobile-product:focus-visible { border-color:var(--gl-accent); }
+  /* Inventory details and product editor: identical modal grammar to Clientes. */
+  .app-layout .modal:is(.inventory-detail-v1,.inventory-editor-v1) {
+    background:var(--gl-canvas);
+    color:var(--gl-ink);
+    border-color:var(--gl-edge);
+  }
+  .app-layout .modal:is(.inventory-detail-v1,.inventory-editor-v1,.sales-checkout-v1,.sales-create-v1,.sales-detail-v1) > .modal-heading {
+    background:var(--gl-glass);
+    border-bottom:1px solid var(--gl-edge);
+    color:var(--gl-ink);
+    box-shadow:0 4px 24px rgba(0,20,48,.08),var(--gl-inner);
+    -webkit-backdrop-filter:blur(24px) saturate(1.4);
+    backdrop-filter:blur(24px) saturate(1.4);
+  }
+  .app-layout .modal:is(.inventory-detail-v1,.inventory-editor-v1,.sales-checkout-v1,.sales-create-v1,.sales-detail-v1) > .modal-heading h2 {
+    min-width:0;
+    color:var(--gl-ink);
+    overflow-wrap:anywhere;
+  }
+  .app-layout .modal:is(.inventory-detail-v1,.inventory-editor-v1,.sales-checkout-v1,.sales-create-v1,.sales-detail-v1) > .modal-heading .icon-button {
+    flex:none;
+    width:46px;
+    height:46px;
+    padding:0;
+    border-radius:50%;
+    border:1px solid var(--gl-ring);
+    color:var(--gl-accent);
+    background:var(--gl-lens);
+    box-shadow:var(--gl-inner),0 5px 16px rgba(3,40,78,.12);
+  }
+  .inventory-detail-v1 .catalog-detail-hero {
+    border:1px solid var(--gl-edge);
+    border-radius:23px;
+    background:var(--gl-hero);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+  }
+  .inventory-detail-v1 .catalog-detail-essential {
+    border:1px solid var(--gl-edge);
+    border-radius:20px;
+    background:var(--gl-glass);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+  }
+  .inventory-detail-v1 .catalog-detail-essential dd { color:var(--gl-ink); }
+  .inventory-detail-v1 .catalog-segments { gap:7px; }
+  .inventory-detail-v1 .catalog-segments button {
+    min-height:44px;
+    border-radius:999px;
+    border:1px solid var(--gl-edge);
+    color:var(--gl-muted);
+    background:var(--gl-card);
+  }
+  .inventory-detail-v1 .catalog-segments button[aria-pressed="true"] {
+    border-color:var(--gl-ring);
+    color:#fff;
+    background:var(--gl-cta);
+  }
+  .inventory-detail-v1 .catalog-detail-disclosure,
+  .inventory-detail-v1 .catalog-movements article,
+  .inventory-editor-v1 :is(.catalog-editor-identity,.catalog-editor-variant,.catalog-editor-scan) {
+    border:1px solid var(--gl-edge);
+    border-radius:20px;
+    background:var(--gl-glass);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+    color:var(--gl-ink);
+  }
+  .inventory-editor-v1 .catalog-editor-scan { background:var(--gl-hero); }
+  .inventory-editor-v1 .catalog-editor-variant legend { color:var(--gl-accent); }
+  .inventory-editor-v1 .catalog-editor-footer,
+  .inventory-detail-v1 .catalog-detail-footer {
+    color:var(--gl-ink);
+    background:var(--gl-glass);
+    border-color:var(--gl-edge);
+    -webkit-backdrop-filter:var(--gl-transparency);
+    backdrop-filter:var(--gl-transparency);
+  }
+  :is(.inventory-detail-v1,.inventory-editor-v1) .field :is(input:not([type="checkbox"]),select,textarea) {
+    border:1px solid var(--gl-edge);
+    background:var(--gl-card);
+    color:var(--gl-ink);
+    border-radius:14px;
+  }
+  /* Sales: desktop two-column cash desk + tactile product catalog. */
+  .app-layout .sales-visual-v1 .commerce-cashier .commerce-catalog,
+  .app-layout .sales-visual-v1 .commerce-cashier > .commerce-editor > .commerce-fieldset .commerce-cart {
+    min-width:0;
+    border:1px solid var(--gl-edge);
+    border-radius:24px;
+    background:var(--gl-glass);
+    color:var(--gl-ink);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+  }
+  .sales-visual-v1 .sales-catalog-heading,.sales-visual-v1 .commerce-cart-heading h3 {
+    color:var(--gl-ink);
+    font-size:19px;
+    font-weight:720;
+    letter-spacing:-.03em;
+  }
+  .sales-visual-v1 .commerce-cashier-status { color:var(--gl-muted); }
+  .sales-visual-v1 .commerce-cashier-status svg { color:var(--gl-accent); }
+  .app-layout .sales-visual-v1 .commerce-catalog-search {
+    min-height:48px;
+    border:1px solid var(--gl-edge);
+    border-radius:17px;
+    background:var(--gl-card);
+    color:var(--gl-ink);
+    box-shadow:var(--gl-inner);
+  }
+  .sales-visual-v1 .commerce-catalog-search svg { color:var(--gl-accent); }
+  .sales-visual-v1 .commerce-catalog-search input {
+    min-height:44px;
+    border:0;
+    background:transparent;
+    color:var(--gl-ink);
+  }
+  .sales-visual-v1 .commerce-catalog-search input::placeholder { color:var(--gl-muted);opacity:1; }
+  .app-layout .sales-visual-v1 .commerce-scan-button {
+    min-height:46px;
+    color:var(--gl-accent);
+    border:1px solid var(--gl-ring);
+    border-radius:999px;
+    background:var(--gl-glass);
+    box-shadow:var(--gl-inner);
+  }
+  .sales-visual-v1 .commerce-category-row { gap:7px; }
+  .app-layout .sales-visual-v1 .commerce-category {
+    min-height:44px;
+    border:1px solid var(--gl-edge);
+    border-radius:999px;
+    background:var(--gl-card);
+    color:var(--gl-muted);
+    box-shadow:var(--gl-inner);
+    padding-inline:13px;
+  }
+  .app-layout .sales-visual-v1 .commerce-category.selected {
+    border-color:var(--gl-ring);
+    color:#fff;
+    background:var(--gl-cta);
+    box-shadow:var(--gl-rise),var(--gl-inner);
+  }
+  .app-layout .sales-visual-v1 .commerce-product {
+    min-width:0;
+    border:1px solid var(--gl-edge);
+    border-radius:19px;
+    background:var(--gl-card);
+    color:var(--gl-ink);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+    transition:border-color .15s ease,transform .15s ease;
+  }
+  .app-layout .sales-visual-v1 .commerce-product:hover:not(:disabled) {
+    border-color:var(--gl-accent);
+    background:var(--gl-card);
+    transform:translateY(-1px);
+  }
+  .app-layout .sales-visual-v1 .commerce-product:has(.commerce-cart-count) {
+    border-color:var(--gl-ring);
+    background:var(--gl-glass);
+  }
+  .sales-visual-v1 .commerce-product-visual {
+    color:var(--gl-accent);
+    border:1px solid var(--gl-edge);
+    border-radius:16px;
+    background:var(--gl-lens);
+  }
+  .sales-visual-v1 .commerce-product > strong,.sales-visual-v1 .commerce-product-bottom b { color:var(--gl-ink); }
+  .sales-visual-v1 .commerce-product :is(.muted,small),.sales-visual-v1 .commerce-scan-feedback { color:var(--gl-muted); }
+  .sales-visual-v1 .commerce-cart-count { color:#fff;background:var(--gl-cta);border:1px solid rgba(255,255,255,.32); }
+  /* Cart: every individual unit line is a distinct, quiet glass sheet. */
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart-heading { align-items:center;gap:12px; }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart-actions { gap:9px;flex-wrap:wrap;justify-content:flex-end; }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart-actions .badge {
+    min-height:28px;
+    padding:5px 10px;
+    border-radius:999px;
+    border:1px solid var(--gl-edge);
+    color:var(--gl-accent);
+    background:var(--gl-lens);
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart-actions .text-button { color:var(--gl-accent);font-size:12px; }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart .field { color:var(--gl-ink); }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart .field :is(select,input:not([type="radio"]),textarea) {
+    min-width:0;
+    min-height:46px;
+    background:var(--gl-card);
+    color:var(--gl-ink);
+    border:1px solid var(--gl-edge);
+    border-radius:14px;
+    box-shadow:var(--gl-inner);
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart .field :is(input,textarea)::placeholder { color:var(--gl-muted);opacity:1; }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart-lines { display:grid;gap:10px;min-width:0; }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart-line,
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart-line + .commerce-cart-line {
+    min-width:0;
+    padding:14px;
+    border:1px solid var(--gl-edge);
+    border-radius:18px;
+    background:var(--gl-card);
+    box-shadow:var(--gl-inner);
+    color:var(--gl-ink);
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-line-name { min-width:0;gap:9px; }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-line-name strong {
+    color:var(--gl-ink);line-height:1.35;overflow-wrap:anywhere;
+  }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .commerce-icon-button {
+    display:grid;
+    place-items:center;
+    flex:none;
+    min-height:44px;
+    min-width:44px;
+    padding:0;
+    color:var(--gl-accent);
+    border:1px solid var(--gl-edge);
+    border-radius:50%;
+    background:var(--gl-lens);
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cart-line > small { color:var(--gl-muted);overflow-wrap:anywhere; }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-line-controls { min-width:0;gap:10px; }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-quantity { align-items:end;gap:6px; }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .commerce-quantity .icon-button {
+    display:grid;place-items:center;
+    width:44px;height:44px;min-width:44px;min-height:44px;
+    padding:0;
+    border:1px solid var(--gl-edge);
+    border-radius:50%;
+    color:var(--gl-accent);
+    background:var(--gl-lens);
+    box-shadow:var(--gl-inner);
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-quantity label {
+    min-width:0;
+    color:var(--gl-muted);
+    font-size:12px;
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-quantity input {
+    min-width:0;
+    width:51px;
+    min-height:44px;
+    padding:6px 3px;
+    text-align:center;
+    border:1px solid var(--gl-edge);
+    border-radius:13px;
+    background:var(--gl-card);
+    color:var(--gl-ink);
+    font-size:16px;
+    font-variant-numeric:tabular-nums;
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .sales-line-price > strong {
+    color:var(--gl-ink);
+    font-variant-numeric:tabular-nums;
+    font-size:15px;
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .sales-line-price :is(small,.sales-line-extended) {
+    color:var(--gl-muted);
+  }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .serial-sale-selector {
+    border-color:var(--gl-edge);
+    border-radius:17px;
+    background:var(--gl-soft);
+    box-shadow:var(--gl-inner);
+    color:var(--gl-ink);
+  }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .serial-sale-search,
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .serial-sale-option {
+    border-color:var(--gl-edge);
+    background:var(--gl-card);
+    color:var(--gl-ink);
+  }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .serial-sale-header :is(strong,svg) { color:var(--gl-accent); }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .serial-sale-header small { color:var(--gl-muted); }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .commerce-discount-mode button {
+    min-height:44px;
+    border:1px solid var(--gl-edge);
+    color:var(--gl-muted);
+    background:var(--gl-card);
+    border-radius:999px;
+  }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .commerce-discount-mode button[aria-pressed="true"] {
+    background:var(--gl-cta);
+    border-color:var(--gl-ring);
+    color:#fff;
+    box-shadow:var(--gl-inner);
+  }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .commerce-totals {
+    min-width:0;
+    gap:11px;
+    padding:16px;
+    border:1px solid var(--gl-edge);
+    border-radius:21px;
+    background:var(--gl-hero);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+    font-variant-numeric:tabular-nums;
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-totals > div:not(.commerce-grand-total) {
+    color:var(--gl-muted);
+    line-height:1.45;
+  }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .commerce-grand-total {
+    min-width:0;
+    padding-top:13px;
+    border-top:1px solid var(--gl-edge);
+    color:var(--gl-ink);
+    font-weight:750;
+    letter-spacing:-.02em;
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-grand-total strong:last-child {
+    color:var(--gl-accent);
+    font-size:clamp(20px,2.4vw,27px);
+    overflow-wrap:anywhere;
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .sales-section-label {
+    color:var(--gl-ink);
+    margin-top:14px;
+    font-size:14px;
+    letter-spacing:-.015em;
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .sales-payment-grid { gap:9px; }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .sales-payment-tile {
+    min-height:64px;
+    border:1px solid var(--gl-edge);
+    border-radius:19px;
+    color:var(--gl-ink);
+    background:var(--gl-card);
+    box-shadow:var(--gl-inner);
+    line-height:1.35;
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .sales-payment-tile > svg { color:var(--gl-accent); }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .sales-payment-option > input:checked + .sales-payment-tile {
+    color:var(--gl-ink);
+    border-color:var(--gl-ring);
+    background:var(--gl-hero);
+    box-shadow:inset 0 0 0 1px var(--gl-ring),var(--gl-inner),var(--gl-rise);
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .sales-payment-check { color:var(--gl-accent); }
+  .app-layout :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cash {
+    border:1px solid var(--gl-edge);
+    border-radius:19px;
+    background:var(--gl-glass);
+    box-shadow:var(--gl-inner);
+    color:var(--gl-ink);
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cash .button { min-height:44px;border-radius:999px; }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cash > div:last-child {
+    color:var(--gl-muted);
+    border-top:1px solid var(--gl-edge);
+  }
+  :is(.sales-visual-v1,.sales-checkout-v1) .commerce-cash > div:last-child strong { color:var(--gl-accent); }
+  /* Desktop: keep the approved columns and independent checkout action. */
+  .app-layout .sales-visual-v1 .commerce-cashier-editor > .modal-footer {
+    border:1px solid var(--gl-edge);
+    border-radius:20px;
+    background:var(--gl-glass);
+    box-shadow:var(--gl-inner);
+  }
+  .app-layout .sales-visual-v1 .sales-history-panel {
+    border:1px solid var(--gl-edge);
+    border-radius:24px;
+    background:var(--gl-glass);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+  }
+  .sales-visual-v1 .sales-history-heading h2 { color:var(--gl-ink); }
+  .sales-visual-v1 .sales-history-heading span { color:var(--gl-muted); }
+  .sales-visual-v1 .sales-desktop-history {
+    border:1px solid var(--gl-edge);
+    border-radius:15px;
+    overflow:auto;
+  }
+  .app-layout .sales-visual-v1 .sales-desktop-history .data-table th {
+    color:var(--gl-muted);background:var(--gl-soft);border-color:var(--gl-edge);
+  }
+  .app-layout .sales-visual-v1 .sales-desktop-history .data-table td {
+    color:var(--gl-ink);background:var(--gl-card);border-color:var(--gl-edge);
+  }
+  .app-layout .sales-visual-v1 .sales-desktop-history .data-table tr:hover td { background:var(--gl-soft); }
+  .app-layout .sales-visual-v1 .sales-history-card {
+    border:1px solid var(--gl-edge);
+    border-radius:20px;
+    background:var(--gl-glass);
+    color:var(--gl-ink);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+  }
+  .sales-visual-v1 .sales-history-card :is(span,small) { overflow-wrap:anywhere; }
+  /* Full-screen iPhone checkout: all controls remain fully interactive. */
+  .app-layout .modal:is(.sales-checkout-v1,.sales-create-v1,.sales-detail-v1) {
+    color:var(--gl-ink);
+    border-color:var(--gl-edge);
+    background:var(--gl-canvas);
+  }
+  .app-layout .sales-checkout-v1 .commerce-cart { color:var(--gl-ink); }
+  .app-layout .sales-checkout-v1 .commerce-cart-heading h3 { color:var(--gl-ink); }
+  .app-layout .sales-checkout-v1 > .modal-body > .modal-footer {
+    background:var(--gl-glass);
+    border-color:var(--gl-edge);
+    box-shadow:0 -6px 26px rgba(0,27,58,.12),var(--gl-inner);
+    -webkit-backdrop-filter:blur(24px) saturate(1.4);
+    backdrop-filter:blur(24px) saturate(1.4);
+  }
+  .app-layout .sales-checkout-v1 > .modal-body > .modal-footer .button { min-height:48px; }
+  .app-layout .sales-visual-v1 .commerce-mobile-checkout {
+    min-width:0;
+    padding:13px 15px;
+    gap:12px;
+    border:1px solid var(--gl-ring);
+    border-radius:24px;
+    background:var(--gl-hero);
+    box-shadow:0 14px 33px rgba(2,24,54,.26),var(--gl-inner);
+    color:var(--gl-ink);
+    -webkit-backdrop-filter:blur(23px) saturate(1.4);
+    backdrop-filter:blur(23px) saturate(1.4);
+  }
+  .sales-visual-v1 .commerce-mobile-checkout strong {
+    color:var(--gl-ink);
+    line-height:1.2;
+    font-variant-numeric:tabular-nums;
+  }
+  .sales-visual-v1 .commerce-mobile-checkout small { color:var(--gl-muted); }
+  .sales-visual-v1 .commerce-mobile-checkout .button.primary {
+    min-height:48px;
+    border-radius:999px;
+    color:#fff;
+  }
+  /* Receipt onscreen can be Glass, but the already approved print sheet is untouched. */
+  .sales-detail-v1 .sales-confirmation {
+    border:1px solid var(--gl-edge);
+    border-radius:22px;
+    background:var(--gl-hero);
+    box-shadow:var(--gl-shadow),var(--gl-inner);
+    color:var(--gl-ink);
+  }
+  .sales-detail-v1 .commerce-document-contact,
+  .sales-detail-v1 .commerce-document-summary,
+  .sales-detail-v1 .commerce-document > .table-wrap {
+    border-color:var(--gl-edge);
+    border-radius:18px;
+  }
+  .sales-detail-v1 .commerce-document-contact {
+    background:var(--gl-glass);
+    box-shadow:var(--gl-inner);
+    color:var(--gl-ink);
+  }
+  .sales-detail-v1 .commerce-document-actions .button { min-height:44px; }
+  .app-layout .sales-detail-v1 .commerce-document .commerce-totals {
+    border:1px solid var(--gl-edge);
+    border-radius:19px;
+    background:var(--gl-hero);
+    color:var(--gl-ink);
+  }
+  @media (min-width:801px) {
+    .sales-visual-v1 .commerce-cashier .commerce-workbench { gap:18px; }
+    .sales-visual-v1 .commerce-cashier .commerce-cart { min-width:0; }
+    .sales-visual-v1 .commerce-cashier .commerce-cart-line { padding:13px; }
+  }
+  @media (max-width:920px) {
+    .inventory-visual-v1 .catalog-mobile { gap:12px; }
+    .sales-visual-v1 .sales-mobile-history { gap:11px; }
+  }
+  @media (max-width:800px) {
+    .app-layout :is(.inventory-visual-v1,.sales-visual-v1) .page-header.sl-glass-header {
+      padding:19px;
+      border-radius:24px;
+    }
+    .app-layout :is(.inventory-visual-v1,.sales-visual-v1) .stats-grid .stat-card {
+      padding:13px;
+      border-radius:18px;
+    }
+    .app-layout .sales-checkout-v1 .commerce-cart-line {
+      background:var(--gl-card);
+      border-color:var(--gl-edge);
+      border-radius:19px;
+      padding:15px;
+    }
+    .sales-visual-v1 .commerce-product-grid { gap:10px; }
+    .app-layout .sales-visual-v1 .commerce-product { border-radius:17px; }
+    .app-layout .sales-checkout-v1 > .modal-heading {
+      position:sticky;
+      top:0;
+      z-index:5;
+    }
+    .app-layout .sales-checkout-v1 > .modal-body > .modal-footer {
+      position:sticky;
+      bottom:-1px;
+      z-index:4;
+      border-radius:20px 20px 0 0;
+    }
+    .app-layout .sales-visual-v1 .commerce-mobile-checkout { bottom:calc(96px + env(safe-area-inset-bottom,0px)); }
+    .app-layout .sales-visual-v1 .sales-history-card { padding:16px; }
+  }
+  @media (max-width:390px) {
+    .sales-visual-v1 .commerce-mobile-checkout { padding:10px;gap:8px; }
+    .sales-visual-v1 .commerce-mobile-checkout .button { padding:10px 12px;font-size:12px; }
+    .sales-visual-v1 .commerce-mobile-checkout > div { min-width:0; }
+    .sales-visual-v1 .commerce-mobile-checkout strong { font-size:15px; }
+    .inventory-visual-v1 .catalog-mobile-product { padding:13px; }
+    .sales-checkout-v1 .sales-payment-tile { padding:10px 9px;font-size:12px; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    .sales-visual-v1 .commerce-product,
+    .inventory-visual-v1 .catalog-filter-tabs button { transition:none; }
+    .sales-visual-v1 .commerce-product:hover { transform:none; }
+  }
+  @media (prefers-reduced-transparency:reduce) {
+    .app-layout :is(.inventory-visual-v1,.sales-visual-v1) .page-header.sl-glass-header,
+    .app-layout .inventory-visual-v1 :is(.catalog-panel,.catalog-financial-disclosure,.catalog-mobile-product),
+    .app-layout .sales-visual-v1 :is(.commerce-catalog,.commerce-cart,.commerce-mobile-checkout,.sales-history-panel,.sales-history-card),
+    .app-layout :is(.inventory-detail-v1,.inventory-editor-v1,.sales-checkout-v1,.sales-create-v1,.sales-detail-v1) .modal-heading,
+    .app-layout .sales-checkout-v1 > .modal-body > .modal-footer {
+      background:var(--gl-card);
+      -webkit-backdrop-filter:none;
+      backdrop-filter:none;
+    }
+  }
+  @media (prefers-contrast:more) {
+    :is(.inventory-visual-v1,.inventory-detail-v1,.inventory-editor-v1,
+        .sales-visual-v1,.sales-checkout-v1,.sales-create-v1,.sales-detail-v1) {
+      --gl-edge:var(--gl-accent);
+    }
+  }
+}
