@@ -50,7 +50,10 @@ for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light'
   await detail.getByText('Códigos y etiquetas',{exact:true}).click();
   await expect(detail.getByText('SKU',{exact:true})).toBeVisible();
   const buttons=detail.locator('.catalog-detail-footer .button');
-  const btnBounds=await buttons.evaluateAll(nodes=>nodes.map(rect));
+  const btnBounds=await buttons.evaluateAll(nodes=>nodes.map(node=>{
+   const r=node.getBoundingClientRect();
+   return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};
+  }));
   for(const box of btnBounds)expect(box.height).toBeGreaterThanOrEqual(48);
   if(btnBounds.length===2)expect(btnBounds[1]!.top-btnBounds[0]!.bottom).toBeGreaterThanOrEqual(10);
   expect(await detail.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
