@@ -18,6 +18,7 @@ import { VariantIdentifiers } from './VariantIdentifiers';
 import { taxRateLabel } from '../lib/format';
 import './catalog.css';
 import './inventory-visual-v1.css';
+import './inventory-sales-glass-v2.css';
 export function CatalogPage() {
   const { data, notify } = useRetail();
   const { run, busy, error } = useOperation();
