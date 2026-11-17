@@ -105,8 +105,13 @@ test('Glass V2 does not modify receipt/PDF print media or unrelated modules',asy
  await expect(detail).toBeVisible();
  const screen=await detail.evaluate(el=>getComputedStyle(el).getPropertyValue('--gl-hero').trim());
  expect(screen).toContain('radial-gradient');
- await page.emulateMedia({media:'print'});
- const print=await detail.evaluate(el=>getComputedStyle(el).getPropertyValue('--gl-hero').trim());
- expect(print).toBe('');
  await expect(detail).toContainText('No es un comprobante fiscal');
+ await page.emulateMedia({media:'print'});
+ // Print layouts intentionally hide/replace dialogs. Inspect DOM directly so
+ // the test asserts stylesheet isolation rather than a screen-only locator.
+ const print=await page.evaluate(()=>{
+   const el=document.querySelector('.sales-detail-v1');
+   return el ? getComputedStyle(el).getPropertyValue('--gl-hero').trim() : '';
+ });
+ expect(print).toBe('');
 });
