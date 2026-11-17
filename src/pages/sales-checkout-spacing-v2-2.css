@@ -1,0 +1,153 @@
+/*
+ * S-mart Living — Sales Checkout Inner Spacing V2.2 (iPhone only)
+ *
+ * Reference: approved "Agregar producto" editor, where group headings,
+ * form fields and actions are consistently inset from Glass card edges.
+ *
+ * V2.1's mobile .commerce-cart rule was overridden by the more specific
+ * .sales-visual-v1 .commerce-cashier .sales-checkout-v1 .commerce-cart
+ * rule, which set padding:0. Fix the actual checkout fieldset, not the
+ * parent modal or financial components.
+ *
+ * SCREEN ONLY; no changes to inventory, commerce logic, amounts, series,
+ * printed receipts, Windows, or previously approved Glass colors.
+ */
+@media screen and (max-width:800px) {
+  /* Maintain the modal's safe-area gutter from V2.1; inset its cart contents. */
+  .app-layout dialog.sales-checkout-v1 > .modal-body > fieldset.commerce-fieldset.commerce-cart,
+  .app-layout .sales-visual-v1 .commerce-cashier dialog.sales-checkout-v1 > .modal-body > fieldset.commerce-fieldset.commerce-cart {
+    box-sizing:border-box;
+    width:100%;
+    min-width:0;
+    padding:22px 20px 26px !important;
+    gap:22px;
+    border:1px solid var(--gl-edge);
+    border-radius:23px;
+    background:var(--gl-glass);
+    box-shadow:var(--gl-inner);
+  }
+
+  /* Typography: all major labels are aligned to a single inner gutter. */
+  .sales-checkout-v1 .commerce-cart > .commerce-cart-heading {
+    margin:0;
+    padding:2px 0 0;
+    min-width:0;
+    align-items:center;
+    gap:12px;
+  }
+  .sales-checkout-v1 .commerce-cart-heading h3 {
+    min-width:0;
+    margin:0;
+    font-size:20px;
+    font-weight:720;
+    letter-spacing:-.025em;
+    line-height:1.35;
+  }
+  .sales-checkout-v1 .commerce-cart > .field {
+    min-width:0;
+    gap:10px;
+    margin:0;
+  }
+  .sales-checkout-v1 .commerce-cart .field label {
+    font-size:13px;
+    line-height:1.5;
+    color:var(--gl-ink);
+  }
+  .sales-checkout-v1 .commerce-cart .field :is(input:not([type=checkbox]),select,textarea) {
+    box-sizing:border-box;
+    max-width:100%;
+    min-height:50px;
+    padding:12px 15px;
+    border-radius:16px;
+  }
+  .sales-checkout-v1 .commerce-cart .field :is(input,select,textarea):focus-visible {
+    outline:2px solid var(--gl-accent);
+    outline-offset:2px;
+  }
+  .sales-checkout-v1 .commerce-cart > .commerce-cart-lines {
+    min-width:0;
+    margin:0;
+  }
+  .sales-checkout-v1 .commerce-cart .commerce-cart-empty {
+    box-sizing:border-box;
+    min-height:142px;
+    padding:24px 18px;
+    border:1px dashed var(--gl-edge);
+    border-radius:20px;
+    background:var(--gl-card);
+    color:var(--gl-muted);
+    gap:10px;
+  }
+  .sales-checkout-v1 .commerce-cart .commerce-cart-empty svg {
+    color:var(--gl-accent);
+  }
+
+  /* Group hierarchy follows the approved product editor: margin above
+   * the section, not text pressed against a border or adjacent input. */
+  .sales-checkout-v1 .commerce-cart > .sales-section-label {
+    margin:12px 0 0;
+    padding:0;
+    min-width:0;
+    color:var(--gl-ink);
+    font-size:17px;
+    line-height:1.45;
+    font-weight:720;
+    letter-spacing:-.02em;
+  }
+  .sales-checkout-v1 .commerce-cart > .form-grid.commerce-small-grid {
+    min-width:0;
+    margin:0;
+    gap:15px;
+  }
+  .sales-checkout-v1 .commerce-cart .commerce-small-grid > .field {
+    gap:9px;
+    min-width:0;
+  }
+  .sales-checkout-v1 .commerce-cart .commerce-discount-mode {
+    box-sizing:border-box;
+    min-width:0;
+  }
+  .sales-checkout-v1 .commerce-cart .commerce-discount-mode button {
+    min-width:0;
+    min-height:48px;
+    padding:12px 13px;
+    text-align:center;
+  }
+  .sales-checkout-v1 .commerce-cart > .sales-payment-options {
+    min-width:0;
+    padding:0;
+    margin:0;
+  }
+  .sales-checkout-v1 .commerce-cart .sales-payment-options legend {
+    margin:0 0 14px;
+    padding:0;
+    font-size:14px;
+    line-height:1.45;
+    color:var(--gl-ink);
+  }
+  .sales-checkout-v1 .commerce-cart .sales-payment-grid {
+    min-width:0;
+    column-gap:12px;
+    row-gap:12px;
+  }
+  .sales-checkout-v1 .commerce-cart .sales-payment-option { min-width:0; }
+  .sales-checkout-v1 .commerce-cart .commerce-cash {
+    min-width:0;
+    margin:0;
+  }
+  /* No overrides to .commerce-totals, discounts arithmetic, submit actions,
+   * serial selectors, scanner controls or any other modules.
+   */
+}
+@media screen and (max-width:360px) {
+  .app-layout dialog.sales-checkout-v1 > .modal-body > fieldset.commerce-fieldset.commerce-cart,
+  .app-layout .sales-visual-v1 .commerce-cashier dialog.sales-checkout-v1 > .modal-body > fieldset.commerce-fieldset.commerce-cart {
+    padding:20px 16px 24px !important;
+  }
+  .sales-checkout-v1 .commerce-cart-heading h3 { font-size:19px; }
+}
+@media screen and (prefers-reduced-transparency:reduce) and (max-width:800px) {
+  .app-layout dialog.sales-checkout-v1 > .modal-body > fieldset.commerce-fieldset.commerce-cart {
+    background:var(--gl-card);
+  }
+}
