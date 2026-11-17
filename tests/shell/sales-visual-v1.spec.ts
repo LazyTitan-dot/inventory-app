@@ -252,6 +252,7 @@ test('Ventas V1.3 dark card and print-only customer totals', async ({page}, test
   const bg=await receipt.locator('.commerce-grand-total').evaluate(el=>getComputedStyle(el).backgroundColor);
   expect(bg).toBe('rgb(11, 39, 83)');
   const pdf=await page.pdf({format:'A4',printBackground:true});
-  expect((pdf.toString('latin1').match(/\\/Type\\s*\\/Page\\b/g)||[]).length).toBe(1);
+ const count=(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)||[]).length;
+  expect(count).toBe(1);
   await testInfo.attach('recibo-v1-3',{body:pdf,contentType:'application/pdf'});
 });
