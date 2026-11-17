@@ -74,6 +74,7 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   if (!logo) throw new Error('Receipt logo missing');
   await logo.decode();
   if (!logo.naturalWidth || !logo.naturalHeight) throw new Error('Receipt logo unavailable');
+  const receiptLogo: HTMLImageElement = logo;
 
   const heading = receipt.querySelector('.commerce-document-heading');
   const contact = receipt.querySelector('.commerce-document-contact');
@@ -98,8 +99,9 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   const canvas = document.createElement('canvas');
   canvas.width = PAGE_W * SCALE;
   canvas.height = PAGE_H * SCALE;
-  const ctx = canvas.getContext('2d', { alpha: false });
-  if (!ctx) throw new Error('Canvas unavailable');
+  const drawingContext = canvas.getContext('2d', { alpha: false });
+  if (!drawingContext) throw new Error('Canvas unavailable');
+  const ctx: CanvasRenderingContext2D = drawingContext;
   ctx.scale(SCALE, SCALE);
   ctx.textBaseline = 'top';
 
@@ -130,10 +132,10 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     page++;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, PAGE_W, PAGE_H);
-    const ratio = Math.min(242 / logo.naturalWidth, 83 / logo.naturalHeight);
-    const logoWidth = logo.naturalWidth * ratio;
-    const logoHeight = logo.naturalHeight * ratio;
-    ctx.drawImage(logo, MARGIN, MARGIN, logoWidth, logoHeight);
+    const ratio = Math.min(242 / receiptLogo.naturalWidth, 83 / receiptLogo.naturalHeight);
+    const logoWidth = receiptLogo.naturalWidth * ratio;
+    const logoHeight = receiptLogo.naturalHeight * ratio;
+    ctx.drawImage(receiptLogo, MARGIN, MARGIN, logoWidth, logoHeight);
 
     y = MARGIN + logoHeight + 16;
     paint([title], MARGIN, y, '700 20px Arial, sans-serif', ink, 24);
@@ -168,9 +170,9 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     columns.slice(0, 4).forEach((label, index) => {
       const font = '700 9px Arial, sans-serif';
       const right = index > 0;
-      const available = edges[index + 1] - edges[index] - 16;
+      const available = edges[index + 1]! - edges[index]! - 16;
       const lines = linesFor(label, font, available);
-      paint(lines, right ? edges[index + 1] - 8 : edges[index] + 8,
+      paint(lines, right ? edges[index + 1]! - 8 : edges[index]! + 8,
         y + 7, font, ink, 12, right);
     });
     y += h;
@@ -227,13 +229,13 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     const cellLines = cols.map((value, index) =>
       linesFor(value.replace(/\s*\n\s*/g, ' · '),
         index === 0 ? '700 10px Arial, sans-serif' : '10px Arial, sans-serif',
-        edges[index + 1] - edges[index] - 16));
+        edges[index + 1]! - edges[index]! - 16));
     const height = Math.max(43, 14 + Math.max(...cellLines.map(lines => lines.length)) * 13);
     await ensureRoom(height, true);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(MARGIN, y, contentWidth, height);
     cellLines.forEach((lines, index) => paint(lines,
-      index === 0 ? edges[index] + 8 : edges[index + 1] - 8, y + 9,
+      index === 0 ? edges[index]! + 8 : edges[index + 1]! - 8, y + 9,
       index === 0 ? '700 10px Arial, sans-serif' : '10px Arial, sans-serif',
       ink, 13, index > 0));
     y += height;
