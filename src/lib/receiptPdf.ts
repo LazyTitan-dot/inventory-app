@@ -302,8 +302,8 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
       const right = i > 0;
       const x = right ? tableEdges[i + 1]! - 9 : tableEdges[i]! + 10;
       const available = tableEdges[i + 1]! - tableEdges[i]! - 18;
-      const lines = linesFor(label, '700 10px Arial, sans-serif', available);
-      drawLines(lines, x, y + 12, '700 10px Arial, sans-serif', '#ffffff', 12,
+      const lines = linesFor(label, '700 11px Arial, sans-serif', available);
+      drawLines(lines, x, y + 12, '700 11px Arial, sans-serif', '#ffffff', 13,
         right ? 'right' : 'left');
     });
     y += height;
@@ -319,13 +319,13 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     const width = index === 0 ? leftWidth - 31 : contentWidth - leftWidth - 38;
     return values.map((value, i) => ({
       label: i === 0,
-      lines: linesFor(value, i === 0 ? '700 10px Arial, sans-serif' :
-        i === 1 ? '700 12px Arial, sans-serif' : '10px Arial, sans-serif', width),
+      lines: linesFor(value, i === 0 ? '700 12px Arial, sans-serif' :
+        i === 1 ? '700 14px Arial, sans-serif' : '11px Arial, sans-serif', width),
     }));
   });
   const groupHeights = contactGroups.map(group =>
     26 + group.reduce((height, value) => height + value.lines.length *
-      (value.label ? 14 : 15) + 4, 0));
+      (value.label ? 15 : 17) + 4, 0));
   const contactHeight = Math.max(84, ...groupHeights);
   await ensureRoom(contactHeight + panelGap);
   rounded(MARGIN, y, contentWidth, contactHeight, 10, '#ffffff', navy);
@@ -335,9 +335,9 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     const x = MARGIN + (index === 0 ? 17 : leftWidth + 16);
     let lineTop = y + 14;
     group.forEach((value, i) => {
-      const font = i === 0 ? '700 10px Arial, sans-serif' :
-        i === 1 ? '700 12px Arial, sans-serif' : '10px Arial, sans-serif';
-      const lineHeight = i === 0 ? 14 : 15;
+      const font = i === 0 ? '700 12px Arial, sans-serif' :
+        i === 1 ? '700 14px Arial, sans-serif' : '11px Arial, sans-serif';
+      const lineHeight = i === 0 ? 15 : 17;
       drawLines(value.lines, x, lineTop, font, i === 0 ? '#007db9' : navy, lineHeight);
       lineTop += value.lines.length * lineHeight + 4;
     });
@@ -347,29 +347,29 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   await ensureRoom(58, true);
   if (!tableStarted) drawTableHeading();
   for (const row of itemRows) {
-    const nameLines = linesFor(row.title, '700 12px Georgia, serif', tableEdges[1]! - MARGIN - 18);
+    const nameLines = linesFor(row.title, '700 14px Georgia, serif', tableEdges[1]! - MARGIN - 18);
     const detailLines = linesFor(row.detail.replace(/\s*\n\s*/g, ' · '),
-      '9px Arial, sans-serif', tableEdges[1]! - MARGIN - 18);
-    const warrantyLines = linesFor(row.warranty, 'italic 9px Arial, sans-serif',
+      '10px Arial, sans-serif', tableEdges[1]! - MARGIN - 18);
+    const warrantyLines = linesFor(row.warranty, 'italic 10px Arial, sans-serif',
       tableEdges[1]! - MARGIN - 18);
-    const itemHeight = 13 + nameLines.length * 16 +
-      detailLines.length * 12 + warrantyLines.length * 12 + 13;
+    const itemHeight = 12 + nameLines.length * 18 +
+      detailLines.length * 13 + warrantyLines.length * 13 + 13;
     const cells = [row.quantity, row.unit, row.amount];
     const numericLines = cells.map((value, i) => linesFor(value,
-      '10px Arial, sans-serif', tableEdges[i + 2]! - tableEdges[i + 1]! - 14));
+      '11px Arial, sans-serif', tableEdges[i + 2]! - tableEdges[i + 1]! - 14));
     const height = Math.max(51, itemHeight, 24 + Math.max(...numericLines.map(a => a.length)) * 14);
     await ensureRoom(height + 1, true);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(MARGIN, y, contentWidth, height);
     let top = y + 10;
-    drawLines(nameLines, MARGIN + 10, top, '700 12px Georgia, serif', navy, 16);
-    top += nameLines.length * 16 + 2;
-    drawLines(detailLines, MARGIN + 10, top, '9px Arial, sans-serif', ink, 12);
-    top += detailLines.length * 12 + 2;
-    drawLines(warrantyLines, MARGIN + 10, top, 'italic 9px Arial, sans-serif', muted, 12);
+    drawLines(nameLines, MARGIN + 10, top, '700 14px Georgia, serif', navy, 18);
+    top += nameLines.length * 18 + 2;
+    drawLines(detailLines, MARGIN + 10, top, '10px Arial, sans-serif', ink, 13);
+    top += detailLines.length * 13 + 2;
+    drawLines(warrantyLines, MARGIN + 10, top, 'italic 10px Arial, sans-serif', muted, 13);
     numericLines.forEach((lines, i) =>
       drawLines(lines, tableEdges[i + 2]! - 8, y + Math.max(14, (height - 14) / 2),
-        '10px Arial, sans-serif', ink, 14, 'right'));
+        '11px Arial, sans-serif', ink, 14, 'right'));
     y += height;
     line(MARGIN, y, contentEnd, y, rule, 1);
   }
@@ -399,9 +399,9 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     if (isTotal) {
       glossBand(summaryX + 1, rowY - 2, summaryW - 2, totalHeight, 0);
       drawLines([row[0] || 'Total'], summaryX + 13, rowY + 7,
-        '700 16px Arial, sans-serif', '#ffffff');
+        '700 18px Arial, sans-serif', '#ffffff');
       drawLines([row[1] || ''], contentEnd - 13, rowY + 7,
-        '700 16px Arial, sans-serif', '#ffffff', 17, 'right');
+        '700 18px Arial, sans-serif', '#ffffff', 17, 'right');
       rowY += totalHeight;
     } else {
       drawLines([row[0] || ''], summaryX + 13, rowY + 4,
@@ -412,7 +412,7 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     }
   }
   y += summaryHeight;
-  const footerLines = linesFor(footer, 'italic 700 13px Georgia, serif', contentWidth - 110);
+  const footerLines = linesFor(footer, 'italic 700 14px Georgia, serif', contentWidth - 110);
   const footerTop = PAGE_H - 88 - (footerLines.length - 1) * 17;
   if (y + 12 > footerTop) {
     await finishPage();
@@ -421,7 +421,7 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   line(MARGIN + 6, footerTop + 9, MARGIN + 93, footerTop + 9, cyan, 2);
   line(contentEnd - 93, footerTop + 9, contentEnd - 6, footerTop + 9, cyan, 2);
   drawLines(footerLines, PAGE_W / 2, footerTop,
-    'italic 700 13px Georgia, serif', navy, 17, 'center');
+    'italic 700 14px Georgia, serif', navy, 18, 'center');
   await finishPage();
   return assemblePdf(images, canvas.width, canvas.height);
 }
