@@ -1983,7 +1983,7 @@ function DocumentDetail({
                   <p>Conserve esta orden para verificar la mercancía recibida.</p>
                 )}
                 {doc.type === 'sale' && data.settings.receipt_footer && (
-                  <p>{data.settings.receipt_footer}</p>
+                  <p className="sales-screen-footer">{data.settings.receipt_footer}</p>
                 )}
               </div>
               <div className="commerce-totals">
