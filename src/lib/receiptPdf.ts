@@ -249,13 +249,13 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     ctx.fillRect(0, 0, PAGE_W, PAGE_H);
     topRibbon();
 
-    const logoScale = Math.min(199 / receiptLogo.naturalWidth, 75 / receiptLogo.naturalHeight);
+    const logoScale = Math.min(208 / receiptLogo.naturalWidth, 115 / receiptLogo.naturalHeight);
     const logoWidth = receiptLogo.naturalWidth * logoScale;
     const logoHeight = receiptLogo.naturalHeight * logoScale;
-    const logoTop = MARGIN + 28;
-    ctx.drawImage(receiptLogo, MARGIN + 3, logoTop, logoWidth, logoHeight);
+    const logoTop = MARGIN + 6;
+    ctx.drawImage(receiptLogo, MARGIN - 5, logoTop, logoWidth, logoHeight);
 
-    const headX = MARGIN + 218;
+    const headX = MARGIN + 207;
     line(headX - 16, MARGIN + 28, headX - 16, MARGIN + 108, cyan, 1.6);
     const displayTitle = title.toLocaleUpperCase('es');
     let titleSize = 28;
@@ -267,16 +267,16 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     drawLines([displayTitle], headX, MARGIN + 29,
       '700 ' + titleSize + 'px Georgia, serif', navy, 32);
     const dateParts = date.split(' · ');
-    drawLines([dateParts[0] || number], headX, MARGIN + 69,
+    drawLines([dateParts[0] || number], headX, MARGIN + 64,
       '700 15px Arial, sans-serif', navy);
     drawLines(linesFor(dateParts.slice(1).join(' · ') || date,
-      '12px Arial, sans-serif', contentEnd - headX), headX, MARGIN + 91,
+      '12px Arial, sans-serif', contentEnd - headX), headX, MARGIN + 86,
       '12px Arial, sans-serif', ink, 14);
-    rounded(contentEnd - 88, MARGIN + 80, 88, 24, 7, '#e2f3e9', '#cce6d5');
-    drawLines([status], contentEnd - 44, MARGIN + 87,
+    rounded(contentEnd - 88, MARGIN + 70, 88, 24, 7, '#e2f3e9', '#cce6d5');
+    drawLines([status], contentEnd - 44, MARGIN + 77,
       '700 11px Arial, sans-serif', '#205638', 13, 'center');
 
-    y = Math.max(MARGIN + 137, logoTop + logoHeight + 35);
+    y = Math.max(MARGIN + 128, logoTop + logoHeight + 9);
     tableStarted = false;
     tableTop = 0;
   }
@@ -376,7 +376,7 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   closeTable();
 
   // White summary card with a navy TOTAL ribbon (print only).
-  const summaryX = MARGIN + 206;
+  const summaryX = MARGIN + 224;
   const summaryW = contentEnd - summaryX;
   const normalHeight = 29;
   const totalHeight = 43;
