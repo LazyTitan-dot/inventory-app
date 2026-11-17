@@ -187,3 +187,55 @@ test('CLI generates the preview and rebuild removes stale generated files', asyn
   assert.equal((await outputConfig(root)).version, 3);
   await assert.rejects(readFile(path.join(root, '.vercel', 'output', 'static', 'stale.js')), { code: 'ENOENT' });
 });
+
+
+test('Brand Icon Cleanup V1 uses exact full-frame V4 assets at every public compatibility path', async () => {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const asset = (file) => path.join(root, file);
+  const image192 = await readFile(asset('public/icons/s-mart-living-v4-192.png'));
+  const image512 = await readFile(asset('public/icons/s-mart-living-v4-512.png'));
+  for (const [size, image] of [[192,image192],[512,image512]]) {
+    assert.equal(image.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+    assert.equal(image.readUInt32BE(16),size);
+    assert.equal(image.readUInt32BE(20),size);
+    for (const legacy of ['public/icons/icon-', 'icons/icon-']) {
+      assert.deepEqual(await readFile(asset(legacy+size+'.png')),image,
+        'Old icon route '+legacy+size+' must use the EXACT approved V4 artwork');
+    }
+  }
+  assert.deepEqual(await readFile(asset('public/brand/square_icon.png')),image512,
+    'Even legacy square_icon fallback must no longer contain white margins');
+  const manifest = JSON.parse(await readFile(asset('public/manifest.json'),'utf8'));
+  assert.deepEqual(JSON.parse(await readFile(asset('manifest.json'),'utf8')),manifest);
+  assert.deepEqual(manifest.icons.map(icon=>icon.src),[
+    '/icons/s-mart-living-v4-192.png','/icons/s-mart-living-v4-512.png',
+  ]);
+  const html = await readFile(asset('index.html'),'utf8');
+  assert.match(html,/rel="icon" href="\/icons\/s-mart-living-v4-192\.png"/);
+  assert.match(html,/rel="apple-touch-icon" href="\/icons\/s-mart-living-v4-180\.png"/);
+  assert.match(html,/class="sl-startup-logo" src="\/icons\/s-mart-living-v4-512\.png"/);
+  assert.doesNotMatch(html,/square_icon|icon-192\.png|favicon\.svg/);
+  await assert.rejects(readFile(asset('public/favicon.svg')),{code:'ENOENT'});
+  await assert.rejects(readFile(asset('icons/icon.svg')),{code:'ENOENT'});
+});
+
+test('Brand Icon Cleanup V1 has no remaining runtime references to the old white-frame icon', async () => {
+  const { readdir } = await import('node:fs/promises');
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const found = [];
+  async function scan(dir) {
+    for (const entry of await readdir(dir,{withFileTypes:true})) {
+      const filepath=path.join(dir,entry.name);
+      if (entry.isDirectory()) { await scan(filepath); continue; }
+      if (!/\.(?:ts|tsx|js|jsx|mjs|css)$/.test(entry.name) ||
+          /\.(?:test|spec)\./.test(entry.name)) continue;
+      const body=await readFile(filepath,'utf8');
+      if (/\/brand\/square_icon\.png|\/icons\/icon-(?:192|512)\.png|\/icons\/s-mart-living-v3-/.test(body)) {
+        found.push(path.relative(root,filepath));
+      }
+    }
+  }
+  await scan(path.join(root,'src'));
+  assert.deepEqual(found,[],
+    'Runtime UI must use the approved V4 icon paths, not deprecated sources.');
+});
