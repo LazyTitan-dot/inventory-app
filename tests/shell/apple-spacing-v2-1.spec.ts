@@ -1,10 +1,5 @@
 import {test,expect,saleId} from './adaptation-fixtures';
 
-type Dimensions={left:number;right:number;top:number;bottom:number;width:number;height:number};
-const rect=(el:Element):Dimensions=>{
- const r=el.getBoundingClientRect();
- return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};
-};
 for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light']] as const){
  test('Apple-spacing V2.1 inventory cards and disclosure controls '+width+'px '+theme,
  async({page,featureData},testInfo)=>{
@@ -14,6 +9,7 @@ for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light'
   const catalog=page.getByRole('region',{name:'Catálogo de productos'});
   await expect(catalog.getByRole('heading',{name:'Catálogo',exact:true})).toBeVisible();
   const box=await catalog.evaluate(el=>{
+   const rect=(node:Element)=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
    const panel=rect(el);
    const heading=rect(el.querySelector('.inventory-catalog-heading h2')!);
    const tax=rect(el.querySelector('.inventory-catalog-heading > span')!);
@@ -37,13 +33,14 @@ for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light'
   await page.goto('/inventario?variante='+featureData.variants[0]!.id);
   const detail=page.getByRole('dialog');
   await expect(detail).toBeVisible();
-  const groups=await detail.locator('.catalog-detail-disclosure').evaluateAll(nodes=>
-   nodes.map(el=>({
+  const groups=await detail.locator('.catalog-detail-disclosure').evaluateAll(nodes=>{
+   const rect=(node:Element)=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+   return nodes.map(el=>({
     box:rect(el),
     summary:rect(el.querySelector('summary')!),
     padding:getComputedStyle(el.querySelector('summary')!).paddingLeft,
-   }))
-  );
+   }));
+  });
   expect(groups.length).toBeGreaterThanOrEqual(4);
   expect(groups[1]!.box.top-groups[0]!.box.bottom).toBeGreaterThanOrEqual(12);
   expect(parseFloat(groups[0]!.padding)).toBeGreaterThanOrEqual(18);
@@ -71,6 +68,7 @@ for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light'
   const modal=page.getByRole('dialog',{name:'Pedido y cobro'});
   await expect(modal).toBeVisible();
   const spacing=await modal.evaluate(el=>{
+   const rect=(node:Element)=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
    const body=el.querySelector(':scope > .modal-body')!;
    const cart=el.querySelector('.commerce-fieldset.commerce-cart')!;
    const groups=[...el.querySelectorAll('.sales-payment-tile')].map(n=>({
