@@ -14,6 +14,7 @@ import { stockHealth, stockHealthLabels } from '../lib/catalog';
 import { ProductEditor } from './CatalogProductEditor';
 import { InventoryRowActions } from './InventoryRowActions';
 import { InventoryDetails, StockEditor, StockMeter } from './CatalogDetails';
+import { VariantIdentifiers } from './VariantIdentifiers';
 import { taxRateLabel } from '../lib/format';
 import './catalog.css';
 import './inventory-visual-v1.css';
@@ -30,6 +31,7 @@ export function CatalogPage() {
   const status = params.get('estado') ?? 'active';
   const [editor, setEditor] = useState<Product | 'new' | null>(null);
   const [adjustment, setAdjustment] = useState<Variant | null>(null);
+  const [identifiers, setIdentifiers] = useState<Variant | null>(null);
   const [archiving, setArchiving] = useState<Product | null>(null);
   const productMap = useMemo(
     () => new Map(data.products.map((product) => [product.id, product])),
@@ -402,6 +404,7 @@ export function CatalogPage() {
                             onView={() => openDetail(variant)}
                             onEdit={() => setEditor(product)}
                             onAdjust={() => setAdjustment(variant)}
+                            onIdentifiers={data.features?.includes('serial_barcode_management_v1') ? () => setIdentifiers(variant) : undefined}
                             onArchive={() => setArchiving(product)}
                           />
                         </td>
@@ -513,11 +516,13 @@ export function CatalogPage() {
         </div>
       </Modal>}
       {adjustment && <StockEditor variant={adjustment} onClose={() => setAdjustment(null)} />}
+      {identifiers && data.features?.includes('serial_barcode_management_v1') && <VariantIdentifiers variant={identifiers} onClose={() => setIdentifiers(null)} />}
       {detail && (
         <InventoryDetails
           key={detail.id}
           variant={detail}
           onClose={closeDetail}
+          onManageIdentifiers={(v) => { closeDetail(); setIdentifiers(v); }}
           onEdit={(product) => {
             closeDetail();
             setEditor(product);
