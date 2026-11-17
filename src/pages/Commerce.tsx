@@ -62,6 +62,7 @@ import { getVariantBarcodes } from '../lib/barcode';
 import { PurchaseOrdersList, PurchaseOrderProgress } from './PurchaseVisual';
 import { SalesHistory } from './SalesVisual';
 import { SalePrintAction, ReceiptBrand } from './SalePrintAction';
+import { SaleSerialPicker, useSaleSerials } from '../components/SerialSalePicker';
 import './commerce.css';
 import './sales-visual-v1.css';
 import './purchase-visual-v1.css';
@@ -622,6 +623,8 @@ function CreateDocument({
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
+  const [selectedSerials, setSelectedSerials] = useState<Record<string,string[]>>({});
+  const salesSerialEnabled = kind === 'sale' && (data.features?.includes('serial_sales_v2') ?? false);
   const [cart, setCart] = useState<CartLine[]>(() =>
     editingDocument
       ? data.document_items
@@ -820,6 +823,7 @@ function CreateDocument({
   }
   function clearCart() {
     setCart([]);
+    setSelectedSerials({});
     setContactId('');
     setPayment('cash');
     setTendered('');
@@ -886,6 +890,10 @@ function CreateDocument({
       setValidation(
         'Hay artículos con precio pendiente. Completa sus precios en Inventario antes de continuar.',
       );
+      return;
+    }
+    if (salesSerialEnabled && cart.some((line)=> (selectedSerials[line.variantId]?.length??0)>line.quantity)) {
+      setValidation('Hay más números de serie seleccionados que unidades en el carrito. Revisa cada producto.');
       return;
     }
     if (kind === 'sale' && cart.some((line) => line.quantity > (stock.get(line.variantId) || 0))) {
@@ -955,6 +963,7 @@ function CreateDocument({
       });
     if (kind === 'sale')
       Object.assign(payload, {
+        ...(salesSerialEnabled ? {serial_assignments:cart.map(line=>({variant_id:line.variantId,serial_ids:selectedSerials[line.variantId]??[]})).filter(a=>a.serial_ids.length>0)} : {}),
         payment_method: payment,
         ...(payment === 'cash' ? { tendered: Number(tendered) } : {}),
       });
@@ -1070,9 +1079,10 @@ function CreateDocument({
                   type="button"
                   className="button ghost commerce-icon-button"
                   aria-label={`Quitar ${product?.model} ${variant?.name}`}
-                  onClick={() =>
-                    setCart((lines) => lines.filter((item) => item.variantId !== line.variantId))
-                  }
+                  onClick={() => {
+                    setCart((lines) => lines.filter((item) => item.variantId !== line.variantId));
+                    setSelectedSerials((previous) => {const next={...previous};delete next[line.variantId];return next;});
+                  }}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -1156,7 +1166,12 @@ function CreateDocument({
                 )}
                 {kind !== 'sale' && <strong>{money(line.quantity * (kind === 'purchase' ? line.unitCost : line.expectedPrice))}</strong>}
               </div>
-              {kind === 'sale' && line.quantity > (stock.get(line.variantId) || 0) && (
+              {salesSerialEnabled && <SaleSerialPicker key={line.variantId}
+                variantId={line.variantId} quantity={line.quantity}
+                selected={selectedSerials[line.variantId]??[]}
+                onChange={ids=>setSelectedSerials(previous=>({...previous,[line.variantId]:ids}))}
+                disabled={busy} />}
+                            {kind === 'sale' && line.quantity > (stock.get(line.variantId) || 0) && (
                 <p className="commerce-error-text">
                   Solo quedan {stock.get(line.variantId) || 0} disponibles.
                 </p>
@@ -1760,6 +1775,9 @@ function DocumentDetail({
   const [mode, setMode] = useState<DetailMode>('detail');
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
   const receiptRef = useRef<HTMLElement>(null);
+  const saleSerialEnabled = data.features?.includes('serial_sales_v2') ?? false;
+  const {rows:saleSerialLinks,loading:serialLoading,error:serialError} =
+    useSaleSerials(doc.type==='sale'?doc.id:null,saleSerialEnabled);
   const [linkItemId, setLinkItemId] = useState<string | null>(null);
   const items = data.document_items.filter((item) => item.document_id === doc.id);
   // The printed prices are the persisted tax-inclusive line amounts. Sum those
@@ -1931,7 +1949,13 @@ function DocumentDetail({
                             Sin vínculo con el inventario
                           </small>
                         )}
-                        {doc.type !== 'purchase' && (
+                        {doc.type==='sale' && saleSerialLinks.filter(link=>link.item_id===item.id).map(link=>(
+                          <small className="receipt-serial-number" key={link.id}>
+                            Serie: {link.serial}
+                            {link.returned_at && <span className="receipt-serial-status"> · Devuelta</span>}
+                          </small>
+                        ))}
+                                                {doc.type !== 'purchase' && (
                           <small>
                             {item.product_snapshot.warranty_unknown ||
                             item.product_snapshot.warranty_months === null
@@ -2150,7 +2174,13 @@ function DocumentDetail({
               </button>
             )}
             {doc.type === 'sale' ? (
-              <SalePrintAction key={doc.id} receiptRef={receiptRef} number={documentNumber(doc)} />
+              saleSerialEnabled && (serialLoading || serialError)
+                ? <>
+                  {serialLoading && <span className="receipt-serial-loading">Verificando series del recibo…</span>}
+                  {serialError && <ErrorNotice message="No se pudo consultar las series de esta factura. Actualiza el documento antes de imprimir." />}
+                  <button type="button" className="button secondary" disabled><Printer size={17}/> Imprimir</button>
+                </>
+                : <SalePrintAction key={doc.id} receiptRef={receiptRef} number={documentNumber(doc)} />
             ) : (
               <button className="button secondary" onClick={() => window.print()}>
                 <Printer size={17} />
@@ -2274,6 +2304,8 @@ function ConvertQuote({
   const [payment, setPayment] = useState('cash');
   const [tendered, setTendered] = useState(doc.total.toFixed(2));
   const [validation, setValidation] = useState('');
+  const [selectedSerials,setSelectedSerials] = useState<Record<string,string[]>>({});
+  const salesSerialEnabled = data.features?.includes('serial_sales_v2') ?? false;
   const items = useMemo(
     () => data.document_items.filter((item) => item.document_id === doc.id),
     [data.document_items, doc.id],
@@ -2304,9 +2336,15 @@ function ConvertQuote({
       setValidation('El efectivo recibido debe cubrir el total.');
       return;
     }
+    if (salesSerialEnabled && items.some(item=>item.variant_id &&
+      (selectedSerials[item.variant_id]?.length??0)>item.quantity)) {
+      setValidation('Hay más series seleccionadas que unidades cotizadas.');return;
+    }
     try {
       const result = await run('convert_quote', {
         id: doc.id,
+        ...(salesSerialEnabled ? {serial_assignments:items.filter(item=>item.variant_id&&selectedSerials[item.variant_id]?.length)
+          .map(item=>({variant_id:item.variant_id,serial_ids:selectedSerials[item.variant_id!]}))} : {}),
         payment_method: payment,
         ...(payment === 'cash' ? { tendered: Number(tendered) } : {}),
       });
@@ -2347,6 +2385,14 @@ function ConvertQuote({
           message={`Existencias insuficientes: ${shortages.map((item) => `${itemTitle(item)} (${item.product_snapshot.name})`).join(', ')}.`}
         />
       )}
+      {salesSerialEnabled && items.filter(item=>item.variant_id).map(item=>(
+        <div key={item.id}>
+          <strong>{itemTitle(item)} · {item.product_snapshot.name}</strong>
+          <SaleSerialPicker variantId={item.variant_id!} quantity={item.quantity}
+            selected={selectedSerials[item.variant_id!]??[]}
+            disabled={busy} onChange={ids=>setSelectedSerials(previous=>({...previous,[item.variant_id!]:ids}))}/>
+        </div>
+      ))}
       <fieldset disabled={busy} className="commerce-fieldset form-grid">
         <Field label="Medio de pago">
           <select value={payment} onChange={(event) => setPayment(event.target.value)}>

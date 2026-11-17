@@ -1,0 +1,45 @@
+/* Serial Sales V2 — scoped Glass controls, coherent with Ventas V1 / Clientes V2.1. */
+.serial-sale-selector {
+  display:grid;gap:12px;min-width:0;margin:12px 0 2px;padding:14px;
+  border:1px solid var(--sl-refined-edge,rgba(130,180,222,.26));
+  border-radius:19px;
+  background:radial-gradient(ellipse at 95% 0%,rgba(1,146,209,.12),transparent 65%),var(--sl-refined-surface,rgba(13,32,54,.62));
+  box-shadow:inset 0 1px rgba(255,255,255,.1);
+}
+.serial-sale-header{display:flex;align-items:flex-start;gap:11px;min-width:0;color:var(--sl-refined-ink,var(--ink))}
+.serial-sale-header>svg{flex:none;color:var(--sl-refined-accent,#15a9dc);margin-top:2px}
+.serial-sale-header>div{display:grid;gap:4px;min-width:0}
+.serial-sale-header strong{font-size:14px;letter-spacing:-.01em;line-height:1.25}
+.serial-sale-header small,.serial-sale-note{color:var(--sl-refined-muted,var(--muted));font-size:12px;line-height:1.5}
+.serial-sale-selected{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
+.serial-sale-selected:empty{display:none}
+.serial-sale-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;border-radius:999px;min-height:36px;padding:7px 12px;
+  background:rgba(0,148,206,.15);border:1px solid rgba(67,184,226,.5);color:var(--sl-refined-ink,var(--ink));font-size:12px;font-weight:650;overflow-wrap:anywhere;cursor:pointer}
+.serial-sale-chip span{font-size:19px;line-height:.7}
+.serial-sale-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.serial-sale-search{display:flex;align-items:center;gap:8px;flex:1 1 145px;min-width:0;padding:0 12px;
+  border:1px solid var(--sl-refined-edge,var(--line));border-radius:999px;
+  background:var(--sl-refined-surface,var(--surface));color:var(--sl-refined-muted,var(--muted))}
+.serial-sale-search>svg{flex:none}
+.serial-sale-search input{min-width:0;width:100%;min-height:44px;border:0;outline:0;background:transparent;color:var(--sl-refined-ink,var(--ink));font-size:16px}
+.serial-sale-tools .button.secondary,.serial-sale-selector>.button.secondary{display:inline-flex;gap:7px;align-items:center;justify-content:center;min-height:44px;border-radius:999px;padding:9px 13px}
+.serial-sale-options{display:flex;flex-wrap:wrap;gap:7px;max-height:148px;overflow:auto}
+.serial-sale-option{display:inline-flex;align-items:center;justify-content:space-between;gap:10px;min-height:43px;max-width:100%;padding:8px 12px;
+ border:1px solid var(--sl-refined-edge,var(--line));border-radius:14px;background:var(--sl-refined-surface,var(--surface));
+ color:var(--sl-refined-ink,var(--ink));font-size:12px;cursor:pointer;overflow-wrap:anywhere}
+.serial-sale-option.selected{border-color:#1caad9;background:rgba(13,147,193,.18)}
+.serial-sale-option svg{flex:none;color:var(--sl-refined-accent,#19b8e8)}
+.serial-sale-option:disabled{opacity:.47;cursor:not-allowed}
+.serial-sale-circle{display:block;flex:none;width:17px;height:17px;border:1px solid var(--sl-refined-edge,var(--line));border-radius:50%}
+.serial-sale-error{margin:0;color:var(--sl-danger,#d54949);font-size:12px;line-height:1.5}
+.serial-sale-selector button:focus-visible,.serial-sale-search:focus-within{outline:2px solid var(--sl-refined-accent,#19b8e8);outline-offset:2px}
+.receipt-serial-number{display:block;margin-top:5px;font-size:11px;line-height:1.45;color:inherit;font-weight:600;overflow-wrap:anywhere}
+.receipt-serial-number .receipt-serial-status{color:var(--sl-refined-muted,var(--muted));font-weight:400}
+.receipt-serial-loading{font-size:12px;color:var(--sl-refined-muted,var(--muted))}
+@media(max-width:700px){.serial-sale-selector{padding:13px;border-radius:18px}.serial-sale-tools>.button{flex:0 0 auto}.serial-sale-options{max-height:128px}}
+@media print{
+ .serial-sale-selector{display:none!important}
+ .receipt-serial-number{display:block!important;font-size:9pt;margin-top:3px;color:#112a3f;break-inside:avoid}
+ .receipt-serial-number .receipt-serial-status{color:#455c73}
+}
+@media(prefers-reduced-transparency:reduce){.serial-sale-selector{background:var(--sl-refined-surface,var(--surface))}}

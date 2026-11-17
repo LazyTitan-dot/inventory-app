@@ -36,7 +36,7 @@ test('fulfilment: address ownership/defaults/versions, immutable snapshots, rece
    if(role!=='outsider')await db.query('insert into public.retail_memberships(user_id,email,role) values($1,$2,$3)',[id,`${role}@example.test`,role]);
   }
   await as('owner');
-  eq((await state()).features,['customer_addresses_v1','purchase_receipts_v1','barcode_aliases_v1','serial_barcode_management_v1'],'Capabilities advertise real migrated contract');
+  eq((await state()).features,['customer_addresses_v1','purchase_receipts_v1','barcode_aliases_v1','serial_barcode_management_v1','serial_sales_v2'],'Capabilities advertise real migrated contract');
   const homeOp=randomUUID(),homePayload={kind:'customer',name:'Cliente con Casa',phone:'8095551234',address:'Calle Uno 12, Centro, Santo Domingo, Distrito Nacional',initial_home_address:addressFields};
   const createdHome=await command('save_contact',homePayload,homeOp);
   eq(await command('save_contact',homePayload,homeOp),createdHome,'Atomic contact replay');
