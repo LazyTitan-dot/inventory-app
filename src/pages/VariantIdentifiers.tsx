@@ -223,7 +223,7 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
        <ScanLine size={24} aria-hidden="true" />
        <strong>{query ? 'Sin coincidencias' : 'Aún no hay series registradas'}</strong>
        <span>{query ? 'Prueba con otro número de serie.' : 'Escanea o introduce una serie cuando tengas el producto a mano.'}</span>
-      </div>
+      </div>}
      <div className="sl-identifiers-list">
       {snapshot?.serials.map(s=><article key={s.id} className="sl-identifiers-item">
        <div><strong>{s.serial}</strong><small>{dateTime(s.created_at)} · {s.source.toUpperCase()}</small></div>
