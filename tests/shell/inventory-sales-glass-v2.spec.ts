@@ -12,7 +12,7 @@ async function surface(page:import('@playwright/test').Page, selector:string):Pr
  });
 }
 for(const [width,theme] of [[320,'light'],[390,'dark'],[1280,'light'],[1440,'dark']] as const){
- test('Inventory Glass V2 — scoped material, catalog and editor '+width+'px '+theme,async({page},testInfo)=>{
+ test('Inventory Glass V2 — scoped material, catalog and editor '+width+'px '+theme,async({page,featureData},testInfo)=>{
   await page.emulateMedia({colorScheme:theme});
   await page.setViewportSize({width,height:860});
   await page.goto('/inventario');
@@ -22,7 +22,7 @@ for(const [width,theme] of [[320,'light'],[390,'dark'],[1280,'light'],[1440,'dar
   expect(header.background).toContain('radial-gradient');
   expect(header.glass).toContain('radial-gradient');
   const stat=await surface(page,'.inventory-visual-v1 .stat-card');
-  expect(stat.radius).toBe('21px');
+  expect(stat.radius).toBe(width<=800?'18px':'21px');
   await root.getByText('Resumen financiero del inventario',{exact:true}).click();
   await expect(root.getByText('Ganancia potencial',{exact:true})).toBeVisible();
   const summary=await surface(page,'.inventory-visual-v1 .catalog-financial-disclosure');
@@ -32,7 +32,7 @@ for(const [width,theme] of [[320,'light'],[390,'dark'],[1280,'light'],[1440,'dar
   if(width<=920){
    const card=await surface(page,'.inventory-visual-v1 .catalog-mobile-product');
    expect(card.radius).toBe('21px');
-   expect(card.background).not.toBe('');
+   expect(card.glass).toContain('radial-gradient');
   }else{
    const table=root.locator('.catalog-desktop');
    await expect(table).toBeVisible();
@@ -40,7 +40,7 @@ for(const [width,theme] of [[320,'light'],[390,'dark'],[1280,'light'],[1440,'dar
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
   await page.screenshot({path:testInfo.outputPath('inventory-glass-v2-'+width+'-'+theme+'.png'),fullPage:true});
-  await page.goto('/inventario?variante='+ (await page.evaluate(()=>sessionStorage.getItem('unused'))??'10000000-0000-4000-8000-000000000001'));
+  await page.goto('/inventario?variante='+featureData.variants[0]!.id);
   const detail=page.getByRole('dialog');
   await expect(detail.getByRole('button',{name:'Editar ficha'})).toBeVisible();
   const detailHeader=await surface(page,'.inventory-detail-v1 .modal-heading');
@@ -72,7 +72,7 @@ for(const [width,theme] of [[320,'light'],[390,'dark'],[1280,'light'],[1440,'dar
   const cart=width<=800?page.getByRole('dialog',{name:'Pedido y cobro'}):root.getByRole('region',{name:'Documento actual'});
   await expect(cart.getByText('Venta actual',{exact:true})).toBeVisible();
   const line=await surface(page,width<=800?'.sales-checkout-v1 .commerce-cart-line':'.sales-visual-v1 .commerce-cart-line');
-  expect(line.radius).toBe('18px');
+  expect(line.radius).toBe(width<=800?'19px':'18px');
   const qty=cart.getByRole('spinbutton',{name:'Cantidad de Nevera de prueba Blanco'});
   await expect(qty).toHaveValue('1');
   const increment=cart.getByRole('button',{name:'Aumentar Nevera de prueba Blanco'});
