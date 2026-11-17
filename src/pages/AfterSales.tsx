@@ -34,6 +34,7 @@ import {
   StatusBadge,
 } from '../components/ui';
 import './commerce.css';
+import { ReturnSerialPicker, useSaleSerials } from '../components/SerialSalePicker';
 
 type Warranty = {
   sale: RetailDocument;
@@ -401,6 +402,9 @@ function CreateReturn({
   const [query, setQuery] = useState('');
   const [saleId, setSaleId] = useState(initialSaleId);
   const [lines, setLines] = useState<Record<string, ReturnLine>>({});
+  const [returnedSerials,setReturnedSerials] = useState<Record<string,string[]>>({});
+  const salesSerialEnabled = data.features?.includes('serial_sales_v2') ?? false;
+  const {rows:saleSerialLinks,loading:serialLoading,error:serialError} = useSaleSerials(saleId||null,salesSerialEnabled);
   const [reason, setReason] = useState('');
   const [payment, setPayment] = useState(
     () => data.documents.find((doc) => doc.id === initialSaleId)?.payment_method || 'cash',
@@ -462,6 +466,7 @@ function CreateReturn({
         item_id: item.id,
         quantity: Number(lines[item.id]?.quantity || 0),
         condition: lines[item.id]?.condition || 'quarantine',
+        ...(salesSerialEnabled ? { serial_ids:returnedSerials[item.id]??[] } : {}),
       }))
       .filter((line) => line.quantity !== 0);
     if (!selected.length) {
@@ -485,6 +490,19 @@ function CreateReturn({
     if (selected.some((line) => !items.find((item) => item.id === line.item_id)?.variant_id)) {
       setValidation('El artículo histórico debe vincularse al inventario antes de devolverlo.');
       return;
+    }
+    if (salesSerialEnabled && (serialLoading || serialError)) {
+      setValidation('No se pudieron verificar las series vinculadas a la venta. Actualiza antes de devolver.');return;
+    }
+    if (salesSerialEnabled && selected.some(line=>{
+      const open=saleSerialLinks.filter(link=>link.item_id===line.item_id&&!link.returned_at);
+      const ids=returnedSerials[line.item_id]??[];
+      const original=items.find(i=>i.id===line.item_id);
+      const remaining=(original?.quantity??0)-(original?.returned_quantity??0);
+      return ids.length>line.quantity || ids.some(id=>!open.some(x=>x.serial_id===id)) ||
+        line.quantity-ids.length>remaining-open.length;
+    })) {
+      setValidation('Selecciona las series correspondientes a las unidades identificadas que regresan.');return;
     }
     if (!reason.trim()) {
       setValidation('Indica el motivo de la devolución.');
@@ -539,6 +557,7 @@ function CreateReturn({
                     setSaleId(doc.id);
                     setPayment(doc.payment_method || 'cash');
                     setLines({});
+                    setReturnedSerials({});
                     clearError();
                   }}
                 >
@@ -567,6 +586,7 @@ function CreateReturn({
             onClick={() => {
               setSaleId('');
               setLines({});
+              setReturnedSerials({});
               setValidation('');
               clearError();
             }}
@@ -664,6 +684,17 @@ function CreateReturn({
                         <strong>{money(estimatedRefund(item, Number(line.quantity) || 0))}</strong>
                       </div>
                     </div>
+                    {salesSerialEnabled && <div className="commerce-return-serials">
+                      {serialLoading ? <p className="muted">Consultando las series de esta venta…</p>
+                        : serialError ? <ErrorNotice message="No se pudo cargar el historial de series. Actualiza la información antes de devolver." />
+                        : <ReturnSerialPicker
+                            links={saleSerialLinks.filter(link=>link.item_id===item.id)}
+                            quantity={Number(line.quantity)||0}
+                            selected={returnedSerials[item.id]??[]}
+                            disabled={busy||remaining<=0}
+                            onChange={ids=>setReturnedSerials(prev=>({...prev,[item.id]:ids}))}
+                          />}
+                    </div>}
                   </div>
                 );
               })}
@@ -734,6 +765,8 @@ function ReturnDetail({
   const { data } = useRetail();
   const sale = data.documents.find((candidate) => candidate.id === doc.parent_id);
   const items = data.document_items.filter((item) => item.document_id === doc.id);
+  const serialEnabled=data.features?.includes('serial_sales_v2')??false;
+  const {rows:returnSerialLinks,loading:serialLoading,error:serialError}=useSaleSerials(sale?.id??null,serialEnabled);
   return (
     <Modal title={documentNumber(doc)} onClose={onClose} wide>
       <article className="retail-print commerce-document">
@@ -774,6 +807,9 @@ function ReturnDetail({
                     <small className="commerce-table-meta">
                       {item.product_snapshot.name} · {item.product_snapshot.sku}
                     </small>
+                    {returnSerialLinks.filter(x=>x.return_id===doc.id&&x.variant_id===item.variant_id).map(x=>(
+                      <small className="receipt-serial-number" key={x.id}>Serie devuelta: {x.serial}</small>
+                    ))}
                   </td>
                   <td className="number">{item.quantity}</td>
                   <td className="number">{money(item.line_total)}</td>
@@ -818,7 +854,8 @@ function ReturnDetail({
         <button className="button secondary" onClick={onClose}>
           Cerrar
         </button>
-        <button className="button primary" onClick={() => window.print()}>
+        {serialEnabled&&(serialLoading||serialError)&&<ErrorNotice message={serialError?'No fue posible verificar las series devueltas. Actualiza antes de imprimir.':'Cargando las series devueltas…'}/>}
+        <button className="button primary" disabled={serialEnabled&&(serialLoading||Boolean(serialError))} onClick={() => window.print()}>
           <Printer size={17} />
           Imprimir constancia
         </button>
@@ -830,6 +867,8 @@ function ReturnDetail({
 function WarrantyDetail({ warranty, onClose }: { warranty: Warranty; onClose: () => void }) {
   const { data } = useRetail();
   const { sale, item, expires, remaining, status } = warranty;
+  const serialEnabled=data.features?.includes('serial_sales_v2')??false;
+  const {rows:serialLinks,loading:serialLoading,error:serialError}=useSaleSerials(sale.id,serialEnabled);
   return (
     <Modal title="Garantía de la compra" onClose={onClose}>
       <article className="retail-print commerce-warranty-detail">
@@ -877,6 +916,9 @@ function WarrantyDetail({ warranty, onClose }: { warranty: Warranty; onClose: ()
             <dt>Unidades sin devolver</dt>
             <dd>{remaining}</dd>
           </div>
+          {serialEnabled && <div><dt>Series asociadas a la garantía</dt>
+            <dd>{serialLinks.filter(x=>x.item_id===item.id).map(x=>x.serial+(x.returned_at?' (devuelta)':'')).join(', ') || (serialLoading?'Consultando…':'Sin series identificadas')}</dd>
+          </div>}
         </dl>
         {status === 'unknown' ? (
           <p className="commerce-inline-note">
@@ -913,7 +955,7 @@ function WarrantyDetail({ warranty, onClose }: { warranty: Warranty; onClose: ()
         <button className="button secondary" onClick={onClose}>
           Cerrar
         </button>
-        <button className="button primary" onClick={() => window.print()}>
+        <button className="button primary" disabled={serialEnabled&&(serialLoading||Boolean(serialError))} onClick={() => window.print()}>
           <Printer size={17} />
           Imprimir consulta
         </button>
