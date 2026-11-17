@@ -249,8 +249,12 @@ test('Ventas V1.3 dark card and print-only customer totals', async ({page}, test
   expect(await receipt.innerText()).not.toContain('ITBIS');
   await expect(receipt.locator('.commerce-totals > div').first()).toContainText('9,440.00');
   await expect(receipt.locator('.sales-print-footer')).toBeVisible();
-  const bg=await receipt.locator('.commerce-grand-total').evaluate(el=>getComputedStyle(el).backgroundColor);
-  expect(bg).toBe('rgb(11, 39, 83)');
+  const totalStyle=await receipt.locator('.commerce-grand-total').evaluate(el=>{
+    const style=getComputedStyle(el);
+    return {background:style.backgroundImage,color:style.color};
+  });
+  expect(totalStyle.background).toContain('linear-gradient');
+  expect(totalStyle.color).toBe('rgb(255, 255, 255)');
   const pdf=await page.pdf({format:'A4',printBackground:true});
  const count=(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)||[]).length;
   expect(count).toBe(1);
