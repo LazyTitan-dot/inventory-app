@@ -70,6 +70,7 @@ import './inventory-sales-glass-v2.css';
 import './apple-spacing-v2-1.css';
 import './sales-checkout-spacing-v2-2.css';
 import './windows-sales-visual-v2-3.css';
+import './mobile-sales-visual-v2-4.css';
 
 type Kind = 'sale' | 'purchase' | 'quote';
 type CartLine = { variantId: string; quantity: number; expectedPrice: number; unitCost: number };

@@ -3,7 +3,7 @@ import {test,expect,saleId} from './adaptation-fixtures';
 /** Exact two-surface acceptance scope:
  * 1) The dark Windows sale-detail logo must use approved navy art on-screen.
  * 2) Cart removal must appear red on Windows only.
- * Every existing PDF/print and iPhone layout remains untouched.
+ * Every existing PDF/print remains untouched. V2.4 extends visual parity to iPhone.
  */
 for(const theme of ['dark','light'] as const){
  test('Windows sale receipt logo respects theme without changing print '+theme,async({page},testInfo)=>{
@@ -72,14 +72,19 @@ for(const theme of ['dark','light'] as const){
   await expect(cart.getByText('RD$0.00').first()).toBeVisible();
  });
 }
-test('iPhone dark remains on approved logo, print and cyan cart controls',async({page})=>{
+test('iPhone dark uses approved navy logo and red cart remove without print changes',async({page})=>{
  await page.emulateMedia({colorScheme:'dark',media:'screen'});
  await page.setViewportSize({width:390,height:844});
  await page.goto('/ventas?documento='+saleId);
  const logo=page.getByRole('dialog',{name:'VEN-PRUEBA-001'})
    .getByRole('img',{name:'S-mart Living',exact:true});
  await expect(logo).toHaveAttribute('src','/brand/alternate_light.png');
- expect(await logo.evaluate(el=>getComputedStyle(el).content)).not.toContain('primary_dark.png');
+ expect(await logo.evaluate(el=>getComputedStyle(el).content)).toContain('primary_dark.png');
+ await page.emulateMedia({media:'print',colorScheme:'dark'});
+ const logoInPrint=page.locator('dialog.sales-detail-v1 .retail-print img.sales-receipt-logo');
+ expect(await logoInPrint.evaluate(el=>getComputedStyle(el).content)).not.toContain('primary_dark.png');
+ await expect(logoInPrint).toHaveAttribute('src','/brand/alternate_light.png');
+ await page.emulateMedia({media:'screen',colorScheme:'dark'});
  await page.goto('/ventas');
  const search=page.getByRole('textbox',{name:'Buscar productos para agregar'});
  await search.fill('TEST0001');await search.press('Enter');
@@ -87,5 +92,5 @@ test('iPhone dark remains on approved logo, print and cyan cart controls',async(
  const remove=page.getByRole('dialog',{name:'Pedido y cobro'}).getByRole('button',{name:/Quitar Nevera de prueba Blanco/});
  await expect(remove).toBeVisible();
  const style=await remove.evaluate(el=>getComputedStyle(el).color);
- expect(style).not.toBe('rgb(255, 120, 134)');
+ expect(style).toBe('rgb(255, 120, 134)');
 });

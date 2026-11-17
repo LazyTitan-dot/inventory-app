@@ -1,0 +1,62 @@
+/*
+ * S-mart Living — iPhone Sales Visual Corrections V2.4
+ * Parity with approved Windows V2.3: dark sale receipt wordmark and red cart
+ * remove icon. Scoped to small SCREEN viewports, never @media print.
+ * Does not change the receipt source image, local iOS PDF rendering, stock,
+ * discounts, serial selection, payments, or any approved layout spacing.
+ */
+@media screen and (max-width:800px) {
+  /* Keep the exact approved printable light-logo source. On the screen only,
+   * replace its presentation with the already approved navy wordmark.
+   * src remains alternate_light.png for the iOS canvas receipt PDF.
+   */
+  .app-layout[data-theme="dark"] dialog.sales-detail-v1 .retail-print img.sales-receipt-logo {
+    content:url("/brand/primary_dark.png");
+    background:transparent;
+    padding:0;
+    border-radius:0;
+    box-shadow:none;
+  }
+
+  /* Destructive action: consistent with Windows V2.3 while retaining the
+   * 44 px mobile target and Apple Spacing V2.1 / checkout V2.2 geometry.
+   */
+  .app-layout .sales-visual-v1 .commerce-cart-line .commerce-line-name > button.commerce-icon-button {
+    color:#b4233b;
+    border-color:rgba(180,35,59,.32);
+    background:rgba(180,35,59,.07);
+    /* Override legacy .commerce-icon-button min-height:30px !important
+     * so the mobile destructive action meets the 44 px touch target. */
+    box-sizing:border-box;
+    display:grid;
+    place-items:center;
+    flex:none;
+    width:44px;
+    height:44px;
+    min-width:44px !important;
+    min-height:44px !important;
+    padding:0 !important;
+    border-radius:50%;
+  }
+  .app-layout .sales-visual-v1 .commerce-cart-line .commerce-line-name > button.commerce-icon-button:hover:not(:disabled) {
+    color:#9b1c34;
+    border-color:rgba(180,35,59,.62);
+    background:rgba(180,35,59,.13);
+  }
+  .app-layout[data-theme="dark"] .sales-visual-v1 .commerce-cart-line .commerce-line-name > button.commerce-icon-button {
+    color:#ff7886;
+    border-color:rgba(255,120,134,.38);
+    background:rgba(255,120,134,.09);
+  }
+  .app-layout[data-theme="dark"] .sales-visual-v1 .commerce-cart-line .commerce-line-name > button.commerce-icon-button:hover:not(:disabled) {
+    color:#ffa7ae;
+    border-color:rgba(255,120,134,.66);
+    background:rgba(255,120,134,.15);
+  }
+  .app-layout .sales-visual-v1 .commerce-cart-line .commerce-line-name > button.commerce-icon-button svg {
+    stroke:currentColor;
+  }
+  .app-layout .sales-visual-v1 .commerce-cart-line .commerce-line-name > button.commerce-icon-button:focus-visible {
+    outline-color:currentColor;
+  }
+}
