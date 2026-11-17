@@ -7,6 +7,7 @@ import type { Variant } from '../lib/contracts';
 import { useOperation } from '../state/useOperation';
 import { useRetail } from '../state/useRetail';
 import { dateTime } from '../lib/format';
+import { serialCandidates } from '../lib/serials';
 import './variant-identifiers.css';
 
 type Source = 'manual' | 'barcode' | 'qr' | 'ocr' | 'usb';
@@ -23,15 +24,6 @@ const KIND_LABELS: Record<CodeKind,string> = { internal:'Interno S-mart Living',
 const clean = (s:string) => s.trim();
 const readError = (reason: unknown) => reason instanceof Error ? reason.message : String(reason);
 const PAGE_SIZE = 50;
-
-export function serialCandidates(raw: string): string[] {
- const candidates: string[] = [];
- for (const line of raw.split(/\r?\n/)) {
-   const match = line.match(/(?:S\/?N|SERIAL(?:\s*(?:NO|NUMBER|NÚMERO))?|N[ÚU]MERO\s+DE\s+SERIE)\s*[:#.-]?\s*([A-Z0-9][A-Z0-9._/-]{3,79})/i);
-   if (match?.[1]) candidates.push(match[1]);
- }
- return [...new Set(candidates)];
-}
 
 /** An additive, on-demand view: absent feature flags keep older installations unchanged. */
 export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onClose: () => void }) {
@@ -118,7 +110,7 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
      const recognized=await readSerialTextPhoto(file,{signal:controller.signal});
      const options=serialCandidates(recognized);
      setOcrText(recognized);setOcrCandidates(options);
-     if(options.length===1){setSerial(options[0]);setSource('ocr');}
+     if(options.length===1){setSerial(options[0]!);setSource('ocr');}
      else setError('Revisa el texto reconocido y selecciona o escribe la serie correcta.');
    }catch(cause){setError(readError(cause));}
    finally{setOcrBusy(false);}
