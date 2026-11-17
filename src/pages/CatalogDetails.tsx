@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowDownToLine, ArrowUpRight, Barcode, Printer, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpRight, Barcode, Printer, ShoppingBag, Truck, ScanLine } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useRetail } from '../state/useRetail';
 import { useOperation } from '../state/useOperation';
@@ -129,10 +129,12 @@ export function InventoryDetails({
   variant,
   onClose,
   onEdit,
+  onManageIdentifiers,
 }: {
   variant: Variant;
   onClose: () => void;
   onEdit: (product: Product) => void;
+  onManageIdentifiers: (variant: Variant) => void;
 }) {
   const { data } = useRetail();
   const [tab, setTab] = useState<'summary' | 'history' | 'adjust'>('summary');
@@ -317,6 +319,7 @@ export function InventoryDetails({
         {data.permissions.manage_catalog && tab !== 'adjust' && (
           <div className="catalog-detail-footer">
             <button type="button" className="button secondary" onClick={() => onEdit(product)}>Editar ficha</button>
+            {data.features?.includes('serial_barcode_management_v1') && <button type="button" className="button secondary" onClick={() => onManageIdentifiers(variant)}><ScanLine size={16} /> Gestionar series y códigos</button>}
           </div>
         )}
       </div>
