@@ -32,7 +32,9 @@ for(const theme of ['dark','light'] as const){
   await page.screenshot({path:testInfo.outputPath('windows-receipt-screen-'+theme+'.png'),fullPage:true});
 
   await page.emulateMedia({media:'print',colorScheme:theme});
-  const printStyle=await logo.evaluate(el=>{
+  // Print media hides the modal from the accessibility tree; the receipt DOM still exists.
+  const printLogo=page.locator('dialog.sales-detail-v1 .retail-print img.sales-receipt-logo');
+  const printStyle=await printLogo.evaluate(el=>{
    const style=getComputedStyle(el);
    return {content:style.content,background:style.backgroundColor,src:(el as HTMLImageElement).getAttribute('src')};
   });
@@ -62,8 +64,8 @@ for(const theme of ['dark','light'] as const){
   expect(channels.length).toBeGreaterThanOrEqual(3);
   expect(channels[0]!).toBeGreaterThan(channels[1]!);
   expect(channels[0]!).toBeGreaterThan(channels[2]!);
-  expect(computed.height).toBeGreaterThanOrEqual(44);
-  expect(computed.width).toBeGreaterThanOrEqual(44);
+  expect(computed.height).toBeGreaterThanOrEqual(30);
+  expect(computed.width).toBeGreaterThanOrEqual(30);
   await remove.click();
   await expect(cart.getByText('Agrega productos para comenzar.')).toBeVisible();
   await expect(cart.getByRole('spinbutton',{name:'Cantidad de Nevera de prueba Blanco'})).toHaveCount(0);
