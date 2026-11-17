@@ -272,8 +272,8 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     drawLines(linesFor(dateParts.slice(1).join(' · ') || date,
       '12px Arial, sans-serif', contentEnd - headX), headX, MARGIN + 91,
       '12px Arial, sans-serif', ink, 14);
-    rounded(contentEnd - 88, MARGIN + 112, 88, 24, 7, '#e2f3e9', '#cce6d5');
-    drawLines([status], contentEnd - 44, MARGIN + 119,
+    rounded(contentEnd - 88, MARGIN + 80, 88, 24, 7, '#e2f3e9', '#cce6d5');
+    drawLines([status], contentEnd - 44, MARGIN + 87,
       '700 11px Arial, sans-serif', '#205638', 13, 'center');
 
     y = Math.max(MARGIN + 137, logoTop + logoHeight + 35);
