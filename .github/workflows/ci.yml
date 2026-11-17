@@ -158,3 +158,31 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  serial-barcode-v1:
+    if: github.ref == 'refs/heads/feature/serial-barcode-management-v1' || github.head_ref == 'feature/serial-barcode-management-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:shell:types
+      - run: npx playwright test serial-barcode-v1 inventory-visual-v1 scanner
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: serial-barcode-v1-browser-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
