@@ -331,7 +331,7 @@ begin
     values(act,eid,op,auth.uid(),(select email from public.retail_memberships where user_id=auth.uid()),jsonb_build_object('payload',p,'result',result,'before',jsonb_build_object('assignee',d.assignee)));
   update public.retail_revision set version=version+1,updated_at=clock_timestamp() where id=true;
   return response;
-end; $function$
+end; $function$;
 
 CREATE OR REPLACE FUNCTION retail_private.bootstrap()
  RETURNS jsonb
@@ -357,5 +357,5 @@ declare r text:=retail_private.require_role(array['owner','admin','sales','inven
     from public.retail_deliveries d join public.retail_documents s on s.id=d.sale_id and s.type='sale'
     join public.retail_document_items i on i.document_id=s.id
     where r in ('owner','admin','sales','inventory')));
-end; $function$
+end; $function$;
 
