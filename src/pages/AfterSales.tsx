@@ -807,7 +807,7 @@ function ReturnDetail({
                     <small className="commerce-table-meta">
                       {item.product_snapshot.name} · {item.product_snapshot.sku}
                     </small>
-                    {returnSerialLinks.filter(x=>x.return_id===doc.id&&x.variant_id===item.variant_id).map(x=>(
+                    {returnSerialLinks.filter(x=>x.return_id===doc.id&&x.item_id===item.parent_item_id).map(x=>(
                       <small className="receipt-serial-number" key={x.id}>Serie devuelta: {x.serial}</small>
                     ))}
                   </td>
@@ -920,7 +920,8 @@ function WarrantyDetail({ warranty, onClose }: { warranty: Warranty; onClose: ()
             <dd>{serialLinks.filter(x=>x.item_id===item.id).map(x=>x.serial+(x.returned_at?' (devuelta)':'')).join(', ') || (serialLoading?'Consultando…':'Sin series identificadas')}</dd>
           </div>}
         </dl>
-        {status === 'unknown' ? (
+        {serialError && <ErrorNotice message="No se pudo consultar el historial de números de serie de esta garantía. Actualiza antes de imprimir." />}
+                {status === 'unknown' ? (
           <p className="commerce-inline-note">
             La garantía no fue registrada en el sistema anterior. Revisa el recibo original para
             confirmar sus condiciones.
