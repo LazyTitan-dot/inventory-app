@@ -220,7 +220,7 @@
 
 /* V1.2: official wordmark on a white field, independent of theme. */
 .sales-detail-v1 .sales-receipt-logo {
- display:block;width:min(190px,100%);height:auto;max-height:76px;object-fit:contain;object-position:left center;
+ display:block;width:min(245px,100%);height:auto;max-height:98px;object-fit:contain;object-position:left center;
  padding:4px 8px;border-radius:8px;background:#fff;box-sizing:border-box;margin-bottom:14px;
 }
 .sales-detail-v1 .commerce-document-heading > div:first-child{min-width:0;}
@@ -230,12 +230,12 @@
 .sales-pdf-actions{display:flex;flex-wrap:wrap;gap:8px;}
 .sales-pdf-actions > :is(button,a){flex:1 1 130px;min-height:44px;white-space:normal;}
 @media screen and (max-width:640px){
- .sales-detail-v1 .sales-receipt-logo{width:170px;max-height:72px;}
+ .sales-detail-v1 .sales-receipt-logo{width:225px;max-width:100%;max-height:90px;}
  .sales-pdf-actions{display:grid;grid-template-columns:1fr 1fr;}
  .sales-pdf-actions > .button.primary{grid-column:1/-1;}
 }
 @media print{
- .sales-detail-v1 .sales-receipt-logo{width:170px;max-height:65px;padding:0;border-radius:0;background:#fff;}
+ .sales-detail-v1 .sales-receipt-logo{width:245px;max-height:98px;padding:0;border-radius:0;background:#fff;}
  .sales-detail-v1 .sales-pdf-ready,.sales-detail-v1 .sales-pdf-error{display:none!important;}
 }
 
@@ -291,4 +291,33 @@
     break-inside:auto!important;
   }
   body dialog.sales-detail-v1[open] .retail-print .commerce-totals {break-inside:avoid;}
+}
+
+
+/* Consistent white commercial document totals in screen preview and print.
+ * Explicit colors prevent inherited dark-mode/Glass surfaces from tinting TOTAL. */
+.sales-detail-v1 .retail-print .commerce-totals {
+ background:#fff!important;
+ color:#152641!important;
+ border:1px solid #dde5ee;
+}
+.sales-detail-v1 .retail-print .commerce-totals > div,
+.sales-detail-v1 .retail-print .commerce-grand-total,
+.sales-detail-v1 .retail-print .commerce-grand-total strong {
+ background:#fff!important;
+ color:#152641!important;
+}
+@media print {
+ body dialog.sales-detail-v1[open] .retail-print .commerce-totals,
+ body dialog.sales-detail-v1[open] .retail-print .commerce-grand-total {
+  background:#fff!important;
+  color:#152641!important;
+  print-color-adjust:exact;
+  -webkit-print-color-adjust:exact;
+ }
+ body dialog.sales-detail-v1[open] .retail-print .sales-receipt-logo {
+  width:245px!important;
+  max-width:100%!important;
+  max-height:98px!important;
+ }
 }
