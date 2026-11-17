@@ -64,7 +64,7 @@ export function SaleSerialPicker({
   if(disabled)return;
   if(selected.includes(s.id)){onChange(selected.filter(id=>id!==s.id));return;}
   if(selected.length>=quantity){setError('Ya elegiste una serie por cada unidad de la venta.');return;}
-  setKnown(prev=>({...prev,[s.id]:s.serial}});
+  setKnown(prev=>({...prev,[s.id]:s.serial}));
   onChange([...selected,s.id]);setError('');
  }
  async function scan(raw:string){
