@@ -29,7 +29,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:shell:types
-      - run: npx playwright test sales-visual-v1.spec.ts --grep "Ventas V1.2 iPhone|Ventas V1.2 PDF|Ventas V1.2.1 Windows|Ventas V1.3"
+      - run: npx playwright test sales-visual-v1.spec.ts --grep "Ventas V1.2 iPhone|Ventas V1.2 PDF|Ventas V1.2.1 Windows|Ventas V1.3|Ventas V1.4"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
