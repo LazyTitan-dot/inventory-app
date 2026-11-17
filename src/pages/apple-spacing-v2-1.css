@@ -1,0 +1,348 @@
+/*
+ * S-mart Living — Apple-informed Mobile Spacing Refinement V2.1
+ *
+ * Sources: Apple HIG Layout, Buttons and Lists; project design-standards.md.
+ * Apple describes grouping, sufficient space and 44x44 pt touch targets,
+ * not a mandatory pixel gutter. Values below are S-mart Living design tokens.
+ * Scope: iPhone/mobile only, screen only. Preserve brand palette, checkout
+ * calculations, pricing, scanner, serials, stock and approved PDF styles.
+ */
+@media screen and (max-width: 800px) {
+  /* CATALOG: content must never collide with its rounded Glass boundary. */
+  .app-layout .inventory-visual-v1 .catalog-panel {
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 24px max(20px, env(safe-area-inset-right, 0px))
+             28px max(20px, env(safe-area-inset-left, 0px));
+  }
+  .inventory-visual-v1 .inventory-catalog-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+    padding: 0;
+    margin: 0 0 22px;
+  }
+  .inventory-visual-v1 .inventory-catalog-heading > div {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+  }
+  .inventory-visual-v1 .inventory-catalog-heading h2 {
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: -.025em;
+  }
+  .inventory-visual-v1 .inventory-catalog-heading p {
+    margin: 0;
+    line-height: 1.55;
+  }
+  .inventory-visual-v1 .inventory-catalog-heading > span {
+    display: block;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--gl-muted);
+    overflow-wrap: anywhere;
+  }
+  .app-layout .inventory-visual-v1 .catalog-toolbar {
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    min-width: 0;
+  }
+  .inventory-visual-v1 .catalog-toolbar > * {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .app-layout .inventory-visual-v1 .catalog-toolbar :is(.search-field,select) {
+    min-height: 50px;
+    border-radius: 16px;
+  }
+  .inventory-visual-v1 .catalog-toolbar .search-field { padding-inline: 15px; }
+  .inventory-visual-v1 .catalog-toolbar select { padding-inline: 16px; }
+  .inventory-visual-v1 .catalog-filter-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 12px;
+    min-width: 0;
+    margin: 24px 0 18px;
+  }
+  .app-layout .inventory-visual-v1 .catalog-filter-tabs button {
+    box-sizing: border-box;
+    justify-content: space-between;
+    min-width: 0;
+    min-height: 52px;
+    padding: 12px 14px;
+    border-radius: 999px;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 1.35;
+    text-align: start;
+    white-space: normal;
+  }
+  .app-layout .inventory-visual-v1 .catalog-filter-tabs button span {
+    flex: none;
+    min-width: 25px;
+    padding: 4px 7px;
+    font-size: 11px;
+    line-height: 1.35;
+    text-align: center;
+  }
+  .inventory-visual-v1 .table-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    min-width: 0;
+    padding: 0;
+    margin: 0 0 20px;
+    line-height: 1.5;
+    color: var(--gl-muted);
+  }
+  .inventory-visual-v1 .table-meta .text-button {
+    min-height: 44px;
+    padding: 8px 10px;
+    margin-inline-start: -8px;
+  }
+  .inventory-visual-v1 .catalog-mobile { gap: 14px; }
+  .app-layout .inventory-visual-v1 .catalog-mobile-product {
+    box-sizing: border-box;
+    padding: 18px;
+  }
+  .inventory-visual-v1 .catalog-mobile-top { gap: 12px; }
+  .inventory-visual-v1 .catalog-mobile-bottom { gap: 12px; }
+
+  /* PRODUCT DETAILS: grouped disclosures get independent breathing room. */
+  .app-layout .modal.inventory-detail-v1 > .modal-heading,
+  .app-layout .modal.inventory-editor-v1 > .modal-heading {
+    padding: calc(18px + env(safe-area-inset-top,0px))
+             max(22px,env(safe-area-inset-right,0px))
+             18px max(22px,env(safe-area-inset-left,0px));
+    gap: 16px;
+  }
+  .app-layout .modal.inventory-detail-v1 > .modal-body,
+  .app-layout .modal.inventory-editor-v1 > .modal-body {
+    padding: 24px max(20px,env(safe-area-inset-right,0px))
+             calc(30px + env(safe-area-inset-bottom,0px))
+             max(20px,env(safe-area-inset-left,0px));
+    min-width: 0;
+  }
+  .app-layout .inventory-detail-v1 .catalog-detail-hero {
+    padding: 20px;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .inventory-detail-v1 .catalog-detail-hero > div { min-width: 0; }
+  .inventory-detail-v1 .catalog-segments {
+    gap: 7px;
+    margin-bottom: 24px;
+  }
+  .app-layout .inventory-detail-v1 .catalog-segments button {
+    min-height: 48px;
+    padding: 10px;
+    line-height: 1.35;
+  }
+  .app-layout .inventory-detail-v1 .catalog-quick-actions {
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    gap: 12px;
+    margin: 24px 0 28px;
+  }
+  .inventory-detail-v1 .catalog-quick-actions .button {
+    box-sizing: border-box;
+    min-height: 52px;
+    min-width: 0;
+    padding: 12px 18px;
+    justify-content: center;
+    line-height: 1.4;
+    text-align: center;
+  }
+  .app-layout .inventory-detail-v1 .catalog-detail-disclosure {
+    margin: 0;
+    border-radius: 20px;
+  }
+  .app-layout .inventory-detail-v1 .catalog-detail-disclosure + .catalog-detail-disclosure {
+    margin-top: 14px;
+  }
+  .app-layout .inventory-detail-v1 .catalog-detail-disclosure > summary {
+    display: list-item;
+    box-sizing: border-box;
+    min-height: 62px;
+    padding: 18px 20px;
+    font-size: 15px;
+    line-height: 1.5;
+    border-radius: 19px;
+    cursor: pointer;
+  }
+  .inventory-detail-v1 .catalog-detail-disclosure[open] > summary {
+    border-radius: 19px 19px 0 0;
+  }
+  .inventory-detail-v1 .catalog-detail-disclosure-body {
+    padding: 8px 20px 20px;
+  }
+  .inventory-detail-v1 .catalog-detail-footer {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    gap: 12px;
+    margin-top: 28px;
+    padding: 22px 0 12px;
+  }
+  .inventory-detail-v1 .catalog-detail-footer .button {
+    min-width: 0;
+    min-height: 52px;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    line-height: 1.45;
+    padding: 12px 18px;
+    text-align: center;
+    white-space: normal;
+  }
+  .app-layout .inventory-editor-v1 .catalog-editor-identity,
+  .app-layout .inventory-editor-v1 .catalog-editor-variant,
+  .app-layout .inventory-editor-v1 .catalog-editor-scan {
+    padding: 20px;
+  }
+
+  /* SALES CATALOG: aligned controls and consistent edges, unchanged logic. */
+  .app-layout .sales-visual-v1 .commerce-cashier .commerce-catalog {
+    padding: 20px;
+  }
+  .sales-visual-v1 .sales-search-actions { gap: 10px; }
+  .app-layout .sales-visual-v1 .commerce-category-row { gap: 10px; padding: 4px 0 8px; }
+  .app-layout .sales-visual-v1 .commerce-category {
+    min-height: 46px;
+    padding-inline: 16px;
+    line-height: 1.35;
+  }
+  .app-layout .sales-visual-v1 .commerce-cashier .commerce-product-grid { gap: 12px; }
+  .app-layout .sales-visual-v1 .commerce-cashier .commerce-product {
+    box-sizing: border-box;
+    padding: 16px;
+    gap: 8px 12px;
+  }
+  .app-layout .sales-visual-v1 .commerce-mobile-checkout {
+    left: max(18px,env(safe-area-inset-left,0px));
+    right: max(18px,env(safe-area-inset-right,0px));
+    padding: 14px;
+    gap: 12px;
+  }
+  .sales-visual-v1 .commerce-mobile-checkout .button { min-height: 48px; }
+  .sales-visual-v1 .sales-history-heading { padding-inline: 20px; }
+  .sales-visual-v1 .sales-history-panel .commerce-toolbar { padding-inline: 20px; }
+  .sales-visual-v1 .sales-mobile-history { padding-inline: 20px; gap: 14px; }
+
+  /* CHECKOUT: match Apple's grouped layout — inset contents, not just a border.
+   * Return the action footer to natural scroll flow. V2's sticky footer can
+   * overlay payment options and make them seem tucked beneath the controls.
+   */
+  .app-layout .modal.sales-checkout-v1 > .modal-heading {
+    padding: calc(18px + env(safe-area-inset-top,0px))
+             max(22px,env(safe-area-inset-right,0px))
+             18px max(22px,env(safe-area-inset-left,0px));
+  }
+  .app-layout .modal.sales-checkout-v1 > .modal-body {
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 22px max(20px,env(safe-area-inset-right,0px))
+             calc(32px + env(safe-area-inset-bottom,0px))
+             max(20px,env(safe-area-inset-left,0px));
+  }
+  .app-layout .sales-checkout-v1 > .modal-body > .commerce-fieldset.commerce-cart {
+    box-sizing: border-box;
+    min-width: 0;
+    padding-inline: 12px;
+    gap: 22px;
+  }
+  .sales-checkout-v1 .commerce-cart-heading { gap: 12px; }
+  .sales-checkout-v1 .commerce-cart-actions { gap: 10px; }
+  .sales-checkout-v1 .commerce-cart-lines { gap: 14px; }
+  .app-layout .sales-checkout-v1 .commerce-cart-line,
+  .app-layout .sales-checkout-v1 .commerce-cart-line + .commerce-cart-line {
+    padding: 18px;
+  }
+  .sales-checkout-v1 .commerce-line-name { gap: 12px; }
+  .sales-checkout-v1 .commerce-line-controls { gap: 14px; }
+  .app-layout .sales-checkout-v1 .commerce-discount-mode {
+    gap: 8px;
+    padding: 6px;
+  }
+  .app-layout .sales-checkout-v1 .commerce-discount-mode button {
+    min-height: 48px;
+    padding: 12px 14px;
+    line-height: 1.4;
+    white-space: normal;
+  }
+  .sales-checkout-v1 .sales-section-label {
+    margin-top: 24px;
+    margin-bottom: 8px;
+  }
+  .sales-checkout-v1 .sales-payment-options { min-width: 0; }
+  .sales-checkout-v1 .sales-payment-grid { gap: 12px; }
+  .app-layout .sales-checkout-v1 .sales-payment-tile {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 76px;
+    padding: 16px;
+    gap: 10px;
+    line-height: 1.4;
+  }
+  .sales-checkout-v1 .sales-payment-tile > svg,
+  .sales-checkout-v1 .sales-payment-check { flex-shrink: 0; }
+  .sales-checkout-v1 .sales-payment-tile > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .app-layout .sales-checkout-v1 .commerce-cash {
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 20px;
+    gap: 14px;
+  }
+  .app-layout .sales-checkout-v1 .commerce-cash .button { min-height: 44px; }
+  .app-layout .sales-checkout-v1 > .modal-body > .modal-footer {
+    position: static;
+    inset: auto;
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    gap: 12px;
+    margin: 28px 0 0;
+    padding: 24px 0 10px;
+    border-top: 1px solid var(--gl-edge);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .app-layout .sales-checkout-v1 > .modal-body > .modal-footer .button {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 52px;
+    width: 100%;
+    padding: 14px 18px;
+    white-space: normal;
+    line-height: 1.4;
+  }
+  /* Preserve the approved navy/cyan palette, totals and receipt styles. */
+}
+@media screen and (max-width: 360px) {
+  .inventory-visual-v1 .catalog-filter-tabs { grid-template-columns: minmax(0,1fr); }
+  .app-layout .sales-checkout-v1 .sales-payment-grid { grid-template-columns: minmax(0,1fr); }
+  .app-layout .sales-checkout-v1 .sales-payment-tile { min-height: 62px; }
+  .app-layout .sales-visual-v1 .commerce-mobile-checkout {
+    padding: 12px;
+    gap: 8px;
+  }
+}
+@media screen and (prefers-reduced-motion:reduce) {
+  .inventory-visual-v1 .catalog-filter-tabs button,
+  .sales-visual-v1 .commerce-product { transition:none; }
+}
