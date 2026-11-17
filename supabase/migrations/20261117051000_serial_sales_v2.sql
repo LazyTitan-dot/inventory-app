@@ -262,7 +262,10 @@ begin
  end if;
  return response;
 end; $$;
+-- public.retail_command is SECURITY INVOKER, so authenticated must retain exactly
+-- the private command EXECUTE privilege granted by the existing retail API.
 revoke all on function retail_private.command(uuid,text,jsonb) from public,anon,authenticated;
+grant execute on function retail_private.command(uuid,text,jsonb) to authenticated;
 
 -- V1 must count physical units still available, never previously sold serials.
 CREATE OR REPLACE FUNCTION retail_private.serial_barcode_command(op uuid, act text, p jsonb)
