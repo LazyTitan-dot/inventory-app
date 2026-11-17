@@ -160,7 +160,7 @@ jobs:
           retention-days: 14
 
   serial-barcode-v1:
-    if: github.ref == 'refs/heads/feature/serial-barcode-management-v1' || github.head_ref == 'feature/serial-barcode-management-v1'
+    if: github.ref == 'refs/heads/feature/serial-barcode-management-v1' || github.head_ref == 'feature/serial-barcode-management-v1' || github.ref == 'refs/heads/feature/identifiers-glass-refinement-v1-1' || github.head_ref == 'feature/identifiers-glass-refinement-v1-1'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

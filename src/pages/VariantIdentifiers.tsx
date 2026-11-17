@@ -154,12 +154,22 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
    playCaptureSound();
    setScanner(null);
  }
+ const product=data.products.find(p=>p.id===variant.product_id);
+ const productName=product ? [product.brand,product.model].filter(Boolean).join(' ') : variant.name;
  const canManage=data.permissions.manage_catalog;
  const totalPages=Math.max(1,Math.ceil((snapshot?.total_matching??0)/PAGE_SIZE));
  const currentPage=Math.floor(offset/PAGE_SIZE)+1;
  return (
-  <Modal title={'Identificación · '+variant.sku} onClose={()=>{if(!busy&&!ocrBusy)onClose();}} variant="drawer" className="sl-identifiers sl-refined-theme">
+  <Modal title="Identificación" onClose={()=>{if(!busy&&!ocrBusy)onClose();}} variant="drawer" className="sl-identifiers sl-refined-theme">
    <div className="sl-identifiers-content stack">
+    <section className="sl-identifiers-hero" aria-label="Producto seleccionado">
+     <span className="sl-identifiers-hero-icon" aria-hidden="true"><Barcode size={25}/></span>
+     <div className="sl-identifiers-hero-copy">
+      <span className="sl-identifiers-eyebrow">Inventario · Identificación individual</span>
+      <strong className="sl-identifiers-product-name">{productName}</strong>
+      <span className="sl-identifiers-product-meta">{variant.name} · SKU: {variant.sku}</span>
+     </div>
+    </section>
     <div className="sl-identifiers-tabs" role="group" aria-label="Tipo de identificación">
      <button type="button" aria-pressed={tab==='serials'} onClick={()=>{setTab('serials');clearError();}}><ScanLine size={17}/> Números de serie</button>
      <button type="button" aria-pressed={tab==='codes'} onClick={()=>{setTab('codes');clearError();}}><Barcode size={17}/> Códigos de barras</button>
@@ -209,7 +219,11 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
      <div className="sl-identifiers-list-head"><strong>Unidades identificadas</strong><span>{snapshot?.identified??0} registros activos</span></div>
      <Field label="Buscar número de serie"><input value={query} onChange={e=>{setQuery(e.target.value);setOffset(0);}} placeholder="Buscar serie…" /></Field>
      {loading && <p role="status" className="muted">Consultando identificaciones…</p>}
-     {!loading && !snapshot?.serials.length && <p className="muted">No encontramos series con ese filtro.</p>}
+     {!loading && !snapshot?.serials.length && <div className="sl-identifiers-empty" role="status">
+       <ScanLine size={24} aria-hidden="true" />
+       <strong>{query ? 'Sin coincidencias' : 'Aún no hay series registradas'}</strong>
+       <span>{query ? 'Prueba con otro número de serie.' : 'Escanea o introduce una serie cuando tengas el producto a mano.'}</span>
+      </div>}
      <div className="sl-identifiers-list">
       {snapshot?.serials.map(s=><article key={s.id} className="sl-identifiers-item">
        <div><strong>{s.serial}</strong><small>{dateTime(s.created_at)} · {s.source.toUpperCase()}</small></div>
