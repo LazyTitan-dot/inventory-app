@@ -386,7 +386,11 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   // Reserve room for the final footer before committing the summary.
   // This prevents a nearly empty extra sheet with only the thank-you message.
   const summarySpace = Math.max(summaryHeight, 16 + noteLines.length * 14);
-  if (y + 23 + summarySpace > PAGE_H - 115) {
+  const footerLines = linesFor(footer, 'italic 700 14px Georgia, serif', contentWidth - 110);
+  const footerTop = PAGE_H - 88 - (footerLines.length - 1) * 17;
+  // Fit summary and footer together; leave a measured 20pt clearance.
+  // Never push a valid two-product receipt onto an unnecessary second sheet.
+  if (y + 23 + summarySpace > footerTop - 20) {
     await finishPage();
     beginPage();
   }
@@ -412,8 +416,6 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     }
   }
   y += summaryHeight;
-  const footerLines = linesFor(footer, 'italic 700 14px Georgia, serif', contentWidth - 110);
-  const footerTop = PAGE_H - 88 - (footerLines.length - 1) * 17;
   if (y + 12 > footerTop) {
     await finishPage();
     beginPage();
