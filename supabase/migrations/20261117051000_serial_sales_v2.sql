@@ -152,7 +152,9 @@ begin
  if act not in ('create_sale','convert_quote','return_sale','void_sale') then
   return retail_private.command_before_serial_sales_v2(op,act,p);
  end if;
- perform retail_private.require_role(array['owner','admin','sales','inventory','viewer']);
+ perform retail_private.require_role(
+    case when act in ('create_sale','convert_quote') then array['owner','admin','sales']
+      else array['owner','admin'] end);
  perform retail_private.ensure_business_ready();
  if op is null or jsonb_typeof(p) is distinct from 'object' or octet_length(p::text)>2000000 then
   raise exception 'La operación tiene un formato inválido.';
