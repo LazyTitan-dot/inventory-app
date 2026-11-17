@@ -60,8 +60,8 @@ for(const theme of ['dark','light'] as const){
   });
   const channels=computed.icon.match(/[\d.]+/g)?.map(Number)||[];
   expect(channels.length).toBeGreaterThanOrEqual(3);
-  expect(channels[0]).toBeGreaterThan(channels[1]);
-  expect(channels[0]).toBeGreaterThan(channels[2]);
+  expect(channels[0]!).toBeGreaterThan(channels[1]!);
+  expect(channels[0]!).toBeGreaterThan(channels[2]!);
   expect(computed.height).toBeGreaterThanOrEqual(44);
   expect(computed.width).toBeGreaterThanOrEqual(44);
   await remove.click();
