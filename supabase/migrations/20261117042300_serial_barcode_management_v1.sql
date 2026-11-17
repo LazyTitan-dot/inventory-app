@@ -138,7 +138,7 @@ begin
  perform retail_private.require_role(array['owner','admin','inventory','sales','viewer']);
  if not exists(select 1 from public.retail_unit_serials where id=p_serial_id) then raise exception 'Serie no encontrada.'; end if;
  select coalesce(jsonb_agg(to_jsonb(e) order by e.created_at,e.id),'[]'::jsonb) into res from (
-  select event,previous_serial,current_serial,reason,created_at from public.retail_serial_events where serial_id=p_serial_id order by created_at,id
+  select id,event,previous_serial,current_serial,reason,created_at from public.retail_serial_events where serial_id=p_serial_id order by created_at,id
  ) e;
  return res;
 end; $$;
