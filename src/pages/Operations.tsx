@@ -331,7 +331,7 @@ export function DeliveriesPage() {
                   const sale = saleMap.get(delivery.sale_id);
                   return <button className="delivery-list-card" key={delivery.id} onClick={() => setSelectedId(delivery.id)} aria-label={`Ver entrega a ${delivery.contact_name}`}>
                     <span className="delivery-card-top"><strong>{delivery.contact_name}</strong><StatusBadge status={delivery.status} /></span>
-                    <span className="operations-table-meta">{sale ? documentNumber(sale) : 'Venta vinculada'} · {dateTime(delivery.scheduled_at)}</span>
+                    <span className="operations-table-meta">{sale ? documentNumber(sale) : 'Venta vinculada'} · {dateTime(delivery.scheduled_at)} · hora RD</span>
                     <span className="delivery-card-address"><MapPin size={15} />{delivery.address}</span>
                     <span className="delivery-card-bottom"><span><Truck size={15} /> {delivery.assignee || 'Sin asignar'}</span><strong>Ver entrega →</strong></span>
                     {delivery.status === 'scheduled' && new Date(delivery.scheduled_at).getTime() < now && <span className="delivery-overdue"><Clock3 size={15}/> Hora vencida</span>}
@@ -342,10 +342,10 @@ export function DeliveriesPage() {
                   <thead>
                     <tr>
                       <th>Venta y contacto</th>
-                      <th>Programación</th>
+                      <th>Fecha y hora</th>
                       <th>Destino</th>
                       <th>Estado</th>
-                      <th>Responsable</th>
+                      <th>Asignado a</th>
                       <th>
                         <span className="sr-only">Acciones</span>
                       </th>
@@ -361,7 +361,7 @@ export function DeliveriesPage() {
                             <small className="operations-table-meta">{delivery.contact_name}</small>
                           </td>
                           <td>
-                            {dateTime(delivery.scheduled_at)}
+                            <time dateTime={delivery.scheduled_at} className="delivery-table-time">{dateTime(delivery.scheduled_at)}</time>
                             <small className="operations-table-meta">Hora de RD</small>
                             {delivery.status === 'scheduled' && new Date(delivery.scheduled_at).getTime() < now && <small className="delivery-overdue">Hora vencida</small>}
                           </td>
@@ -577,6 +577,7 @@ function DeliveryEditor({
       wide
       variant="drawer"
       className="delivery-editor-v1 sl-refined-theme"
+      backLabel="Volver a Entregas"
     >
       <form className="stack delivery-editor-form" onSubmit={submit}>
         <fieldset className="operations-fields stack" disabled={busy}>
@@ -825,13 +826,18 @@ function DeliveryDetail({ delivery, onClose }: { delivery: Delivery; onClose: ()
       wide
       variant="drawer"
       className="delivery-detail-v1 sl-refined-theme"
+      backLabel="Volver a Entregas"
     >
       <div className="stack delivery-detail-content">
-        <div className="operations-detail-heading">
-          <StatusBadge status={delivery.status} />
+        <div className="operations-detail-heading delivery-detail-overview">
+          <div className="delivery-overview-main">
+            <StatusBadge status={delivery.status} />
+            <strong className="delivery-overview-sale">{sale ? documentNumber(sale) : 'Entrega registrada'}</strong>
+          </div>
           <span className="muted">
-            <CalendarDays size={16} /> {dateTime(delivery.scheduled_at)} · hora de RD
+            <CalendarDays size={16} aria-hidden="true" /> {dateTime(delivery.scheduled_at)} · hora de RD
           </span>
+          <span className="delivery-overview-assignee"><Truck size={15} aria-hidden="true" /> {hasResponsible ? delivery.assignee : 'Sin asignar'}</span>
         </div>
         <section className="delivery-destination-card"><h3>Destino de la entrega</h3><dl className="operations-detail-grid">
           <div>
@@ -1060,6 +1066,7 @@ function DeliveryTransition({
     <Modal
       title={actionLabels[status]}
       className="delivery-transition-v1 sl-refined-theme"
+      backLabel="Volver al detalle"
       onClose={() => {
         if (!busy) onBack();
       }}
