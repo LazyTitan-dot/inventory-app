@@ -256,3 +256,61 @@ test('Ventas V1.3 dark card and print-only customer totals', async ({page}, test
   expect(count).toBe(1);
   await testInfo.attach('recibo-v1-3',{body:pdf,contentType:'application/pdf'});
 });
+
+test('Ventas V1.4 two-item iPhone receipt fits one decorated A4 PDF page', async ({page, featureData}, testInfo) => {
+  const source = featureData.document_items.find(item => item.document_id === saleId)!;
+  source.product_snapshot.name = '128 GB · Usado · APPLE-IPHONE-16-128-GB-USADO-159284C35856';
+  source.product_snapshot.sku = 'APPLE-IPHONE-16-128-GB-USADO-159284C35856';
+  featureData.document_items.push({
+    ...source,
+    id: '30000000-0000-4000-8000-000000000152',
+    product_snapshot: {
+      ...source.product_snapshot,
+      model: 'iPhone 17',
+      name: '256 GB · Usado · APPLE-IPHONE-17-256-GB-USADO-3D9018C779D2',
+      sku: 'APPLE-IPHONE-17-256-GB-USADO-3D9018C779D2',
+    },
+  });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',
+    });
+  });
+  await page.setViewportSize({width: 390, height: 844});
+  await page.goto('/ventas?documento=' + saleId);
+  const dialog = page.getByRole('dialog', {name: 'VEN-PRUEBA-001'});
+  await expect(dialog.locator('tbody tr')).toHaveCount(2);
+  await dialog.getByRole('button', {name: 'Imprimir', exact: true}).click();
+  const ready = dialog.getByRole('region', {name: 'Recibo PDF'});
+  await expect(ready).toContainText('PDF preparado');
+  const url = await ready.getByRole('link', {name: 'Abrir PDF'}).getAttribute('href');
+  const result = await page.evaluate(async (href) => {
+    const b = new Uint8Array(await (await fetch(href!)).arrayBuffer());
+    const pdf = new TextDecoder('latin1').decode(b);
+    const jpgStart = b.findIndex((value, i) => value === 255 && b[i + 1] === 216);
+    const jpgEnd = b.findIndex((value, i) => i > jpgStart && value === 255 && b[i + 1] === 217);
+    const bitmap = await createImageBitmap(new Blob([b.slice(jpgStart, jpgEnd + 2)], {type: 'image/jpeg'}));
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(bitmap, 0, 0);
+    const top = ctx.getImageData(bitmap.width - 14, 13, 1, 1).data;
+    const bottom = ctx.getImageData(9, bitmap.height - 14, 1, 1).data;
+    const data = {pages: Number(pdf.match(/\/Type \/Pages \/Count (\d+)/)?.[1]),
+      width: bitmap.width, height: bitmap.height,
+      top: Array.from(top).slice(0, 3), bottom: Array.from(bottom).slice(0, 3)};
+    bitmap.close(); return data;
+  }, url);
+  expect(result.pages).toBe(1);
+  expect(result).toMatchObject({width: 1190, height: 1684});
+  expect(result.top[2]).toBeGreaterThan(result.top[0]);
+  expect(result.bottom[2]).toBeGreaterThan(result.bottom[0]);
+  const download = page.waitForEvent('download');
+  await ready.getByRole('link', {name: 'Guardar PDF'}).click();
+  const saved = await download;
+  await testInfo.attach('recibo-dos-articulos-decorado', {
+    body: await readFile((await saved.path())!), contentType: 'application/pdf',
+  });
+});
