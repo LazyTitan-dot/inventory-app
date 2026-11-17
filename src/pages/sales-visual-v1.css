@@ -294,30 +294,208 @@
 }
 
 
-/* Consistent white commercial document totals in screen preview and print.
- * Explicit colors prevent inherited dark-mode/Glass surfaces from tinting TOTAL. */
-.sales-detail-v1 .retail-print .commerce-totals {
- background:#fff!important;
- color:#152641!important;
- border:1px solid #dde5ee;
-}
-.sales-detail-v1 .retail-print .commerce-totals > div,
-.sales-detail-v1 .retail-print .commerce-grand-total,
-.sales-detail-v1 .retail-print .commerce-grand-total strong {
- background:#fff!important;
- color:#152641!important;
-}
+
+/* Receipt V1.3: source values remain unchanged in Ventas. Print-only values
+ * show customer-facing, tax-inclusive prices without an ITBIS breakdown. */
+.receipt-print-only,
+.sales-print-footer {display:none!important;}
+
 @media print {
- body dialog.sales-detail-v1[open] .retail-print .commerce-totals,
- body dialog.sales-detail-v1[open] .retail-print .commerce-grand-total {
-  background:#fff!important;
-  color:#152641!important;
-  print-color-adjust:exact;
-  -webkit-print-color-adjust:exact;
- }
- body dialog.sales-detail-v1[open] .retail-print .sales-receipt-logo {
-  width:245px!important;
-  max-width:100%!important;
-  max-height:98px!important;
- }
+  .sales-detail-v1 .retail-print .receipt-screen-only,
+  .sales-detail-v1 .retail-print .receipt-tax-row,
+  .sales-detail-v1 .retail-print .sales-screen-footer {display:none!important;}
+  .sales-detail-v1 .retail-print .receipt-print-only {display:inline!important;}
+  body dialog.sales-detail-v1[open] .retail-print .sales-print-footer {display:block!important;}
+
+  body .app-layout dialog.sales-detail-v1[open] .retail-print {
+    --receipt-navy:#0b2753;
+    --receipt-cyan:#0c9edb;
+    position:static!important;
+    padding:17mm 12mm 13mm!important;
+    color:#11233d!important;
+    background:#fff!important;
+    font-family:Arial,Helvetica,sans-serif!important;
+    font-size:10pt!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print::before {
+    content:"";position:absolute;right:0;top:0;width:34%;height:6mm;
+    background:linear-gradient(135deg,#0c9edb 5%,#055995 42%,#0b2753 70%);
+    border-radius:0 0 0 28px;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-heading {
+    display:block!important;
+    position:relative!important;
+    padding:2mm 0 8mm!important;
+    margin-bottom:7mm!important;
+    border:0!important;
+    border-bottom:2px solid #0c9edb!important;
+    break-inside:avoid;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-heading > div:first-child {
+    display:grid!important;
+    grid-template-columns:minmax(0,190px) minmax(0,1fr);
+    grid-template-rows:auto auto!important;
+    column-gap:22px!important;
+    align-items:center!important;
+    min-width:0!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .sales-receipt-logo {
+    width:190px!important;height:auto!important;
+    max-width:100%!important;max-height:90px!important;
+    grid-column:1!important;grid-row:1 / 3!important;
+    margin:0!important;padding:0!important;border:0!important;
+    object-fit:contain!important;object-position:left center!important;
+    background:#fff!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-heading h2 {
+    grid-column:2!important;grid-row:1!important;
+    font-family:Georgia,serif!important;
+    font-size:22pt!important;font-weight:800!important;
+    letter-spacing:-.035em!important;line-height:1.05!important;
+    text-transform:uppercase!important;
+    color:#0b2753!important;
+    margin:0 0 3mm!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-heading p {
+    grid-column:2!important;grid-row:2!important;
+    color:#22344f!important;font-size:10pt!important;
+    font-weight:600!important;line-height:1.4!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-heading > div:last-child {
+    position:absolute!important;right:0!important;
+    bottom:1mm!important;display:flex!important;
+    justify-content:flex-end!important;align-items:center!important;
+    gap:7px!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-heading .badge {
+    color:#125334!important;
+    background:#e2f4e9!important;border:1px solid #cce6d5!important;
+    padding:4px 10px!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-contact {
+    display:grid!important;
+    grid-template-columns:minmax(0,1.5fr) minmax(0,.7fr)!important;
+    border:1.5px solid #0b2753!important;
+    border-radius:12px!important;
+    padding:14px 18px!important;
+    margin:0 0 9mm!important;
+    gap:18px!important;
+    color:#152641!important;
+    background:#fff!important;
+    break-inside:avoid;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-contact > div:last-child {
+    padding-left:18px!important;
+    border-left:1px solid #0c9edb!important;
+    align-items:flex-start!important;
+    text-align:left!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-contact .muted {
+    color:#0574b8!important;
+    font-size:10pt!important;
+    font-weight:700!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-contact strong {
+    color:#0b2753!important;font-size:11.5pt!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-contact span {
+    overflow-wrap:anywhere!important;line-height:1.4!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .table-wrap {
+    border:1.5px solid #0b2753!important;
+    border-radius:10px!important;
+    overflow:visible!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .data-table {
+    width:100%!important;table-layout:fixed!important;
+    border-collapse:collapse!important;
+    border:0!important;
+    font-size:9.5pt!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .data-table th:nth-child(1) {width:44%!important;}
+  body dialog.sales-detail-v1[open] .retail-print .data-table th:nth-child(2) {width:10%!important;}
+  body dialog.sales-detail-v1[open] .retail-print .data-table th:nth-child(3) {width:22%!important;}
+  body dialog.sales-detail-v1[open] .retail-print .data-table th:nth-child(4) {width:24%!important;}
+  body dialog.sales-detail-v1[open] .retail-print .data-table thead th {
+    background:#0b2753!important;
+    color:#fff!important;
+    font-size:9.5pt!important;
+    font-weight:700!important;
+    padding:12px 8px!important;
+    vertical-align:middle!important;
+    border-color:#0b2753!important;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .data-table tbody td {
+    padding:13px 8px!important;
+    line-height:1.38!important;
+    background:#fff!important;
+    color:#152641!important;
+    border-bottom:1px solid #b4d9ef!important;
+    vertical-align:middle!important;
+    overflow-wrap:anywhere!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .data-table tbody td:first-child strong {
+    color:#0b2753!important;font-size:11pt!important;line-height:1.3!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .data-table tbody td:first-child small {
+    display:block!important;color:#364961!important;
+    font-size:9pt!important;line-height:1.35!important;
+    margin-top:3px!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-summary {
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(270px,1.1fr)!important;
+    gap:20px!important;
+    align-items:start!important;
+    margin:10mm 0 0!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-document-notes {
+    font-size:9pt!important;
+    color:#263c59!important;
+    font-style:italic!important;line-height:1.5!important;
+    padding-top:10px!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-totals {
+    background:#fff!important;
+    color:#152641!important;
+    padding:14px 15px 11px!important;
+    border:1.5px solid #0c9edb!important;
+    border-radius:10px!important;
+    font-size:10pt!important;
+    gap:9px!important;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-totals > div:not(.commerce-grand-total) {
+    background:#fff!important;
+    color:#152641!important;
+    font-size:10pt!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-grand-total {
+    margin:7px -15px 2px!important;
+    padding:12px 15px!important;
+    background:#0b2753!important;
+    color:#fff!important;
+    border:0!important;
+    font-size:16pt!important;
+    border-radius:0!important;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .commerce-grand-total strong {
+    color:#fff!important;
+    background:transparent!important;
+    font-size:16pt!important;
+    white-space:nowrap!important;
+  }
+  body dialog.sales-detail-v1[open] .retail-print .sales-print-footer {
+    margin:16mm 0 0!important;
+    padding:0 5mm!important;
+    color:#0b2753!important;
+    text-align:center!important;
+    font-family:Georgia,serif!important;
+    font-size:12pt!important;
+    font-weight:700!important;
+    font-style:italic!important;
+    break-inside:avoid!important;
+  }
 }
