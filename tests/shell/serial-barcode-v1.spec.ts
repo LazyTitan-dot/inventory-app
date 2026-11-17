@@ -7,6 +7,8 @@ for (const [width, theme] of [[320,'dark'],[390,'dark'],[1280,'light'],[1280,'da
   await page.emulateMedia({colorScheme:theme});
   await page.setViewportSize({width,height:900});
   const variant=featureData.variants[0]!;
+  // Match a long real-world television SKU so the mobile hero cannot overflow.
+  variant.sku='SAMSUNG-QN55S90FDFXZA-55-85B3F62F31C2';
   featureData.features?.push('serial_barcode_management_v1');
   let serials=[{id:firstId,variant_id:variant.id,serial:'TV-00123',source:'manual',created_at:stamp,updated_at:stamp}];
   let codes=[{code:'TEST0001',kind:'internal',primary:true}];
