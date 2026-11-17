@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Archive, Eye, MoreHorizontal, Pencil, SlidersHorizontal } from 'lucide-react';
+import { Archive, Eye, MoreHorizontal, Pencil, SlidersHorizontal, ScanLine } from 'lucide-react';
 
 interface Props {
   sku: string;
@@ -9,13 +9,14 @@ interface Props {
   onView: () => void;
   onEdit: () => void;
   onAdjust: () => void;
+  onIdentifiers?: () => void;
   onArchive: () => void;
 }
 
 /** Native top-layer popover avoids clipping inside the horizontally scrolling table.
  * Buttons retain normal Tab navigation; Escape and outside click dismiss the panel.
  */
-export function InventoryRowActions({ sku, productName, active, canManage, onView, onEdit, onAdjust, onArchive }: Props) {
+export function InventoryRowActions({ sku, productName, active, canManage, onView, onEdit, onAdjust, onIdentifiers, onArchive }: Props) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -76,6 +77,7 @@ export function InventoryRowActions({ sku, productName, active, canManage, onVie
         {canManage && <>
           <button type="button" onClick={() => choose(onEdit)}><Pencil size={17} aria-hidden="true" />Editar</button>
           <button type="button" aria-label={`Ajustar ${sku}`} onClick={() => choose(onAdjust)}><SlidersHorizontal size={17} aria-hidden="true" />Ajustar stock</button>
+          {onIdentifiers && <button type="button" onClick={() => choose(onIdentifiers)}><ScanLine size={17} aria-hidden="true" />Series y códigos</button>}
           <button type="button" className="inventory-action-archive" aria-label={`${active ? 'Archivar' : 'Reactivar'} ${productName}`} onClick={() => choose(onArchive)}><Archive size={17} aria-hidden="true" />{active ? 'Archivar' : 'Reactivar'}</button>
         </>}
       </div>
