@@ -1900,9 +1900,19 @@ function DocumentDetail({
                     <th className="number">Cantidad</th>
                     {doc.type === 'purchase' && <th className="number">Recibido</th>}
                     <th className="number">
-                      {doc.type === 'purchase' ? 'Costo unitario' : doc.type === 'sale' ? 'Precio unitario sin ITBIS' : 'Precio unitario'}
+                      {doc.type === 'sale' ? (
+                        <>
+                          <span className="receipt-screen-only">Precio unitario sin ITBIS</span>
+                          <span className="receipt-print-only">Precio unitario</span>
+                        </>
+                      ) : doc.type === 'purchase' ? 'Costo unitario' : 'Precio unitario'}
                     </th>
-                    <th className="number">{doc.type === 'sale' ? 'Importe con ITBIS' : 'Importe'}</th>
+                    <th className="number">{doc.type === 'sale' ? (
+                      <>
+                        <span className="receipt-screen-only">Importe con ITBIS</span>
+                        <span className="receipt-print-only">Importe</span>
+                      </>
+                    ) : 'Importe'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1940,7 +1950,14 @@ function DocumentDetail({
                           )}
                         </td>
                       )}
-                      <td className="number">{money(item.unit_price)}</td>
+                      <td className="number">
+                        {doc.type === 'sale' ? (
+                          <>
+                            <span className="receipt-screen-only">{money(item.unit_price)}</span>
+                            <span className="receipt-print-only">{money(item.line_total / Math.max(1, item.quantity))}</span>
+                          </>
+                        ) : money(item.unit_price)}
+                      </td>
                       <td className="number">{money(item.line_total)}</td>
                     </tr>
                   ))}
@@ -1972,13 +1989,23 @@ function DocumentDetail({
               <div className="commerce-totals">
                 <div>
                   <span>Subtotal</span>
-                  <span>{money(doc.subtotal)}</span>
+                  <span>{doc.type === 'sale' ? (
+                    <>
+                      <span className="receipt-screen-only">{money(doc.subtotal)}</span>
+                      <span className="receipt-print-only">{money(doc.subtotal + round(doc.subtotal * doc.tax_rate / 100))}</span>
+                    </>
+                  ) : money(doc.subtotal)}</span>
                 </div>
                 <div>
                   <span>Descuento</span>
-                  <span>−{money(doc.discount)}</span>
+                  <span>{doc.type === 'sale' ? (
+                    <>
+                      <span className="receipt-screen-only">−{money(doc.discount)}</span>
+                      <span className="receipt-print-only">−{money(Math.max(0, doc.subtotal + round(doc.subtotal * doc.tax_rate / 100) - doc.total))}</span>
+                    </>
+                  ) : '−' + money(doc.discount)}</span>
                 </div>
-                <div>
+                <div className={doc.type === 'sale' ? 'receipt-tax-row' : undefined}>
                   <span>Impuestos ({doc.tax_rate}%)</span>
                   <span>{money(doc.tax)}</span>
                 </div>
@@ -2000,6 +2027,9 @@ function DocumentDetail({
                 )}
               </div>
             </div>
+            {doc.type === 'sale' && (
+              <p className="sales-print-footer">{data.settings.receipt_footer || 'Gracias por su compra. Conserve este recibo.'}</p>
+            )}
           </article>
           {doc.type === 'purchase' && <PurchaseReceiptHistory purchaseId={doc.id} />}
           {data.permissions.manage_business &&
