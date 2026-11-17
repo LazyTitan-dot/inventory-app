@@ -93,9 +93,13 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     Array.from(group.children).map(displayed).filter(Boolean));
   const itemRows = Array.from(table.querySelectorAll('tbody tr')).map(row => {
     const cells = Array.from(row.children);
+    const meta = displayed(cells[0]?.querySelector('.commerce-table-meta'));
+    const parts = meta.split(' · ');
+    const reference = parts.length > 1 ? parts.pop() || '' : '';
     return {
       title: displayed(cells[0]?.querySelector('strong')) || 'Artículo',
-      detail: displayed(cells[0]?.querySelector('.commerce-table-meta')),
+      detail: parts.join(' · ') || meta,
+      reference,
       warranty: Array.from(cells[0]?.querySelectorAll('small') || [])
         .map(displayed).filter(value => value && !value.includes('Sin vínculo') &&
           value !== displayed(cells[0]?.querySelector('.commerce-table-meta'))).join(' · '),
@@ -350,10 +354,12 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     const nameLines = linesFor(row.title, '700 14px Georgia, serif', tableEdges[1]! - MARGIN - 18);
     const detailLines = linesFor(row.detail.replace(/\s*\n\s*/g, ' · '),
       '10px Arial, sans-serif', tableEdges[1]! - MARGIN - 18);
+    const referenceLines = linesFor(row.reference ? 'Ref.: ' + row.reference : '',
+      '9.25px Arial, sans-serif', tableEdges[1]! - MARGIN - 18);
     const warrantyLines = linesFor(row.warranty, 'italic 10px Arial, sans-serif',
       tableEdges[1]! - MARGIN - 18);
     const itemHeight = 12 + nameLines.length * 18 +
-      detailLines.length * 13 + warrantyLines.length * 13 + 13;
+      detailLines.length * 13 + referenceLines.length * 12 + warrantyLines.length * 13 + 13;
     const cells = [row.quantity, row.unit, row.amount];
     const numericLines = cells.map((value, i) => linesFor(value,
       '11px Arial, sans-serif', tableEdges[i + 2]! - tableEdges[i + 1]! - 14));
@@ -366,6 +372,8 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     top += nameLines.length * 18 + 2;
     drawLines(detailLines, MARGIN + 10, top, '10px Arial, sans-serif', ink, 13);
     top += detailLines.length * 13 + 2;
+    drawLines(referenceLines, MARGIN + 10, top, '9.25px Arial, sans-serif', ink, 12);
+    top += referenceLines.length * 12 + 2;
     drawLines(warrantyLines, MARGIN + 10, top, 'italic 10px Arial, sans-serif', muted, 13);
     numericLines.forEach((lines, i) =>
       drawLines(lines, tableEdges[i + 2]! - 8, y + Math.max(14, (height - 14) / 2),
