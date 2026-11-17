@@ -74,10 +74,14 @@ for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light'
    const rect=(node:Element)=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
    const body=el.querySelector(':scope > .modal-body')!;
    const cart=el.querySelector('.commerce-fieldset.commerce-cart')!;
-   const groups=[...el.querySelectorAll('.sales-payment-tile')].map(n=>({
-    ...rect(n),padding:getComputedStyle(n).paddingLeft,
-    iconLeft:rect(n.querySelector('svg')!).left,
-   }));
+   const groups=[...el.querySelectorAll('.sales-payment-tile')].map(n=>{
+    const text=n.querySelector('span')!;
+    const range=document.createRange();
+    range.selectNodeContents(text);
+    return {...rect(n),padding:getComputedStyle(n).paddingLeft,
+      iconLeft:rect(n.querySelector('svg')!).left,
+      labelLines:range.getClientRects().length};
+   });
    const footer=el.querySelector(':scope > .modal-body > .modal-footer')!;
    const payment=el.querySelector('.sales-payment-options')!;
    const root=rect(el);
@@ -95,7 +99,8 @@ for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light'
   for(const tile of spacing.payments){
    expect(parseFloat(tile.padding)).toBeGreaterThanOrEqual(14);
    expect(tile.iconLeft-tile.left).toBeGreaterThanOrEqual(13);
-   expect(tile.height).toBeGreaterThanOrEqual(width<=360?60:74);
+   expect(tile.height).toBeGreaterThanOrEqual(width<=400?60:74);
+   expect(tile.labelLines).toBe(1);
   }
   expect(spacing.footerPosition).toBe('static');
   expect(spacing.footer.top).toBeGreaterThanOrEqual(spacing.payment.bottom);
