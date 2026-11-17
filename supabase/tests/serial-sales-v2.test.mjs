@@ -83,7 +83,7 @@ test('Serial Sales V2: atomic assignment, rollback, returns, quarantine, void an
  await command('void_sale',{id:resale.entity_id,reason:'Error en transacción'});
  eq((await links(resale.entity_id))[0].return_condition,'void','Voiding sale releases linked unit');
  eq(await currentStock(vid),6,'Void restores stock once');
- const quote=await command('create_quote',{items:[{variant_id:vid,quantity:1,expected_price:200}]});
+ const quote=await command('create_quote',{items:[{variant_id:vid,quantity:1,expected_price:200}],expires_at:new Date(Date.now()+86400000).toISOString()});
  const converted=await command('convert_quote',{id:quote.entity_id,payment_method:'card',
   serial_assignments:[{variant_id:vid,serial_ids:[serialIds['TV-003']]}]});
  eq((await links(converted.result.sale_id??converted.entity_id)).map(x=>x.serial),['TV-003'],'Quote conversion binds serial');
