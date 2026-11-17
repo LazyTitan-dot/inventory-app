@@ -37,7 +37,7 @@ test('manufacturer barcodes: preserved primary identity, shared uniqueness, atom
       create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text,unique(bucket_id,name));
       alter table storage.objects enable row level security;grant usage on schema storage to authenticated,anon;grant select,insert,update,delete on storage.objects to authenticated,anon;`);
     const names = (await readdir(migrations)).filter((name) => name.endsWith('.sql')).sort();
-    for (const name of names.filter((name) => name !== aliasMigration && !name.includes('serial_barcode_management_v1'))) await db.exec(await readFile(`${migrations}/${name}`, 'utf8'));
+    for (const name of names.filter((name) => name !== aliasMigration && !name.includes('serial_barcode_management_v1') && !name.includes('serial_sales_v2'))) await db.exec(await readFile(`${migrations}/${name}`, 'utf8'));
     for (const [role, id] of Object.entries(users)) {
       await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())', [id, `${role}@example.test`]);
       await db.query('insert into public.retail_memberships(user_id,email,role) values($1,$2,$3)', [id, `${role}@example.test`, role]);
