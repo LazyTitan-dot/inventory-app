@@ -272,6 +272,10 @@ export type DocumentItem = z.infer<typeof documentItemSchema>;
 export type Delivery = z.infer<typeof deliverySchema>;
 export type Promotion = z.infer<typeof promotionSchema>;
 export type Action =
+  | 'add_unit_serial'
+  | 'correct_unit_serial'
+  | 'remove_unit_serial'
+  | 'manage_variant_barcode'
   | 'save_product'
   | 'archive_product'
   | 'save_contact'
