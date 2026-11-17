@@ -64,8 +64,7 @@ begin
       and new.barcode_aliases is not distinct from old.barcode_aliases then return new; end if;
  codes:=array_remove(array_prepend(new.barcode,new.barcode_aliases),null);
  delete from retail_private.variant_barcode_metadata m
-   where m.variant_id=new.id and not (m.code_key=any(
-      select array_agg(retail_private.barcode_key(x)) from unnest(codes) as u(x)));
+   where m.variant_id=new.id and not exists(select 1 from unnest(codes) as u(x) where m.code_key=retail_private.barcode_key(u.x));
  foreach current_code in array codes loop
   insert into retail_private.variant_barcode_metadata(code_key,variant_id,kind)
    values(retail_private.barcode_key(current_code),new.id,
@@ -124,6 +123,7 @@ begin
  'total_matching',matching,'serials',items,'codes',codes,'barcode_history',history);
 end; $$;
 revoke all on function retail_private.identifier_snapshot(uuid,text,integer) from public,anon,authenticated;
+grant execute on function retail_private.identifier_snapshot(uuid,text,integer) to authenticated;
 create function public.retail_identifiers(p_variant_id uuid,p_search text default '',p_offset integer default 0)
 returns jsonb language sql stable security invoker set search_path='' as $$
  select retail_private.identifier_snapshot(p_variant_id,p_search,p_offset);
@@ -143,6 +143,7 @@ begin
  return res;
 end; $$;
 revoke all on function retail_private.serial_events_for(uuid) from public,anon,authenticated;
+grant execute on function retail_private.serial_events_for(uuid) to authenticated;
 create function public.retail_serial_history(p_serial_id uuid) returns jsonb language sql stable security invoker set search_path='' as $$
  select retail_private.serial_events_for(p_serial_id);
 $$;
