@@ -1762,6 +1762,9 @@ function DocumentDetail({
   const receiptRef = useRef<HTMLElement>(null);
   const [linkItemId, setLinkItemId] = useState<string | null>(null);
   const items = data.document_items.filter((item) => item.document_id === doc.id);
+  // The printed prices are the persisted tax-inclusive line amounts. Sum those
+  // same figures so the receipt remains internally consistent without showing ITBIS.
+  const printedSaleSubtotal = round(items.reduce((sum, item) => sum + item.line_total, 0));
   const linkItem = items.find((item) => item.id === linkItemId);
   const linkedSale =
     doc.type === 'quote'
@@ -1992,7 +1995,7 @@ function DocumentDetail({
                   <span>{doc.type === 'sale' ? (
                     <>
                       <span className="receipt-screen-only">{money(doc.subtotal)}</span>
-                      <span className="receipt-print-only">{money(doc.subtotal + round(doc.subtotal * doc.tax_rate / 100))}</span>
+                      <span className="receipt-print-only">{money(items.length ? printedSaleSubtotal : doc.total)}</span>
                     </>
                   ) : money(doc.subtotal)}</span>
                 </div>
@@ -2001,7 +2004,7 @@ function DocumentDetail({
                   <span>{doc.type === 'sale' ? (
                     <>
                       <span className="receipt-screen-only">−{money(doc.discount)}</span>
-                      <span className="receipt-print-only">−{money(Math.max(0, doc.subtotal + round(doc.subtotal * doc.tax_rate / 100) - doc.total))}</span>
+                      <span className="receipt-print-only">−{money(Math.max(0, (items.length ? printedSaleSubtotal : doc.total) - doc.total))}</span>
                     </>
                   ) : '−' + money(doc.discount)}</span>
                 </div>
