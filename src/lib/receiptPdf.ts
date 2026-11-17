@@ -4,7 +4,7 @@
  * page is encoded as a 2x-resolution JPEG; no customer data leaves the device.
  * A small PDF 1.4 image writer avoids adding a network-loaded dependency.
  */
-const PAGE_W = 595, PAGE_H = 842, SCALE = 2, MARGIN = 42;
+const PAGE_W = 595, PAGE_H = 842, SCALE = 2, MARGIN = 25;
 const utf8 = new TextEncoder();
 const bytes = (s: string) => utf8.encode(s);
 
@@ -129,10 +129,12 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   const contentWidth = PAGE_W - 2 * MARGIN;
   const contentEnd = MARGIN + contentWidth;
   const bottom = PAGE_H - 50;
-  const tableEdges = [MARGIN, MARGIN + 226, MARGIN + 279, MARGIN + 387, contentEnd];
+  const tableEdges = [MARGIN, MARGIN + contentWidth * .46, MARGIN + contentWidth * .56,
+    MARGIN + contentWidth * .79, contentEnd];
   const images: Uint8Array[] = [];
   let y = MARGIN, page = 0;
   let tableStarted = false;
+  let tableTop = 0;
 
   function linesFor(value: string, font: string, width: number) {
     ctx.font = font;
@@ -158,48 +160,131 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     ctx.strokeStyle = color; ctx.lineWidth = width;
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
   }
+
+  // Glossy vector details are drawn anew for every receipt, without reusing
+  // the sample image's text or customer data.
+  function topRibbon() {
+    ctx.save();
+    const cyanGrad = ctx.createLinearGradient(PAGE_W - 210, 0, PAGE_W, 85);
+    cyanGrad.addColorStop(0, '#1cceff'); cyanGrad.addColorStop(.6, '#00aeeb');
+    cyanGrad.addColorStop(1, '#0272c4');
+    ctx.fillStyle = cyanGrad; ctx.beginPath();
+    ctx.moveTo(PAGE_W - 211, 0);
+    ctx.bezierCurveTo(PAGE_W - 126, 7, PAGE_W - 43, 32, PAGE_W, 86);
+    ctx.lineTo(PAGE_W, 0); ctx.closePath(); ctx.fill();
+
+    const darkGrad = ctx.createLinearGradient(PAGE_W - 180, 0, PAGE_W - 10, 60);
+    darkGrad.addColorStop(0, '#235d9f'); darkGrad.addColorStop(.20, '#102f64');
+    darkGrad.addColorStop(.56, '#061b44'); darkGrad.addColorStop(.80, '#173e7b');
+    darkGrad.addColorStop(1, '#04102e');
+    ctx.fillStyle = darkGrad; ctx.beginPath();
+    ctx.moveTo(PAGE_W - 181, 0);
+    ctx.bezierCurveTo(PAGE_W - 116, 5, PAGE_W - 32, 23, PAGE_W, 64);
+    ctx.lineTo(PAGE_W, 0); ctx.closePath(); ctx.fill();
+
+    const highlight = ctx.createLinearGradient(PAGE_W - 168, 0, PAGE_W, 69);
+    highlight.addColorStop(0, '#aeefff'); highlight.addColorStop(.5, '#f8ffff');
+    highlight.addColorStop(1, '#08cdff');
+    ctx.strokeStyle = highlight; ctx.lineWidth = 2.4; ctx.beginPath();
+    ctx.moveTo(PAGE_W - 181, 0);
+    ctx.bezierCurveTo(PAGE_W - 116, 5, PAGE_W - 32, 23, PAGE_W + 1, 64);
+    ctx.stroke(); ctx.restore();
+  }
+  function bottomRibbon() {
+    ctx.save();
+    const cyanGrad = ctx.createLinearGradient(0, PAGE_H - 55, PAGE_W, PAGE_H);
+    cyanGrad.addColorStop(0, '#00befe'); cyanGrad.addColorStop(.50, '#0098de');
+    cyanGrad.addColorStop(1, '#11c4fb');
+    ctx.fillStyle = cyanGrad; ctx.beginPath();
+    ctx.moveTo(0, PAGE_H - 46);
+    ctx.bezierCurveTo(125, PAGE_H + 2, 380, PAGE_H - 3, PAGE_W, PAGE_H - 7);
+    ctx.lineTo(PAGE_W, PAGE_H); ctx.lineTo(0, PAGE_H);
+    ctx.closePath(); ctx.fill();
+
+    const darkGrad = ctx.createLinearGradient(0, PAGE_H - 20, PAGE_W, PAGE_H);
+    darkGrad.addColorStop(0, '#061838'); darkGrad.addColorStop(.36, '#16427c');
+    darkGrad.addColorStop(.7, '#061738'); darkGrad.addColorStop(1, '#0a2d5e');
+    ctx.fillStyle = darkGrad; ctx.beginPath();
+    ctx.moveTo(0, PAGE_H - 17);
+    ctx.bezierCurveTo(134, PAGE_H + 7, 388, PAGE_H + 1, PAGE_W, PAGE_H - 1);
+    ctx.lineTo(PAGE_W, PAGE_H); ctx.lineTo(0, PAGE_H);
+    ctx.closePath(); ctx.fill();
+
+    ctx.strokeStyle = '#e4faff'; ctx.lineWidth = 2.4; ctx.beginPath();
+    ctx.moveTo(0, PAGE_H - 37);
+    ctx.bezierCurveTo(128, PAGE_H - 2, 379, PAGE_H - 5, PAGE_W, PAGE_H - 6);
+    ctx.stroke(); ctx.restore();
+  }
+  function glossBand(x: number, top: number, width: number, height: number, radius: number) {
+    ctx.save(); ctx.beginPath(); ctx.roundRect(x, top, width, height, radius); ctx.clip();
+    const base = ctx.createLinearGradient(0, top, 0, top + height);
+    base.addColorStop(0, '#071d47'); base.addColorStop(.2, '#20538d');
+    base.addColorStop(.52, '#0c326b'); base.addColorStop(1, '#061641');
+    ctx.fillStyle = base; ctx.fillRect(x, top, width, height);
+    const sheen = ctx.createLinearGradient(x, top, x + width, top + height);
+    sheen.addColorStop(0, 'rgba(255,255,255,.05)');
+    sheen.addColorStop(.40, 'rgba(208,244,255,.26)');
+    sheen.addColorStop(.7, 'rgba(240,250,255,.045)');
+    sheen.addColorStop(1, 'rgba(215,249,255,.10)');
+    ctx.fillStyle = sheen; ctx.beginPath();
+    ctx.moveTo(x - 4, top + height * .55);
+    ctx.bezierCurveTo(x + width * .25, top - height * .45,
+      x + width * .53, top + height * .91, x + width + 4, top + height * .17);
+    ctx.lineTo(x + width + 4, top); ctx.lineTo(x - 4, top);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(170,239,255,.36)'; ctx.lineWidth = .9; ctx.beginPath();
+    ctx.moveTo(x, top + 1); ctx.lineTo(x + width, top + 1); ctx.stroke();
+    ctx.restore();
+  }
+  function closeTable() {
+    if (!tableStarted) return;
+    ctx.strokeStyle = navy; ctx.lineWidth = 1.4; ctx.beginPath();
+    ctx.roundRect(MARGIN + .7, tableTop + .7, contentWidth - 1.4,
+      Math.max(1, y - tableTop - 1.4), 8);
+    ctx.stroke(); tableStarted = false;
+  }
   function beginPage() {
     page++;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, PAGE_W, PAGE_H);
+    topRibbon();
 
-    // Restrained version of the navy/cyan curved corner in the supplied reference.
-    ctx.fillStyle = navy;
-    ctx.beginPath();
-    ctx.moveTo(PAGE_W - 177, 0); ctx.lineTo(PAGE_W, 0);
-    ctx.lineTo(PAGE_W, 20); ctx.quadraticCurveTo(PAGE_W - 85, 16, PAGE_W - 177, 0);
-    ctx.fill();
-    ctx.strokeStyle = cyan; ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(PAGE_W - 160, 0); ctx.quadraticCurveTo(PAGE_W - 65, 13, PAGE_W, 29);
-    ctx.stroke();
-
-    const logoScale = Math.min(210 / receiptLogo.naturalWidth, 78 / receiptLogo.naturalHeight);
+    const logoScale = Math.min(199 / receiptLogo.naturalWidth, 75 / receiptLogo.naturalHeight);
     const logoWidth = receiptLogo.naturalWidth * logoScale;
     const logoHeight = receiptLogo.naturalHeight * logoScale;
-    const logoTop = MARGIN + 11;
-    ctx.drawImage(receiptLogo, MARGIN, logoTop, logoWidth, logoHeight);
-    const headX = MARGIN + 233;
-    const displayTitle = page === 1 ? title.toLocaleUpperCase('es') : 'RECIBO · CONTINUACIÓN';
-    drawLines(linesFor(displayTitle, '700 21px Georgia, serif', contentEnd - headX),
-      headX, MARGIN + 9, '700 21px Georgia, serif', navy, 25);
+    const logoTop = MARGIN + 28;
+    ctx.drawImage(receiptLogo, MARGIN + 3, logoTop, logoWidth, logoHeight);
+
+    const headX = MARGIN + 218;
+    line(headX - 16, MARGIN + 28, headX - 16, MARGIN + 108, cyan, 1.6);
+    const displayTitle = title.toLocaleUpperCase('es');
+    let titleSize = 28;
+    while (titleSize > 20) {
+      ctx.font = '700 ' + titleSize + 'px Georgia, serif';
+      if (ctx.measureText(displayTitle).width <= contentEnd - headX) break;
+      titleSize--;
+    }
+    drawLines([displayTitle], headX, MARGIN + 29,
+      '700 ' + titleSize + 'px Georgia, serif', navy, 32);
     const dateParts = date.split(' · ');
-    drawLines([dateParts[0] || number], headX, MARGIN + 43,
-      '700 13px Arial, sans-serif', navy);
-    drawLines(linesFor(dateParts.slice(1).join(' · ') || date, '11px Arial, sans-serif',
-      contentEnd - headX), headX, MARGIN + 61,
-      '11px Arial, sans-serif', ink, 13);
-    rounded(contentEnd - 88, MARGIN + 83, 88, 22, 7, '#e5f5ec', '#cce8da');
-    drawLines([status], contentEnd - 44, MARGIN + 89,
-      '700 10px Arial, sans-serif', '#22573d', 12, 'center');
-    y = Math.max(MARGIN + 118, logoTop + logoHeight + 30);
-    line(MARGIN, y, contentEnd, y, cyan, 2);
-    y += 23;
+    drawLines([dateParts[0] || number], headX, MARGIN + 69,
+      '700 15px Arial, sans-serif', navy);
+    drawLines(linesFor(dateParts.slice(1).join(' · ') || date,
+      '12px Arial, sans-serif', contentEnd - headX), headX, MARGIN + 91,
+      '12px Arial, sans-serif', ink, 14);
+    rounded(contentEnd - 88, MARGIN + 112, 88, 24, 7, '#e2f3e9', '#cce6d5');
+    drawLines([status], contentEnd - 44, MARGIN + 119,
+      '700 11px Arial, sans-serif', '#205638', 13, 'center');
+
+    y = Math.max(MARGIN + 137, logoTop + logoHeight + 35);
     tableStarted = false;
+    tableTop = 0;
   }
   async function finishPage() {
-    drawLines([number + '  ·  Página ' + page], contentEnd, PAGE_H - 25,
-      '9px Arial, sans-serif', muted, 11, 'right');
+    closeTable();
+    bottomRibbon();
+    drawLines([number + '  ·  Página ' + page], contentEnd, PAGE_H - 52,
+      '8px Arial, sans-serif', muted, 10, 'right');
     images.push(await jpeg(canvas));
   }
   async function ensureRoom(height: number, table = false) {
@@ -210,7 +295,8 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   }
   function drawTableHeading() {
     const height = 38;
-    rounded(MARGIN, y, contentWidth, height, 6, navy);
+    tableTop = y;
+    glossBand(MARGIN, y, contentWidth, height, 7);
     const headings = ['Producto', 'Cant.', 'Precio unitario', 'Importe'];
     headings.forEach((label, i) => {
       const right = i > 0;
@@ -287,8 +373,7 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
     y += height;
     line(MARGIN, y, contentEnd, y, rule, 1);
   }
-  line(MARGIN, y, MARGIN, y - Math.min(60, y - MARGIN), navy, 1);
-  line(contentEnd, y, contentEnd, y - Math.min(60, y - MARGIN), navy, 1);
+  closeTable();
 
   // White summary card with a navy TOTAL ribbon (print only).
   const summaryX = MARGIN + 206;
@@ -298,7 +383,13 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   const summaryHeight = 20 + totalRows.reduce((sum, row) =>
     sum + (row[0]?.trim().toLocaleLowerCase('es') === 'total' ? totalHeight : normalHeight), 0) + 9;
   const noteLines = linesFor(notes, 'italic 10px Arial, sans-serif', summaryX - MARGIN - 22);
-  await ensureRoom(Math.max(summaryHeight, 16 + noteLines.length * 14) + 38);
+  // Reserve room for the final footer before committing the summary.
+  // This prevents a nearly empty extra sheet with only the thank-you message.
+  const summarySpace = Math.max(summaryHeight, 16 + noteLines.length * 14);
+  if (y + 23 + summarySpace > PAGE_H - 115) {
+    await finishPage();
+    beginPage();
+  }
   y += 23;
   drawLines(noteLines, MARGIN + 3, y + 11, 'italic 10px Arial, sans-serif', ink, 14);
   rounded(summaryX, y, summaryW, summaryHeight, 9, '#ffffff', cyan);
@@ -306,8 +397,7 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   for (const row of totalRows) {
     const isTotal = row[0]?.trim().toLocaleLowerCase('es') === 'total';
     if (isTotal) {
-      ctx.fillStyle = navy;
-      ctx.fillRect(summaryX + 1, rowY - 2, summaryW - 2, totalHeight);
+      glossBand(summaryX + 1, rowY - 2, summaryW - 2, totalHeight, 0);
       drawLines([row[0] || 'Total'], summaryX + 13, rowY + 7,
         '700 16px Arial, sans-serif', '#ffffff');
       drawLines([row[1] || ''], contentEnd - 13, rowY + 7,
@@ -321,21 +411,17 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
       rowY += normalHeight;
     }
   }
-  y += summaryHeight + 33;
-  const footerLines = linesFor(footer, 'italic 700 13px Georgia, serif', contentWidth - 135);
-  await ensureRoom(footerLines.length * 17 + 34);
-  // Center the closing message on short, one-page receipts.
-  y = Math.max(y, PAGE_H - 99);
-  const footerTop = y;
+  y += summaryHeight;
+  const footerLines = linesFor(footer, 'italic 700 13px Georgia, serif', contentWidth - 110);
+  const footerTop = PAGE_H - 88 - (footerLines.length - 1) * 17;
+  if (y + 12 > footerTop) {
+    await finishPage();
+    beginPage();
+  }
   line(MARGIN + 6, footerTop + 9, MARGIN + 93, footerTop + 9, cyan, 2);
   line(contentEnd - 93, footerTop + 9, contentEnd - 6, footerTop + 9, cyan, 2);
   drawLines(footerLines, PAGE_W / 2, footerTop,
     'italic 700 13px Georgia, serif', navy, 17, 'center');
-  ctx.fillStyle = cyan;
-  ctx.fillRect(0, PAGE_H - 9, PAGE_W, 3);
-  ctx.fillStyle = navy;
-  ctx.fillRect(0, PAGE_H - 6, PAGE_W, 6);
-
   await finishPage();
   return assemblePdf(images, canvas.width, canvas.height);
 }
