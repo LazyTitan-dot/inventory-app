@@ -309,14 +309,14 @@ test('Ventas V1.4 two-item iPhone receipt fits one decorated A4 PDF page', async
       top: Array.from(top).slice(0, 3), bottom: Array.from(bottom).slice(0, 3)};
     bitmap.close(); return data;
   }, url);
-  expect(result.pages).toBe(1);
-  expect(result).toMatchObject({width: 1190, height: 1684});
-  expect(result.top[2]!).toBeGreaterThan(result.top[0]!);
-  expect(result.bottom[2]!).toBeGreaterThan(result.bottom[0]!);
   const download = page.waitForEvent('download');
   await ready.getByRole('link', {name: 'Guardar PDF'}).click();
   const saved = await download;
   await testInfo.attach('recibo-dos-articulos-decorado', {
     body: await readFile((await saved.path())!), contentType: 'application/pdf',
   });
+  expect(result.pages).toBe(1);
+  expect(result).toMatchObject({width: 1190, height: 1684});
+  expect(result.top[2]!).toBeGreaterThan(result.top[0]!);
+  expect(result.bottom[2]!).toBeGreaterThan(result.bottom[0]!);
 });
