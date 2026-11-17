@@ -231,3 +231,27 @@ test('Ventas V1.2.1 Windows long receipt paginates instead of clipping rows',asy
  expect(count).toBeLessThanOrEqual(6);
  await testInfo.attach('recibo-largo-windows',{body:pdf,contentType:'application/pdf'});
 });
+
+test('Ventas V1.3 dark card and print-only customer totals', async ({page}, testInfo) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.emulateMedia({colorScheme:'dark'});
+  await page.goto('/ventas?documento=' + saleId);
+  const receipt=page.locator('.sales-detail-v1 .retail-print');
+  const totals=receipt.locator('.commerce-totals');
+  await expect(totals).toBeVisible();
+  expect(await totals.evaluate(el=>getComputedStyle(el).backgroundColor)).not.toBe('rgb(255, 255, 255)');
+  await expect(receipt.locator('.receipt-screen-only').first()).toBeVisible();
+  await expect(receipt.locator('.receipt-tax-row')).toBeVisible();
+  await page.emulateMedia({media:'print',colorScheme:'dark'});
+  await expect(receipt.locator('.receipt-tax-row')).not.toBeVisible();
+  await expect(receipt.locator('.receipt-print-only').first()).toBeVisible();
+  await expect(receipt.locator('.receipt-screen-only').first()).not.toBeVisible();
+  expect(await receipt.innerText()).not.toContain('ITBIS');
+  await expect(receipt.locator('.commerce-totals > div').first()).toContainText('9,440.00');
+  await expect(receipt.locator('.sales-print-footer')).toBeVisible();
+  const bg=await receipt.locator('.commerce-grand-total').evaluate(el=>getComputedStyle(el).backgroundColor);
+  expect(bg).toBe('rgb(11, 39, 83)');
+  const pdf=await page.pdf({format:'A4',printBackground:true});
+  expect((pdf.toString('latin1').match(/\\/Type\\s*\\/Page\\b/g)||[]).length).toBe(1);
+  await testInfo.attach('recibo-v1-3',{body:pdf,contentType:'application/pdf'});
+});
