@@ -81,84 +81,201 @@ export async function createReceiptPdf(receipt: HTMLElement, number: string): Pr
   const totals = receipt.querySelector('.commerce-totals');
   if (!heading || !contact || !table || !totals) throw new Error('Incomplete receipt');
 
-  // Snapshot all the values before awaiting page encodes; amounts are never recalculated.
-  const title = displayed(heading.querySelector('h2'));
-  const date = displayed(heading.querySelector('p'));
+  // Read the exact document values once. This is a print layout, not a recalculation.
+  const title = displayed(heading.querySelector('h2')) || 'Recibo de venta';
+  const date = displayed(heading.querySelector('p')) || number;
   const status = displayed(heading.lastElementChild);
   const context = Array.from(receipt.querySelectorAll('.commerce-inline-note')).map(displayed);
-  const contacts = Array.from(contact.children).map(displayed);
+  const contacts = Array.from(contact.children).map(group =>
+    Array.from(group.children).map(displayed).filter(Boolean));
   const columns = Array.from(table.querySelectorAll('thead th')).map(displayed);
-  const rows = Array.from(table.querySelectorAll('tbody tr')).map(row => Array.from(row.children).map(displayed));
-  const totalRows = Array.from(totals.children).map(row => Array.from(row.children).map(displayed));
+  const rows = Array.from(table.querySelectorAll('tbody tr')).map(row =>
+    Array.from(row.children).map(displayed));
+  const totalRows = Array.from(totals.children).map(row =>
+    Array.from(row.children).map(displayed));
   const notes = displayed(receipt.querySelector('.commerce-document-notes'));
 
   const canvas = document.createElement('canvas');
-  canvas.width = PAGE_W * SCALE; canvas.height = PAGE_H * SCALE;
-  const drawingContext = canvas.getContext('2d', { alpha: false });
-  if (!drawingContext) throw new Error('Canvas unavailable');
-  const ctx: CanvasRenderingContext2D = drawingContext;
+  canvas.width = PAGE_W * SCALE;
+  canvas.height = PAGE_H * SCALE;
+  const ctx = canvas.getContext('2d', { alpha: false });
+  if (!ctx) throw new Error('Canvas unavailable');
   ctx.scale(SCALE, SCALE);
+  ctx.textBaseline = 'top';
+
   const images: Uint8Array[] = [];
-  let y = MARGIN, page = 0;
-  const contentWidth = PAGE_W - 2 * MARGIN;
-  const ink = '#102b4a', muted = '#526982';
-  function begin() {
-    page++;
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, PAGE_W, PAGE_H);
-    const ratio = Math.min(190 / logo!.naturalWidth, 68 / logo!.naturalHeight);
-    const w = logo!.naturalWidth * ratio, h = logo!.naturalHeight * ratio;
-    ctx.drawImage(logo!, MARGIN, MARGIN, w, h);
-    y = MARGIN + h + 16;
-    ctx.fillStyle = ink; ctx.font = '700 20px Arial, sans-serif'; ctx.fillText(title || 'Recibo de venta', MARGIN, y + 20);
-    y += 36;
-    ctx.font = '11px Arial, sans-serif'; ctx.fillStyle = muted;
-    for (const line of wrapped(ctx, date || number, contentWidth)) {
-      ctx.fillText(line, MARGIN, y + 11); y += 15;
-    }
-    ctx.strokeStyle = '#d7e5f5'; ctx.beginPath(); ctx.moveTo(MARGIN, y + 5); ctx.lineTo(PAGE_W - MARGIN, y + 5); ctx.stroke();
-    y += 20;
+  const contentWidth = PAGE_W - MARGIN * 2;
+  const bottom = PAGE_H - MARGIN - 28;
+  const ink = '#152641';
+  const muted = '#526982';
+  const edge = '#dce5ee';
+  const light = '#f2f6fa';
+  const edges = [MARGIN, MARGIN + 212, MARGIN + 273, MARGIN + 389, PAGE_W - MARGIN];
+  let y = MARGIN;
+  let page = 0;
+
+  const linesFor = (value: string, font: string, maxWidth: number) => {
+    ctx.font = font;
+    return wrapped(ctx, value, maxWidth).filter(line => line.length > 0);
+  };
+  function paint(lines: string[], x: number, top: number, font: string,
+    color: string, lineHeight: number, right = false) {
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textAlign = right ? 'right' : 'left';
+    lines.forEach((line, i) => ctx.fillText(line, x, top + i * lineHeight));
+    ctx.textAlign = 'left';
   }
-  async function finish() {
-    ctx.font = '10px Arial, sans-serif'; ctx.fillStyle = muted;
-    ctx.fillText(`Página ${page} · ${number}`, MARGIN, PAGE_H - 24);
+  function beginPage() {
+    page++;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, PAGE_W, PAGE_H);
+    const ratio = Math.min(242 / logo.naturalWidth, 83 / logo.naturalHeight);
+    const logoWidth = logo.naturalWidth * ratio;
+    const logoHeight = logo.naturalHeight * ratio;
+    ctx.drawImage(logo, MARGIN, MARGIN, logoWidth, logoHeight);
+
+    y = MARGIN + logoHeight + 16;
+    paint([title], MARGIN, y, '700 20px Arial, sans-serif', ink, 24);
+    paint([status], PAGE_W - MARGIN, y + 5, '10px Arial, sans-serif', muted, 12, true);
+    y += 30;
+    const dateLines = linesFor(page === 1 ? date : date + ' · Continuación',
+      '11px Arial, sans-serif', contentWidth);
+    paint(dateLines, MARGIN, y, '11px Arial, sans-serif', muted, 15);
+    y += dateLines.length * 15 + 16;
+    ctx.strokeStyle = edge;
+    ctx.beginPath();
+    ctx.moveTo(MARGIN, y);
+    ctx.lineTo(PAGE_W - MARGIN, y);
+    ctx.stroke();
+    y += 18;
+  }
+  async function finishPage() {
+    paint(['Página ' + page + ' · ' + number], MARGIN, PAGE_H - 26,
+      '10px Arial, sans-serif', muted, 12);
     images.push(await jpeg(canvas));
   }
-  async function space(height: number) {
-    if (y + height > PAGE_H - MARGIN) { await finish(); begin(); }
+  async function ensureRoom(height: number, repeatTable = false) {
+    if (y + height <= bottom) return;
+    await finishPage();
+    beginPage();
+    if (repeatTable) drawTableHeader();
   }
-  async function paragraph(text: string, bold = false, size = 11, color = ink) {
-    if (!text) return;
-    const font = `${bold ? '700' : '400'} ${size}px Arial, sans-serif`;
-    ctx.font = font;
-    const lines = wrapped(ctx, text, contentWidth);
-    const lineHeight = size + 5;
-    for (const line of lines) {
-      await space(lineHeight);
-      ctx.font = font; ctx.fillStyle = color;
-      ctx.fillText(line, MARGIN, y + size);
-      y += lineHeight;
-    }
-    y += 6;
+  function drawTableHeader() {
+    const h = 45;
+    ctx.fillStyle = light;
+    ctx.fillRect(MARGIN, y, contentWidth, h);
+    columns.slice(0, 4).forEach((label, index) => {
+      const font = '700 9px Arial, sans-serif';
+      const right = index > 0;
+      const available = edges[index + 1] - edges[index] - 16;
+      const lines = linesFor(label, font, available);
+      paint(lines, right ? edges[index + 1] - 8 : edges[index] + 8,
+        y + 7, font, ink, 12, right);
+    });
+    y += h;
+    ctx.strokeStyle = edge;
+    ctx.beginPath();
+    ctx.moveTo(MARGIN, y);
+    ctx.lineTo(PAGE_W - MARGIN, y);
+    ctx.stroke();
   }
-  async function section(name: string) {
-    await space(42);
-    y += 8; await paragraph(name, true, 13, ink);
+
+  beginPage();
+
+  for (const note of context) {
+    const lines = linesFor(note.replace(/\s+/g, ' '), '10px Arial, sans-serif',
+      contentWidth);
+    await ensureRoom(lines.length * 14 + 7);
+    paint(lines, MARGIN, y, '10px Arial, sans-serif', muted, 14);
+    y += lines.length * 14 + 7;
   }
-  begin();
-  await paragraph(status, false, 11, muted);
-  for (const note of context) await paragraph(note, false, 11, muted);
-  for (const group of contacts) await paragraph(group);
-  await section('Artículos');
+  // Keep the customer and payment information in the same two-column structure
+  // used by the desktop document, independently of the iPhone viewport width.
+  const panelWidth = (contentWidth - 12) / 2;
+  const panels = contacts.slice(0, 2).map(fieldGroup => {
+    const result: { lines: string[]; label: boolean }[] = [];
+    fieldGroup.forEach((field, index) => {
+      const font = index === 0 ? '10px Arial, sans-serif' : '700 11px Arial, sans-serif';
+      result.push({ lines: linesFor(field, font, panelWidth - 26), label: index === 0 });
+    });
+    return result;
+  });
+  const panelHeight = Math.max(62, ...panels.map(panel =>
+    18 + panel.reduce((height, field) =>
+      height + field.lines.length * (field.label ? 13 : 15) + 4, 0)));
+  await ensureRoom(panelHeight + 20);
+  panels.forEach((panel, index) => {
+    const x = MARGIN + index * (panelWidth + 12);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x, y, panelWidth, panelHeight);
+    ctx.strokeStyle = edge;
+    ctx.strokeRect(x + .5, y + .5, panelWidth - 1, panelHeight - 1);
+    let lineTop = y + 12;
+    panel.forEach(field => {
+      const font = field.label ? '10px Arial, sans-serif' : '700 11px Arial, sans-serif';
+      const lineHeight = field.label ? 13 : 15;
+      paint(field.lines, x + 12, lineTop, font, field.label ? muted : ink, lineHeight);
+      lineTop += field.lines.length * lineHeight + 4;
+    });
+  });
+  y += panelHeight + 20;
+
+  drawTableHeader();
   for (const row of rows) {
-    await space(60);
-    await paragraph(row[0] || 'Artículo', true);
-    for (let i = 1; i < row.length; i++) await paragraph(`${columns[i] || 'Importe'}: ${row[i]}`);
-    y += 5;
+    const cols = [row[0] || 'Artículo', row[1] || '', row[2] || '', row[3] || ''];
+    const cellLines = cols.map((value, index) =>
+      linesFor(value.replace(/\s*\n\s*/g, ' · '),
+        index === 0 ? '700 10px Arial, sans-serif' : '10px Arial, sans-serif',
+        edges[index + 1] - edges[index] - 16));
+    const height = Math.max(43, 14 + Math.max(...cellLines.map(lines => lines.length)) * 13);
+    await ensureRoom(height, true);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(MARGIN, y, contentWidth, height);
+    cellLines.forEach((lines, index) => paint(lines,
+      index === 0 ? edges[index] + 8 : edges[index + 1] - 8, y + 9,
+      index === 0 ? '700 10px Arial, sans-serif' : '10px Arial, sans-serif',
+      ink, 13, index > 0));
+    y += height;
+    ctx.strokeStyle = edge;
+    ctx.beginPath();
+    ctx.moveTo(MARGIN, y);
+    ctx.lineTo(PAGE_W - MARGIN, y);
+    ctx.stroke();
   }
-  if (!rows.length) await paragraph('Detalle de artículos no disponible.');
-  await section('Resumen de la venta');
-  for (const row of totalRows) await paragraph(row.join(': '), row[0] === 'Total', row[0] === 'Total' ? 15 : 11);
-  if (notes) { await section('Información del recibo'); await paragraph(notes, false, 10, muted); }
-  await finish();
+
+  // Desktop-style summary: notes on the left, aligned totals on the right.
+  // The entire TOTAL area is explicitly WHITE, regardless of dark/Glass theme.
+  y += 22;
+  const summaryRight = MARGIN + 252;
+  const totalWidth = PAGE_W - MARGIN - summaryRight;
+  const noteLines = linesFor(notes, '10px Arial, sans-serif', summaryRight - MARGIN - 18);
+  const summaryHeight = Math.max(38 + noteLines.length * 14, 22 + totalRows.length * 27);
+  await ensureRoom(summaryHeight + 8);
+  if (noteLines.length) {
+    paint(noteLines, MARGIN + 2, y + 10, '10px Arial, sans-serif', muted, 14);
+  }
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(summaryRight, y, totalWidth, summaryHeight);
+  ctx.strokeStyle = edge;
+  ctx.strokeRect(summaryRight + .5, y + .5, totalWidth - 1, summaryHeight - 1);
+  totalRows.forEach((row, i) => {
+    const isTotal = row[0]?.trim().toLocaleLowerCase() === 'total';
+    const top = y + 12 + i * 27;
+    if (isTotal) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(summaryRight + 1, top - 5, totalWidth - 2, 26);
+      ctx.strokeStyle = edge;
+      ctx.beginPath();
+      ctx.moveTo(summaryRight + 12, top - 5);
+      ctx.lineTo(summaryRight + totalWidth - 12, top - 5);
+      ctx.stroke();
+    }
+    const font = isTotal ? '700 14px Arial, sans-serif' : '11px Arial, sans-serif';
+    paint([row[0] || ''], summaryRight + 12, top, font, ink, 16);
+    paint([row[1] || ''], summaryRight + totalWidth - 12, top, font, ink, 16, true);
+  });
+
+  await finishPage();
   return assemblePdf(images, canvas.width, canvas.height);
 }
