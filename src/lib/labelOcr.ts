@@ -131,6 +131,16 @@ async function recognize(canvas: HTMLCanvasElement, { signal, onProgress }: Labe
   }
 }
 
+/** Reuse the offline Tesseract worker for confirmed unit serials; never guess a serial or save automatically. */
+export async function readSerialTextPhoto(file: File, options: LabelReadOptions): Promise<string> {
+  const canvas = await readCanvas(file, options.signal);
+  try {
+    return await recognize(canvas, options);
+  } finally {
+    canvas.width = canvas.height = 0;
+  }
+}
+
 export async function readProductLabelPhoto(file: File, options: LabelReadOptions): Promise<ProductLabelResult> {
   const canvas = await readCanvas(file, options.signal);
   try {
