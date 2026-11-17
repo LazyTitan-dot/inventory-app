@@ -1,0 +1,40 @@
+name: Calidad del recibo de venta
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/lib/receiptPdf.ts'
+      - 'src/pages/Commerce.tsx'
+      - 'src/pages/sales-visual-v1.css'
+      - 'tests/shell/sales-visual-v1.spec.ts'
+      - '.github/workflows/receipt-print-v1-3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  imprimir-recibo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:shell:types
+      - run: npx playwright test sales-visual-v1.spec.ts --grep "Ventas V1.2 iPhone|Ventas V1.2 PDF|Ventas V1.2.1 Windows|Ventas V1.3"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recibo-venta-imprimir-v1-3
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
