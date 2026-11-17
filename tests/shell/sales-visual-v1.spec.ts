@@ -265,7 +265,7 @@ test('Ventas V1.4 two-item iPhone receipt fits one decorated A4 PDF page', async
   const sale = featureData.documents.find(document => document.id === saleId)!;
   sale.contact_snapshot.address = 'Calle de prueba Evaristo Mejía esquina 41, Cristo Rey, Santo Domingo de Guzmán, Distrito Nacional';
   const source = featureData.document_items.find(item => item.document_id === saleId)!;
-  source.product_snapshot.name = '128 GB · Usado · APPLE-IPHONE-16-128-GB-USADO-159284C35856';
+  source.product_snapshot.name = '128 GB · Usado';
   source.product_snapshot.sku = 'APPLE-IPHONE-16-128-GB-USADO-159284C35856';
   featureData.document_items.push({
     ...source,
@@ -273,7 +273,7 @@ test('Ventas V1.4 two-item iPhone receipt fits one decorated A4 PDF page', async
     product_snapshot: {
       ...source.product_snapshot,
       model: 'iPhone 17',
-      name: '256 GB · Usado · APPLE-IPHONE-17-256-GB-USADO-3D9018C779D2',
+      name: '256 GB · Usado',
       sku: 'APPLE-IPHONE-17-256-GB-USADO-3D9018C779D2',
     },
   });
