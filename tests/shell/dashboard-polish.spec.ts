@@ -17,26 +17,20 @@ for (const width of [320, 390, 430, 1440]) {
       expect(await action.getAttribute('aria-label')).toContain(detail);
       await expect(priority).toContainText(detail);
       await expect(priority).toHaveAttribute('href', (await action.getAttribute('href'))!);
-      const label = action.getByText('Revisar', { exact: true });
       const chevron = action.locator('.sl-work-chevron');
       await expect(action.locator('svg:visible')).toHaveCount(1);
-      if (width <= 760) {
-        await expect(label).toBeHidden();
-        await expect(chevron).toBeVisible();
-        const panel = (await priorities.boundingBox())!;
-        const icon = (await firstTask.locator('.sl-work-status').boundingBox())!;
-        const glyph = (await chevron.boundingBox())!;
-        const target = (await action.boundingBox())!;
-        const leftInset = icon.x - panel.x;
-        const rightInset = panel.x + panel.width - glyph.x - glyph.width;
-        expect(leftInset).toBeGreaterThanOrEqual(16);
-        expect(Math.abs(leftInset - rightInset)).toBeLessThanOrEqual(1);
-        expect(target.width).toBeGreaterThanOrEqual(44);
-        expect(target.height).toBeGreaterThanOrEqual(44);
-      } else {
-        await expect(label).toBeVisible();
-        await expect(chevron).toBeHidden();
-      }
+      await expect(action).toHaveText('');
+      await expect(chevron).toBeVisible();
+      const panel = (await priorities.boundingBox())!;
+      const icon = (await firstTask.locator('.sl-work-status').boundingBox())!;
+      const glyph = (await chevron.boundingBox())!;
+      const target = (await action.boundingBox())!;
+      const leftInset = icon.x - panel.x;
+      const rightInset = panel.x + panel.width - glyph.x - glyph.width;
+      expect(leftInset).toBeGreaterThanOrEqual(16);
+      expect(Math.abs(leftInset - rightInset)).toBeLessThanOrEqual(1);
+      expect(target.width).toBeGreaterThanOrEqual(44);
+      expect(target.height).toBeGreaterThanOrEqual(44);
       const quick = page.getByRole('region', { name: 'Accesos rápidos' });
       await expect(quick.getByRole('heading', { name: 'Accesos rápidos', exact: true })).toBeVisible();
       await expect(quick.getByRole('heading')).toHaveCSS('font-size', '20px');
@@ -46,6 +40,22 @@ for (const width of [320, 390, 430, 1440]) {
       await expect(row).toContainText('Distribuidora Nacional');
       await expect(row).toContainText('123,456,789.99');
       await expect(row).toHaveAttribute('href', `/compras?documento=${purchaseId}`);
+      const audit = activity.getByRole('link', { name: 'Ver actividad en Auditoría' });
+      await expect(audit).toHaveAttribute('href', '/auditoria');
+      await expect(audit.locator('svg:visible')).toHaveCount(1);
+      if (width > 760) {
+        await expect(audit.locator('.sl-activity-chevron')).toBeVisible();
+        await expect(row.locator('.sl-activity-chevron')).toBeVisible();
+        const arrow = (await row.locator('.sl-activity-chevron').boundingBox())!;
+        const value = (await row.locator('b').boundingBox())!;
+        const time = (await row.locator('.sl-activity-time').boundingBox())!;
+        expect(arrow.x - (value.x + value.width)).toBeGreaterThanOrEqual(12);
+        expect(Math.abs((time.x + time.width) - (value.x + value.width))).toBeLessThanOrEqual(1);
+        await expect(audit.getByText('Ver actividad', { exact: true })).toBeHidden();
+      } else {
+        await expect(audit.getByText('Ver actividad', { exact: true })).toBeVisible();
+        await expect(row.locator('.sl-activity-chevron')).toBeHidden();
+      }
       const bounds = await row.evaluate(node => {
         const panel = node.closest('.sl-recent-activity')!.getBoundingClientRect();
         const r = node.getBoundingClientRect();
@@ -61,3 +71,17 @@ for (const width of [320, 390, 430, 1440]) {
     });
   }
 }
+
+test('a desktop purchase with hidden costs has one disclosure and no audit shortcut', async ({ page, featureData }) => {
+  featureData.permissions.view_costs = false;
+  featureData.permissions.view_audit = false;
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const activity = page.locator('.sl-recent-activity');
+  const row = activity.getByRole('link', { name: /Compra registrada/ });
+  await expect(activity.getByRole('link', { name: /Ver actividad/ })).toHaveCount(0);
+  await expect(row).not.toContainText('RD$');
+  await expect(row).toHaveAttribute('href', `/compras?documento=${purchaseId}`);
+  await expect(row.locator('svg:visible')).toHaveCount(1);
+  await expect(row.locator('.sl-activity-chevron')).toBeVisible();
+});

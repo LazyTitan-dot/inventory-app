@@ -260,8 +260,6 @@ export function DashboardPage() {
                     to={task.to}
                     aria-label={`Revisar ${task.title}: ${task.detail}. ${task.context}`}
                   >
-                    <span>Revisar</span>
-                    <ArrowRight size={14} aria-hidden="true" />
                     <ChevronRight className="sl-work-chevron" size={23} strokeWidth={2.7} aria-hidden="true" />
                   </Link>
                 </div>
@@ -331,15 +329,36 @@ export function DashboardPage() {
         </div>
       </section>
       <section className="panel sl-recent-activity">
-        <div className="section-heading"><h2>Actividad reciente</h2>{data.permissions.view_audit && <Link className="text-link" to="/auditoria">Ver actividad <ArrowRight size={15} /></Link>}</div>
+        <div className="section-heading">
+          <h2>Actividad reciente</h2>
+          {data.permissions.view_audit && (
+            <Link
+              className="text-link sl-activity-open"
+              to="/auditoria"
+              aria-label="Ver actividad en Auditoría"
+              title="Ver actividad en Auditoría"
+            >
+              <span>Ver actividad</span>
+              <ArrowRight className="sl-activity-arrow" size={15} aria-hidden="true" />
+              <ChevronRight className="sl-activity-chevron" size={23} strokeWidth={2.7} aria-hidden="true" />
+            </Link>
+          )}
+        </div>
         {activity.length ? (
           <ul>{activity.map((item) => (
             <li key={item.id}>
               <Link to={item.to}>
                 <strong>{item.title}</strong>
-                {item.amount !== null ? <b>{money(item.amount)}</b> : item.quantity !== null ? <b>{item.quantity > 0 ? '+' : ''}{integer(item.quantity)} un.</b> : <ArrowRight size={15} aria-hidden="true" />}
+                {item.amount !== null ? (
+                  <b>{money(item.amount)}</b>
+                ) : item.quantity !== null ? (
+                  <b>{item.quantity > 0 ? '+' : ''}{integer(item.quantity)} un.</b>
+                ) : (
+                  <ArrowRight className="sl-activity-arrow" size={15} aria-hidden="true" />
+                )}
                 <small>{item.detail && `${item.detail} · `}<time dateTime={item.at}>{shortDate(item.at)}</time></small>
                 <small className="sl-activity-time"><time dateTime={item.at}>{activityTime.format(new Date(item.at))}</time></small>
+                <ChevronRight className="sl-activity-chevron" size={23} strokeWidth={2.7} aria-hidden="true" />
               </Link>
             </li>
           ))}</ul>
