@@ -255,7 +255,15 @@ export function DashboardPage() {
                 <div className="sl-work-item" key={task.id}>
                   <span className={`sl-work-status ${task.level}`}><TaskIcon kind={task.kind} /></span>
                   <div><span>{task.title}</span><strong>{task.detail}</strong><small>{task.context}</small></div>
-                  <Link className="text-link" to={task.to}>Revisar <ArrowRight size={14} /></Link>
+                  <Link
+                    className="text-link sl-work-action"
+                    to={task.to}
+                    aria-label={`Revisar ${task.title}: ${task.detail}. ${task.context}`}
+                  >
+                    <span>Revisar</span>
+                    <ArrowRight size={14} aria-hidden="true" />
+                    <ChevronRight className="sl-work-chevron" size={23} strokeWidth={2.7} aria-hidden="true" />
+                  </Link>
                 </div>
               ))}
               {tasks.length > 6 && <p className="sl-task-note">Mostrando las 6 prioridades más urgentes de {tasks.length}. Revisa las secciones para ver el detalle completo.</p>}

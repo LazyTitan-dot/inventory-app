@@ -10,9 +10,33 @@ for (const width of [320, 390, 430, 1440]) {
       await page.setViewportSize({ width, height: 844 });
       await page.goto('/');
       const priority = page.getByRole('region', { name: 'Prioridades del negocio' }).getByRole('link');
-      const firstTask = page.locator('.sl-work-item').first();
-      await expect(priority).toContainText(await firstTask.locator('strong').innerText());
-      await expect(priority).toHaveAttribute('href', (await firstTask.getByRole('link').getAttribute('href'))!);
+      const priorities = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Prioridades operativas', exact: true }) });
+      const firstTask = priorities.locator('.sl-work-item').first();
+      const detail = await firstTask.locator('strong').innerText();
+      const action = firstTask.getByRole('link', { name: /^Revisar / });
+      expect(await action.getAttribute('aria-label')).toContain(detail);
+      await expect(priority).toContainText(detail);
+      await expect(priority).toHaveAttribute('href', (await action.getAttribute('href'))!);
+      const label = action.getByText('Revisar', { exact: true });
+      const chevron = action.locator('.sl-work-chevron');
+      await expect(action.locator('svg:visible')).toHaveCount(1);
+      if (width <= 760) {
+        await expect(label).toBeHidden();
+        await expect(chevron).toBeVisible();
+        const panel = (await priorities.boundingBox())!;
+        const icon = (await firstTask.locator('.sl-work-status').boundingBox())!;
+        const glyph = (await chevron.boundingBox())!;
+        const target = (await action.boundingBox())!;
+        const leftInset = icon.x - panel.x;
+        const rightInset = panel.x + panel.width - glyph.x - glyph.width;
+        expect(leftInset).toBeGreaterThanOrEqual(16);
+        expect(Math.abs(leftInset - rightInset)).toBeLessThanOrEqual(1);
+        expect(target.width).toBeGreaterThanOrEqual(44);
+        expect(target.height).toBeGreaterThanOrEqual(44);
+      } else {
+        await expect(label).toBeVisible();
+        await expect(chevron).toBeHidden();
+      }
       const quick = page.getByRole('region', { name: 'Accesos rápidos' });
       await expect(quick.getByRole('heading', { name: 'Accesos rápidos', exact: true })).toBeVisible();
       await expect(quick.getByRole('heading')).toHaveCSS('font-size', '20px');
