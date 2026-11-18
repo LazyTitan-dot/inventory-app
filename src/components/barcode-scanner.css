@@ -24,3 +24,9 @@
 .barcode-readiness.complete > svg { color:#168846; flex:none; }
 .barcode-readiness strong { font-size:15px; }
 .barcode-readiness p { margin:3px 0 0; font-size:12px; color:var(--muted); }
+
+/* Glass for receiving continuous-camera dialog only. */
+.modal:has(.barcode-scanner.purchase-continuous-glass) { background:var(--sl-refined-surface,var(--surface)); border:1px solid var(--sl-refined-edge,var(--line)); }
+.barcode-scanner.purchase-continuous-glass :is(.barcode-readiness,.field) { border:1px solid var(--sl-refined-edge,var(--line)); background:linear-gradient(145deg,color-mix(in srgb,var(--sl-refined-surface,var(--surface)) 90%,transparent),var(--sl-refined-soft,var(--surface-subtle))); border-radius:14px; box-shadow:0 8px 24px rgba(3,21,42,.08); }
+.barcode-scanner.purchase-continuous-glass .barcode-camera { border:1px solid var(--sl-refined-edge,var(--line)); border-radius:16px; }
+.barcode-scanner.purchase-continuous-glass .button { border-radius:12px; }

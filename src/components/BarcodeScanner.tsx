@@ -235,7 +235,7 @@ export function BarcodeScanner({
         onClose();
       }}
     >
-      <div className="barcode-scanner stack">
+      <div className={continuous && title === "Recepción · Escaneo continuo" ? "barcode-scanner stack purchase-continuous-glass" : "barcode-scanner stack"}>
         {continuous && summary}
         {continuous && <div className={`barcode-readiness ${indicator.state}`} role="status" aria-live="polite">
           {indicator.state === 'complete' ? <CheckCircle2 size={22} aria-hidden="true" /> : <span className="barcode-readiness-dot" aria-hidden="true" />}

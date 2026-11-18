@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft,
+  ChevronLeft,
   Banknote,
   CreditCard,
   Landmark,
@@ -1118,7 +1118,7 @@ function CreateDocument({
                 </strong>
                 <button
                   type="button"
-                  className="button ghost commerce-icon-button"
+                  className="button ghost commerce-icon-button commerce-remove-item"
                   aria-label={`Quitar ${product?.model} ${variant?.name}`}
                   onClick={() => {
                     setCart((lines) => lines.filter((item) => item.variantId !== line.variantId));
@@ -1887,7 +1887,7 @@ function DocumentDetail({
             setMode('detail');
           }}
         >
-          <ArrowLeft size={16} />
+          <ChevronLeft size={18} />
           Volver al documento
         </button>
       )}
