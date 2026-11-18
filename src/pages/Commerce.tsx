@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Minus,
   ScanLine,
+  SlidersHorizontal,
   ClipboardList,
   FileText,
   MessageCircle,
@@ -71,6 +72,7 @@ import './apple-spacing-v2-1.css';
 import './sales-checkout-spacing-v2-2.css';
 import './windows-sales-visual-v2-3.css';
 import './mobile-sales-visual-v2-4.css';
+import './purchase-visual-v2.css';
 
 type Kind = 'sale' | 'purchase' | 'quote';
 type CartLine = { variantId: string; quantity: number; expectedPrice: number; unitCost: number };
@@ -134,6 +136,8 @@ export function CommercePage({ kind }: { kind: Kind }) {
   const [status, setStatus] = useState('all');
   const [supplierFilter, setSupplierFilter] = useState('all');
   const [purchaseDate, setPurchaseDate] = useState('');
+  const [purchaseAdvancedOpen, setPurchaseAdvancedOpen] = useState(false);
+  const [purchaseSort, setPurchaseSort] = useState<'recent' | 'oldest' | 'expected' | 'supplier'>('recent');
   const [createdSaleId, setCreatedSaleId] = useState<string | null>(null);
   const [params, setParams] = useSearchParams();
   const creating = params.get('nuevo') === '1';
@@ -185,7 +189,13 @@ export function CommercePage({ kind }: { kind: Kind }) {
       (kind !== 'purchase' || supplierFilter === 'all' || doc.contact_id === supplierFilter) &&
       (kind !== 'purchase' || !purchaseDate || doc.expected_at === purchaseDate) &&
       matches(query, documentNumber(doc), contactName(doc), doc.notes),
-  );
+  ).sort((a, b) => {
+    if (kind !== 'purchase' || purchaseSort === 'recent') return 0;
+    if (purchaseSort === 'oldest') return a.created_at.localeCompare(b.created_at);
+    if (purchaseSort === 'supplier') return contactName(a).localeCompare(contactName(b), 'es');
+    return (a.expected_at ?? '9999-12-31').localeCompare(b.expected_at ?? '9999-12-31') ||
+      b.created_at.localeCompare(a.created_at);
+  });
   const selected = data.documents.find((doc) => doc.id === selectedId);
   const editingQuote =
     params.get('editar') === '1' &&
@@ -215,6 +225,8 @@ export function CommercePage({ kind }: { kind: Kind }) {
 
   const purchaseEnhanced = data.features?.includes('purchase_receipts_v1') ?? false;
   const purchaseSuppliers = data.contacts.filter((contact) => contact.kind === 'supplier');
+  const activePurchaseFilters = Number(status !== 'all') + Number(supplierFilter !== 'all') +
+    Number(Boolean(purchaseDate)) + Number(purchaseSort !== 'recent');
   const incomingValue = data.document_items
     .filter((item) => pending.some((doc) => doc.id === item.document_id))
     .reduce(
@@ -401,56 +413,80 @@ export function CommercePage({ kind }: { kind: Kind }) {
       <section className={kind === 'purchase' ? 'panel purchase-orders-panel' : kind === 'sale' ? 'panel sales-history-panel' : 'panel'}>
         {kind === 'sale' && <div className="sales-history-heading"><h2>Historial de ventas</h2><span>{filtered.length} {filtered.length === 1 ? 'venta' : 'ventas'}</span></div>}
         {kind === 'purchase' && <div className="purchase-list-heading"><h2>Órdenes de compra</h2><span>{filtered.length} {filtered.length === 1 ? 'orden' : 'órdenes'}</span></div>}
-        <div className="toolbar commerce-toolbar">
-          <SearchInput
-            value={query}
-            onChange={setQuery}
-            placeholder={kind === 'purchase' ? 'Buscar orden, proveedor o nota…' : 'Buscar número, contacto o nota…'}
-          />
-          <select
-            aria-label="Filtrar por estado"
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            <option value="all">Todos los estados</option>
-            {kind === 'purchase' && purchaseEnhanced && <option value="overdue">Atrasadas</option>}
-            {statuses.map((value) => (
-              <option key={value} value={value}>
-                {value === 'expired' ? 'Vencida' : statusLabels[value] || value}
-              </option>
-            ))}
-          </select>
-          {kind === 'purchase' && (
-            <select
-              aria-label="Filtrar compras por proveedor"
-              value={supplierFilter}
-              onChange={(event) => setSupplierFilter(event.target.value)}
-            >
-              <option value="all">Todos los proveedores</option>
-              {purchaseSuppliers.map((supplier) => (
-                <option key={supplier.id} value={supplier.id}>
-                  {supplier.name}
-                </option>
+        {kind === 'purchase' ? (
+          <div className="purchase-filter-layout">
+            <div className="purchase-search-row">
+              <SearchInput
+                value={query}
+                onChange={setQuery}
+                placeholder="Buscar orden, proveedor o nota…"
+              />
+              <button type="button" className="button secondary purchase-filter-toggle"
+                aria-controls="purchase-advanced-filters" aria-expanded={purchaseAdvancedOpen}
+                onClick={() => setPurchaseAdvancedOpen(open => !open)}>
+                <SlidersHorizontal size={17} aria-hidden="true" />
+                Filtros{activePurchaseFilters ? ` (${activePurchaseFilters})` : ''}
+              </button>
+              {(query || activePurchaseFilters > 0) && (
+                <button type="button" className="button ghost purchase-clear-filters" onClick={() => {
+                  setQuery(''); setStatus('all'); setSupplierFilter('all'); setPurchaseDate(''); setPurchaseSort('recent');
+                }}>Limpiar filtros</button>
+              )}
+            </div>
+            <div className="purchase-advanced-filters" id="purchase-advanced-filters" data-open={purchaseAdvancedOpen}>
+              <label className="purchase-filter-field">
+                <span>Estado</span>
+                <select aria-label="Filtrar por estado" value={status} onChange={event => setStatus(event.target.value)}>
+                  <option value="all">Todos los estados</option>
+                  {purchaseEnhanced && <option value="overdue">Atrasadas</option>}
+                  {statuses.map(value => (
+                    <option key={value} value={value}>{statusLabels[value] || value}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="purchase-filter-field">
+                <span>Proveedor</span>
+                <select aria-label="Filtrar compras por proveedor" value={supplierFilter} onChange={event => setSupplierFilter(event.target.value)}>
+                  <option value="all">Todos los proveedores</option>
+                  {purchaseSuppliers.map(supplier => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+                </select>
+              </label>
+              {purchaseEnhanced && <label className="purchase-filter-field">
+                <span>Fecha esperada</span>
+                <input type="date" aria-label="Fecha esperada de compra" value={purchaseDate} onChange={event => setPurchaseDate(event.target.value)} />
+              </label>}
+              <label className="purchase-filter-field">
+                <span>Ordenar por</span>
+                <select aria-label="Ordenar órdenes de compra" value={purchaseSort} onChange={event => setPurchaseSort(event.target.value as typeof purchaseSort)}>
+                  <option value="recent">Más recientes</option>
+                  <option value="oldest">Más antiguas</option>
+                  <option value="expected">Fecha prevista</option>
+                  <option value="supplier">Proveedor A–Z</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        ) : (
+          <div className="toolbar commerce-toolbar">
+            <SearchInput value={query} onChange={setQuery} placeholder="Buscar número, contacto o nota…" />
+            <select aria-label="Filtrar por estado" value={status} onChange={event => setStatus(event.target.value)}>
+              <option value="all">Todos los estados</option>
+              {statuses.map(value => (
+                <option key={value} value={value}>{value === 'expired' ? 'Vencida' : statusLabels[value] || value}</option>
               ))}
             </select>
-          )}
-          {kind === 'purchase' && purchaseEnhanced && (
-            <label className="commerce-date-filter">
-              Fecha esperada
-              <input
-                type="date"
-                value={purchaseDate}
-                onChange={(event) => setPurchaseDate(event.target.value)}
-              />
-            </label>
-          )}
-          <span className="muted commerce-result-count">
-            {filtered.length} {filtered.length === 1 ? 'documento' : 'documentos'}
-          </span>
-        </div>
+            <span className="muted commerce-result-count">{filtered.length} {filtered.length === 1 ? 'documento' : 'documentos'}</span>
+          </div>
+        )}
         {kind === 'purchase' && <div className="purchase-quick-filters" role="group" aria-label="Estados rápidos de compra">
           {[{ value: 'all', label: 'Todas' }, ...[{ value: 'pending', label: 'Pendientes' }, { value: 'partial', label: 'Parciales' }, { value: 'received', label: 'Recibidas' }].filter(option => statuses.includes(option.value)), ...(purchaseEnhanced ? [{ value: 'overdue', label: 'Atrasadas' }] : [])].map(option => <button type="button" key={option.value} aria-pressed={status === option.value} onClick={() => setStatus(option.value)}>{option.label}</button>)}
         </div>}
+        {kind === 'purchase' && documents.length > 0 && pending.length === 0 && (
+          <div className="purchase-zero-pending" role="status">
+            <Check size={17} aria-hidden="true"/>
+            <span>No hay órdenes pendientes. Puedes consultar las compras recibidas y canceladas en el historial.</span>
+          </div>
+        )}
         {!filtered.length ? (
           <EmptyState
             title={
@@ -1648,6 +1684,7 @@ function CreateDocument({
       title={editingDocument ? `Editar ${documentNumber(editingDocument)}` : labels[kind].create}
       onClose={busy ? () => undefined : onClose}
       wide
+      backLabel={kind === 'purchase' ? 'Volver a Compras' : undefined}
       className={kind === 'purchase' ? 'purchase-create-v1 sl-refined-theme' : kind === 'sale' ? 'sales-create-v1 sl-refined-theme' : '' }
     >
       {editor}
@@ -1840,7 +1877,7 @@ function DocumentDetail({
     );
   }
   return (
-    <Modal title={documentNumber(doc)} onClose={operation.busy ? () => undefined : onClose} wide variant={doc.type === 'purchase' || doc.type === 'sale' ? 'drawer' : 'dialog'} className={doc.type === 'purchase' ? 'purchase-detail-v1 sl-refined-theme' : doc.type === 'sale' ? 'sales-detail-v1 sl-refined-theme' : ''}>
+    <Modal title={documentNumber(doc)} onClose={operation.busy ? () => undefined : onClose} wide variant={doc.type === 'purchase' || doc.type === 'sale' ? 'drawer' : 'dialog'} backLabel={doc.type === 'purchase' ? 'Volver a Compras' : undefined} className={doc.type === 'purchase' ? 'purchase-detail-v1 sl-refined-theme' : doc.type === 'sale' ? 'sales-detail-v1 sl-refined-theme' : ''}>
       {mode !== 'detail' && (
         <button
           className="button ghost commerce-back"
