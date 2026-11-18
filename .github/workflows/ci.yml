@@ -438,3 +438,31 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  purchase-receiving-visual-v2:
+    if: github.ref == 'refs/heads/feature/purchases-receiving-visual-v2' || github.head_ref == 'feature/purchases-receiving-visual-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:shell:types
+      - run: npx playwright test purchase-visual-v2 purchase-visual-v1 scanner sales-visual-v1 mobile-sales-visual-v2-4 delivery-refinement-v1 delivery-apple-chevron-v1 customer-mobile-ux inventory-visual-v1 reports-visual-v1 serial-sales-v2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: purchase-receiving-visual-v2-browser-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
