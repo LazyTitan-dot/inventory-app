@@ -56,7 +56,7 @@ for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light'
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
    const cart=modal.locator('.commerce-cart');
    await expect(cart.getByRole('heading',{name:'Venta actual'})).toBeVisible();
-   await expect(cart.getByText('Descuentos y cupón')).toBeVisible();
+   await expect(cart.getByText('Descuentos, cupón y nota')).toBeVisible();
    await expect(cart.getByText('Cobro',{exact:true})).toBeVisible();
    await expect(cart.getByText('Total a cobrar')).toBeVisible();
    await modal.getByRole('button',{name:'Monto exacto',exact:true}).click();

@@ -17,6 +17,7 @@ for(const [width,theme] of [[390,'dark'],[1280,'light']] as const){
   await search.fill('TEST0001');await search.press('Enter');
   if(width<=800)await page.getByRole('button',{name:'Ver pedido',exact:true}).click();
   const cart=width<=800?page.getByRole('dialog',{name:'Pedido y cobro'}):page.getByRole('region',{name:'Documento actual'});
+  await cart.locator('.sale-serial-details > summary').click();
   await expect(cart.getByRole('region',{name:'Identificación individual de las unidades'})).toBeVisible();
   await expect(cart.getByText('0 de 1 seleccionadas')).toBeVisible();
   const serials=cart.locator('.serial-sale-selector');

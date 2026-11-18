@@ -1,6 +1,7 @@
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
+  X,
   ChevronLeft,
   Banknote,
   CreditCard,
@@ -72,6 +73,7 @@ import './apple-spacing-v2-1.css';
 import './sales-checkout-spacing-v2-2.css';
 import './windows-sales-visual-v2-3.css';
 import './mobile-sales-visual-v2-4.css';
+import './sales-counter.css';
 import './purchase-visual-v2.css';
 
 type Kind = 'sale' | 'purchase' | 'quote';
@@ -277,7 +279,6 @@ export function CommercePage({ kind }: { kind: Kind }) {
         <PageHeader
           eyebrow="S-Mart Living / CAJA"
           title="Ventas"
-          description="Busca o escanea productos, prepara el pedido y confirma el cobro en un solo lugar."
           actions={
             <button className="button secondary" onClick={() => setParams({ vista: 'historial' })}>
               <ClipboardList size={17} />
@@ -726,6 +727,7 @@ function CreateDocument({
   const contacts = data.contacts.filter(
     (contact) => contact.active && contact.kind === (kind === 'purchase' ? 'supplier' : 'customer'),
   );
+  const units = cart.reduce((sum, line) => sum + line.quantity, 0);
   const subtotal = round(
     cart.reduce(
       (sum, line) =>
@@ -797,18 +799,29 @@ function CreateDocument({
     }
   }
 
+  const [catalogError, setCatalogError] = useState('');
+  const reportCatalogError = kind === 'sale' ? setCatalogError : setValidation;
+  function editSearch(value: string) {
+    setQuery(value);
+    if (kind === 'sale') {
+      setCatalogError('');
+      setScanMessage('');
+    }
+  }
   function addVariant(id: string) {
+    setCatalogError('');
+    setScanMessage('');
     const variant = variants.find((v) => v.id === id);
     if (!variant) return false;
     if (kind !== 'purchase' && variant.price <= 0) {
-      setValidation(
+      reportCatalogError(
         'Este artículo tiene el precio pendiente. Completa su precio en Inventario antes de venderlo o cotizarlo.',
       );
       return false;
     }
     const inCart = cart.find((line) => line.variantId === id)?.quantity || 0;
     if (kind === 'sale' && inCart >= (stock.get(id) || 0)) {
-      setValidation('No quedan más unidades disponibles de esta variante para agregar.');
+      reportCatalogError('No quedan más unidades disponibles de esta variante para agregar.');
       return false;
     }
     setCart((lines) =>
@@ -826,7 +839,7 @@ function CreateDocument({
             },
           ],
     );
-    setValidation('');
+    reportCatalogError('');
     const product = products.get(variant.product_id);
     setScanMessage(`Agregado: ${product?.brand ?? ''} ${product?.model ?? ''} · ${variant.name}`);
     return true;
@@ -835,12 +848,13 @@ function CreateDocument({
   function scanCode(value: string) {
     const ids = exactCashierMatches(variants, value);
     setScannerOpen(false);
+    setScanMessage('');
     if (ids.length === 1 && ids[0]) {
       if (addVariant(ids[0])) setQuery('');
     } else {
       setQuery(value);
       setCategory('all');
-      setValidation(
+      reportCatalogError(
         ids.length > 1
           ? 'El código coincide con varias variantes. Selecciona la correcta.'
           : 'Código no encontrado. Busca por nombre o SKU para seleccionar el artículo correcto.',
@@ -863,6 +877,7 @@ function CreateDocument({
     setValidation('');
   }
   function clearCart() {
+    setCatalogError('');
     setCart([]);
     setSelectedSerials({});
     setContactId('');
@@ -1044,6 +1059,7 @@ function CreateDocument({
     }
   }
 
+  const Adjustments = kind === 'sale' ? 'details' : Fragment;
   const cartContent = (
     <>
       {changedPrices && (
@@ -1072,7 +1088,7 @@ function CreateDocument({
           {kind === 'purchase' ? 'Tu orden' : kind === 'quote' ? 'Tu propuesta' : 'Venta actual'}
         </h3>
         <div className="commerce-cart-actions">
-          <span className="badge">{cart.reduce((sum, line) => sum + line.quantity, 0)} uds.</span>
+          <span className="badge">{units} {units === 1 ? 'unidad' : 'uds.'}</span>
           {inline && cart.length > 0 && (
             <button type="button" className="text-button" onClick={() => setClearRequested(true)}>
               Vaciar pedido
@@ -1207,11 +1223,11 @@ function CreateDocument({
                 )}
                 {kind !== 'sale' && <strong>{money(line.quantity * (kind === 'purchase' ? line.unitCost : line.expectedPrice))}</strong>}
               </div>
-              {salesSerialEnabled && <SaleSerialPicker key={line.variantId}
+              {salesSerialEnabled && <details className="sale-serial-details"><summary>Identificar unidades · {selectedSerials[line.variantId]?.length ?? 0} de {line.quantity} · Opcional</summary><SaleSerialPicker key={line.variantId}
                 variantId={line.variantId} quantity={line.quantity}
                 selected={selectedSerials[line.variantId]??[]}
                 onChange={ids=>setSelectedSerials(previous=>({...previous,[line.variantId]:ids}))}
-                disabled={busy} />}
+                disabled={busy} /></details>}
                             {kind === 'sale' && line.quantity > (stock.get(line.variantId) || 0) && (
                 <p className="commerce-error-text">
                   Solo quedan {stock.get(line.variantId) || 0} disponibles.
@@ -1227,7 +1243,8 @@ function CreateDocument({
           </div>
         )}
       </div>
-      {kind === 'sale' && <h4 className="sales-section-label">Descuentos y cupón</h4>}
+      <Adjustments>
+        {kind === 'sale' && <summary className="sales-section-label">Descuentos, cupón y nota{(Number(discount) > 0 || coupon.trim() || notes.trim()) && ' · Aplicados'}</summary>}
       {kind !== 'purchase' && (
         <div className="form-grid commerce-small-grid">
           <div className="commerce-discount-mode" role="group" aria-label="Tipo de descuento">
@@ -1332,6 +1349,7 @@ function CreateDocument({
           }
         />
       </Field>
+      </Adjustments>
       <div className="commerce-totals">
         <div>
           <span>{kind === 'sale' ? 'Subtotal antes de ITBIS' : 'Subtotal'}</span>
@@ -1502,7 +1520,7 @@ function CreateDocument({
                 value={query}
                 placeholder="Nombre, SKU o código de barras…"
                 aria-label="Buscar productos para agregar"
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => editSearch(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter') return;
                   event.preventDefault();
@@ -1510,14 +1528,15 @@ function CreateDocument({
                   if (exact.length === 1 && exact[0]) {
                     if (addVariant(exact[0])) setQuery('');
                   } else if (exact.length > 1)
-                    setValidation(
+                    reportCatalogError(
                       'El código coincide con más de una variante. Selecciona el artículo correcto de los resultados.',
                     );
                   else if (filtered.length === 1 && filtered[0]) {
                     if (addVariant(filtered[0].id)) setQuery('');
-                  } else setValidation('Selecciona una variante de los resultados.');
+                  } else reportCatalogError('Selecciona una variante de los resultados.');
                 }}
               />
+              {kind === 'sale' && query && <button type="button" className="sale-clear-search" aria-label="Limpiar búsqueda" onClick={() => { editSearch(''); searchInput.current?.focus(); }}><X size={17} /></button>}
             </div>
             <button
               type="button"
@@ -1528,6 +1547,10 @@ function CreateDocument({
               Escanear código de barras
             </button>
             </div>
+            {kind === 'sale' && <div className="sale-catalog-status">
+              <span role="status" aria-live="polite">{catalogError || scanMessage}</span>
+              <small>{filtered.length} {filtered.length === 1 ? 'variante' : 'variantes'} · Precios finales con ITBIS</small>
+            </div>}
             <div className="commerce-category-row" role="group" aria-label="Filtrar categoría">
               <button
                 type="button"
@@ -1603,10 +1626,10 @@ function CreateDocument({
                 );
               })}
             </div>
-            <p className="commerce-scan-feedback" role="status" aria-live="polite">
+            {kind !== 'sale' && (<p className="commerce-scan-feedback" role="status" aria-live="polite">
               {scanMessage ||
                 `${filtered.length} variantes · ${kind === 'purchase' ? 'Costos unitarios' : 'Precios finales con ITBIS'}`}
-            </p>
+            </p>)}
             {!filtered.length && (
               <div className="commerce-catalog-empty">
                 <Package size={30} />
@@ -1650,7 +1673,7 @@ function CreateDocument({
             )
           ) : (
             <section className="commerce-cart" aria-label="Documento actual">
-              {cartContent}
+              {kind === 'sale' ? <div className="sale-ticket-body">{cartContent}</div> : cartContent}
               {kind === 'sale' && <div className="sales-desktop-actions"><ErrorNotice message={validation || error} />{regularActions}</div>}
             </section>
           )}
@@ -1662,7 +1685,7 @@ function CreateDocument({
           <div>
             <strong>{money(total)}</strong>
             <small>
-              {cart.reduce((sum, line) => sum + line.quantity, 0)} unidades en el pedido
+              {units} {units === 1 ? 'unidad' : 'unidades'} en el pedido
             </small>
           </div>
           <button type="button" className="button primary" onClick={() => setCheckoutOpen(true)}>
