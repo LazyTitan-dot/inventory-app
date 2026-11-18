@@ -330,11 +330,11 @@ export function DeliveriesPage() {
               <><div className="delivery-card-list">
                 {filtered.map((delivery) => {
                   const sale = saleMap.get(delivery.sale_id);
-                  return <button className="delivery-list-card" key={delivery.id} onClick={() => setSelectedId(delivery.id)} aria-label={`Ver entrega a ${delivery.contact_name}`}>
+                  return <button type="button" className="delivery-list-card" key={delivery.id} onClick={() => setSelectedId(delivery.id)} aria-label={`Ver entrega a ${delivery.contact_name}`} aria-haspopup="dialog">
                     <span className="delivery-card-top"><strong>{delivery.contact_name}</strong><StatusBadge status={delivery.status} /></span>
                     <span className="operations-table-meta">{sale ? documentNumber(sale) : 'Venta vinculada'} · {dateTime(delivery.scheduled_at)} · hora RD</span>
                     <span className="delivery-card-address"><MapPin size={15} />{delivery.address}</span>
-                    <span className="delivery-card-bottom"><span><Truck size={15} /> {delivery.assignee || 'Sin asignar'}</span><strong>Ver entrega →</strong></span>
+                    <span className="delivery-card-bottom"><span><Truck size={15} /> {delivery.assignee || 'Sin asignar'}</span><span className="delivery-mobile-disclosure" aria-hidden="true"><ChevronRight size={23} strokeWidth={2.7} /></span></span>
                     {delivery.status === 'scheduled' && new Date(delivery.scheduled_at).getTime() < now && <span className="delivery-overdue"><Clock3 size={15}/> Hora vencida</span>}
                   </button>;
                 })}
