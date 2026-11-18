@@ -13,6 +13,7 @@ import { AddressFields } from '../components/AddressFields';
 import { addressComparisonKey, addressMapsUrl, addressText, addressValidation, emptyAddress } from '../lib/addresses';
 import './contacts.css';
 import './customer-visual-v2.css';
+import './supplier-visual-v1.css';
 import {
   EmptyState,
   ErrorNotice,
@@ -88,15 +89,17 @@ function ContactEditor({
   }
   return (
     <Modal
-      className={kind === "customer" ? "customer-editor-view" : undefined}
+      className={kind === "customer" ? "customer-editor-view" : "supplier-editor-view"}
       title={`${contact ? 'Editar' : 'Agregar'} ${kind === 'customer' ? 'cliente' : 'proveedor'}`}
       onClose={() => {
         if (!busy) onClose();
       }}
+      backLabel={kind === 'supplier' ? 'Volver a Proveedores' : undefined}
     >
       <form className="stack" onSubmit={save}>
-        <div className={kind === "customer" ? "customer-form-section" : "stack"}>
+        <div className={kind === "customer" ? "customer-form-section" : "stack supplier-form-section"}>
         {kind === "customer" && <h3>Identificación y contacto</h3>}
+        {kind === "supplier" && <h3>Identificación y contacto</h3>}
         {kind === "customer" && !contact && <div className="customer-scan-feature"><CustomerIdScan visualCard disabled={busy} onApply={(scan) => {
           const id = scan.ced.replace(/\D/g, "");
           const address = [scan.address, scan.sector, scan.municipio].filter(Boolean).join(", ");
@@ -158,6 +161,7 @@ function ContactEditor({
         </Field>}
         <div className={kind === "customer" ? "customer-form-section" : "stack"}>
         {kind === "customer" && <h3>Información adicional</h3>}
+        {kind === "supplier" && <h3>Información adicional</h3>}
         <Field icon={kind === "customer" ? <FileText size={20}/> : undefined} label="Notas internas">
           <textarea
             maxLength={2000}
@@ -405,7 +409,7 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
       setArchiveTarget(null); closeDetail();
     } catch { /* Display the server error in the confirmation. */ }
   }
-  return <div className={kind === "customer" ? "customer-workspace" : undefined}>
+  return <div className={kind === "customer" ? "customer-workspace" : "supplier-workspace"}>
     <PageHeader eyebrow="RELACIONES DEL NEGOCIO" title={kind === 'customer' ? 'Clientes' : 'Proveedores'}
       description={kind === 'customer' ? 'Conoce a tus clientes y guarda sus destinos habituales para la próxima entrega.' : 'Contactos, condiciones e historial de tus aliados comerciales.'}
       actions={<>
@@ -442,20 +446,34 @@ export function ContactsPage({ kind }: { kind: Contact['kind'] }) {
             </div>
           </article>;
         })}</div>
-          : <div className="table-wrap"><table className="data-table"><thead><tr><th>Proveedor</th><th>Contacto</th><th>Identificación</th><th>Dirección</th><th><span className="sr-only">Acciones</span></th></tr></thead><tbody>
+          : <><div className="supplier-mobile-list" aria-label="Listado de proveedores">{rows.map((contact) => (
+            <article className="supplier-mobile-card" key={contact.id}>
+              <button type="button" className="supplier-mobile-trigger" onClick={() => openDetail(contact.id)} aria-label={`Ver perfil de ${contact.name}`}>
+                <span className="supplier-avatar" aria-hidden="true"><Building2 size={22} /></span>
+                <span className="supplier-mobile-info"><strong>{contact.name}</strong>
+                  <small>{contact.phone || contact.email || 'Sin contacto registrado'}</small>
+                  {contact.phone && contact.email && <small>{contact.email}</small>}
+                </span><ChevronRight className="supplier-chevron" size={20} aria-hidden="true" />
+              </button>
+              <div className="supplier-mobile-meta"><span>{contact.tax_id ? `RNC / Cédula: ${contact.tax_id}` : 'Sin identificación'}</span>
+                <span className="supplier-state">{contact.active ? 'Activo' : 'Archivado'}</span></div>
+              {permitted && <button className="button secondary supplier-mobile-edit" type="button" onClick={() => setEditor(contact)}><Pencil size={15} /> Editar</button>}
+            </article>
+          ))}</div><div className="table-wrap supplier-table-wrap"><table className="data-table supplier-data-table"><thead><tr><th>Proveedor</th><th>Contacto</th><th>Identificación</th><th>Dirección</th><th><span className="sr-only">Acciones</span></th></tr></thead><tbody>
             {rows.map((contact) => <tr key={contact.id}>
               <td><button className="product-cell" onClick={() => openDetail(contact.id)}><span className="contact-avatar"><Building2 size={20} /></span><strong>{contact.name}</strong></button></td>
               <td>{contact.phone || 'Sin teléfono'}<small>{contact.email || 'Sin correo'}</small></td><td>{contact.tax_id || '—'}</td>
-              <td className="truncate-cell">{contact.address || '—'}</td><td>{permitted && <button className="button ghost" onClick={() => setEditor(contact)}>Editar</button>}</td>
+              <td className="truncate-cell">{contact.address || '—'}</td><td><span className="supplier-row-actions">{permitted && <button className="button ghost" onClick={() => setEditor(contact)}>Editar</button>}<button className="supplier-open-detail" type="button" onClick={() => openDetail(contact.id)} aria-label={`Ver perfil de ${contact.name}`}><ChevronRight size={20} aria-hidden="true" /></button></span></td>
             </tr>)}
-          </tbody></table></div>}
+          </tbody></table></div></>}
     </section>
     {editor && <ContactEditor key={editor === 'new' ? 'new' : editor.id} kind={kind} contact={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
-    {detail && !whatsAppContact && !editor && !archiveTarget && <Modal title={detail.name} onClose={closeDetail} wide variant={kind === 'customer' ? 'drawer' : undefined} className={kind === 'customer' ? 'customer-profile-view' : undefined} backLabel={kind === 'customer' ? 'Clientes' : undefined}>
+    {detail && !whatsAppContact && !editor && !archiveTarget && <Modal title={detail.name} onClose={closeDetail} wide variant={kind === 'customer' ? 'drawer' : undefined} className={kind === 'customer' ? 'customer-profile-view' : 'supplier-profile-view'} backLabel={kind === 'customer' ? 'Clientes' : 'Volver a Proveedores'}>
       <div className="contact-profile-content">
-        <div className="customer-profile-summary"><span className="contact-avatar" aria-hidden="true">{kind === "customer" ? initials(detail.name) : <UserRound size={25} />}</span><div>
+        <div className="customer-profile-summary"><span className="contact-avatar" aria-hidden="true">{kind === "customer" ? initials(detail.name) : <Building2 size={25} />}</span><div>
           <span className="eyebrow">{kind === 'customer' ? 'PERFIL DEL CLIENTE' : 'PROVEEDOR'}</span>
           {kind === "customer" && <strong className="customer-hero-name">{detail.name}</strong>}
+           {kind === "supplier" && <strong className="supplier-hero-name">{detail.name}</strong>}
           {kind === 'customer' ? <div className="customer-contact-lines">
             {phoneHref(detail.phone) ? <a className="customer-contact-line customer-call" href={phoneHref(detail.phone)!}><Phone size={20} aria-hidden="true"/><span>{detail.phone}</span></a> : <span className="customer-contact-line"><Phone size={20} aria-hidden="true"/><span>{detail.phone || 'Sin teléfono'}</span></span>}
             <span className="customer-contact-line"><Mail size={20} aria-hidden="true"/><span>{detail.email || 'Sin correo'}</span></span>

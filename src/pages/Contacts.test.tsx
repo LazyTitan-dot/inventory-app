@@ -86,4 +86,20 @@ describe('customer directory and saved destinations', () => {
     expect(html).toContain('Historial de operaciones');
     expect(html).not.toContain('Direcciones de entrega');
   });
+  it('supplier V1 adds a responsive directory without modifying customer presentation or purchase links',()=>{
+    const supplier=markup('supplier','?contacto=supplier-one');
+    expect(supplier).toContain('supplier-workspace');
+    expect(supplier).toContain('supplier-mobile-list');
+    expect(supplier).toContain('supplier-data-table');
+    expect(supplier).toContain('supplier-profile-view');
+    expect(supplier).toContain('supplier-hero-name');
+    expect(supplier).toContain('Volver a Proveedores');
+    expect(supplier).toContain('Historial de operaciones');
+    expect(supplier).toContain('/compras?contacto=supplier-one&amp;nuevo=1');
+    const customer=markup('customer');
+    expect(customer).toContain('customer-workspace');
+    expect(customer).not.toContain('supplier-mobile-list');
+    expect(customer).not.toContain('supplier-data-table');
+  });
+
 });
