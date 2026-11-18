@@ -412,7 +412,7 @@ jobs:
           retention-days: 14
 
   delivery-apple-chevron-v1:
-    if: github.ref == 'refs/heads/feature/deliveries-apple-cyan-chevron-v1' || github.head_ref == 'feature/deliveries-apple-cyan-chevron-v1'
+    if: github.ref == 'refs/heads/feature/deliveries-apple-cyan-chevron-v1' || github.head_ref == 'feature/deliveries-apple-cyan-chevron-v1' || github.ref == 'refs/heads/feature/deliveries-mobile-chevron-parity-v1' || github.head_ref == 'feature/deliveries-mobile-chevron-parity-v1'
     runs-on: ubuntu-latest
     timeout-minutes: 28
     env:
