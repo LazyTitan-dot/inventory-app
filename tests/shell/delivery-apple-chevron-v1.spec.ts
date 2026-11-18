@@ -102,8 +102,12 @@ for(const width of [320,375,390,430]){
    await expect(detail).toBeVisible();
    await expect(detail.getByRole('region',{name:'Historial de entrega'})).toBeVisible();
    await detail.getByRole('button',{name:'Cerrar ventana'}).click();
+   await expect(detail).not.toBeVisible();
+   await expect(page).toHaveURL(/\/entregas$/);
+   await expect(card).toBeVisible();
    await card.focus();
-   await page.keyboard.press('Enter');
+   await expect(card).toBeFocused();
+   await card.press('Enter');
    await expect(detail).toBeVisible();
   });
  }
