@@ -9,6 +9,10 @@ for (const width of [320, 390, 430, 1440]) {
       await page.emulateMedia({ colorScheme });
       await page.setViewportSize({ width, height: 844 });
       await page.goto('/');
+      const priority = page.getByRole('region', { name: 'Prioridades del negocio' }).getByRole('link');
+      const firstTask = page.locator('.sl-work-item').first();
+      await expect(priority).toContainText(await firstTask.locator('strong').innerText());
+      await expect(priority).toHaveAttribute('href', (await firstTask.getByRole('link').getAttribute('href'))!);
       const quick = page.getByRole('region', { name: 'Accesos rápidos' });
       await expect(quick.getByRole('heading', { name: 'Accesos rápidos', exact: true })).toBeVisible();
       await expect(quick.getByRole('heading')).toHaveCSS('font-size', '20px');

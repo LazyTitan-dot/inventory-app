@@ -1,9 +1,10 @@
-import { ArrowRight, Bell, ClipboardList, PackageCheck, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowRight, ChevronRight, CircleCheck, ClipboardList, PackageCheck, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useId, useState } from 'react';
 import { useRetail } from '../state/useRetail';
 import {
   businessDate,
+  BUSINESS_TIMEZONE,
   dateTime,
   documentNumber,
   integer,
@@ -12,7 +13,7 @@ import {
 } from '../lib/format';
 import { inventoryFinancialSummary } from '../lib/pricing';
 import { reportForPeriod, stockOverview } from '../lib/reports';
-import { dashboardActivity, dashboardTasks, salesTrend } from '../lib/dashboard';
+import { dashboardActivity, dashboardTasks, salesTrend, type DashboardTask } from '../lib/dashboard';
 import type { RetailData } from '../lib/contracts';
 import './dashboard.css';
 import {
@@ -31,6 +32,36 @@ function useBusinessDay() {
   return { today: businessDate(now), now };
 }
 
+const activityTime = new Intl.DateTimeFormat('es-DO', { timeStyle: 'short', timeZone: BUSINESS_TIMEZONE });
+const taskIcons = { stock: PackageCheck, purchase: ClipboardList, delivery: Truck };
+
+function TaskIcon({ kind }: Pick<DashboardTask, 'kind'>) {
+  const Icon = taskIcons[kind];
+  return <Icon size={19} aria-hidden="true" />;
+}
+
+function PriorityBanner({ tasks }: { tasks: DashboardTask[] }) {
+  const first = tasks[0];
+  return (
+    <section className="sl-priority-banner" aria-label="Prioridades del negocio">
+      {first ? (
+        <Link className="sl-priority-row" to={first.to}>
+          <span className={`sl-priority-icon ${first.level}`}><TaskIcon kind={first.kind} /></span>
+          <span className="sl-priority-heading">
+            <small>{integer(tasks.length)} {tasks.length === 1 ? 'prioridad' : 'prioridades'}</small>
+            <strong>{first.title}</strong>
+          </span>
+          <span className="sl-priority-detail">{first.detail}</span>
+          <span className="sl-priority-context">{first.context}</span>
+          <span className="sl-priority-open"><span>Revisar</span><ChevronRight size={18} aria-hidden="true" /></span>
+        </Link>
+      ) : (
+        <p className="sl-priority-empty"><CircleCheck size={21} aria-hidden="true" />Tu operación está al día.</p>
+      )}
+    </section>
+  );
+}
+
 function SalesTrendChart({ data, today }: { data: RetailData; today: string }) {
   const [days, setDays] = useState<7 | 30>(7);
   const gradientId = useId();
@@ -46,10 +77,10 @@ function SalesTrendChart({ data, today }: { data: RetailData; today: string }) {
   return (
     <article className="panel sl-insight-card sl-sales-insight">
       <div className="sl-insight-heading">
-        <div><span className="eyebrow">TENDENCIA DE VENTAS</span><h2>Ventas registradas</h2><p>Con ITBIS · neto de devoluciones</p></div>
-        <div className="sl-period-toggle" role="group" aria-label="Período de ventas">
-          {([7, 30] as const).map((period) => <button key={period} type="button" aria-pressed={days === period} onClick={() => setDays(period)}>{period} días</button>)}
-        </div>
+        <h2>Ventas registradas</h2><p>Con ITBIS · neto de devoluciones</p>
+      </div>
+      <div className="sl-period-toggle" role="group" aria-label="Período de ventas">
+        {([7, 30] as const).map((period) => <button key={period} type="button" aria-pressed={days === period} onClick={() => setDays(period)}>{period} días</button>)}
       </div>
       <div className="sl-sales-total"><div><span>Total del período</span><strong>{money(total)}</strong></div><div><span>Hoy</span><strong>{money(points.at(-1)!.amount)}</strong></div></div>
       <div className="sl-chart-layout"><div className="sl-chart-axis" aria-hidden="true">{[max,(max+min)/2,min].map((value,index)=><span key={index}>{money(value)}</span>)}</div><svg className="sl-sales-chart" viewBox="0 0 660 170" preserveAspectRatio="none" role="img" aria-label={`Ventas netas de los últimos ${days} días: ${money(total)}. Hoy: ${money(points.at(-1)!.amount)}.`}>
@@ -61,10 +92,16 @@ function SalesTrendChart({ data, today }: { data: RetailData; today: string }) {
         <path d={area} fill={`url(#${gradientId})`} />
         <path d={line} fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         <circle cx={coordinates.at(-1)!.x} cy={coordinates.at(-1)!.y} r="4" fill="currentColor" />
-      </svg></div>
-      <div className="sl-plot-dates"><span>{shortDate(`${points[0]!.day}T12:00:00-04:00`)}</span><span>Hoy</span></div>
-      <details className="sl-chart-data"><summary>Ver importes diarios</summary><div className="table-wrap"><table className="data-table"><thead><tr><th>Fecha</th><th>Ventas netas RD$</th></tr></thead><tbody>{points.map((point) => <tr key={point.day}><td>{shortDate(`${point.day}T12:00:00-04:00`)}</td><td>{money(point.amount)}</td></tr>)}</tbody></table></div></details>
-      <div className="sl-insight-footer"><span>Fechas de República Dominicana</span>{data.permissions.manage_business && <Link className="text-link" to="/reportes">Ver reportes <ArrowRight size={14} /></Link>}</div>
+      </svg>
+        <div className="sl-plot-dates"><span>{shortDate(`${points[0]!.day}T12:00:00-04:00`)}</span><span className="sr-only">Fechas de República Dominicana</span><span>Hoy</span></div>
+      </div>
+      <div className="sl-chart-tools">
+        <details className="sl-chart-data">
+          <summary><ChevronRight size={15} aria-hidden="true" /> Ver importes diarios</summary>
+          <div className="table-wrap"><table className="data-table"><thead><tr><th>Fecha</th><th>Ventas netas RD$</th></tr></thead><tbody>{points.map((point) => <tr key={point.day}><td>{shortDate(`${point.day}T12:00:00-04:00`)}</td><td className="numeric">{money(point.amount)}</td></tr>)}</tbody></table></div>
+        </details>
+        {data.permissions.manage_business && <Link className="text-link" to="/reportes">Ver reportes <ArrowRight size={14} /></Link>}
+      </div>
     </article>
   );
 }
@@ -88,7 +125,7 @@ function StockHealth({ data }: { data: RetailData }) {
   });
   return (
     <article className="panel sl-insight-card">
-      <div className="sl-insight-heading"><div><span className="eyebrow">SALUD DEL INVENTARIO</span><h2>Estado de las existencias</h2><p>Variantes activas y necesidad de reposición</p></div></div>
+      <div className="sl-insight-heading"><h2>Estado de las existencias</h2><p>Variantes activas y necesidad de reposición</p></div>
       <div className="sl-stock-visual">
         <div className="sl-stock-donut"><svg viewBox="0 0 160 160" role="img" aria-label={`${inventory.length} variantes activas: ${groups[0]!.count} disponibles, ${low} con bajo stock y ${out} agotadas.`}><circle cx="80" cy="80" r="58" fill="none" stroke="var(--sl-line)" strokeWidth="14" />{arcs.filter((arc) => arc.length > 0).map((arc) => <circle key={arc.name} cx="80" cy="80" r="58" fill="none" stroke={arc.color} strokeWidth="14" strokeDasharray={`${Math.max(0, arc.length - 2)} ${circumference}`} strokeDashoffset={-arc.offset} transform="rotate(-90 80 80)" />)}</svg><div><strong>{integer(inventory.length)}</strong><span>variantes</span></div></div>
         <ul className="sl-stock-legend">{groups.map((group) => <li key={group.name}><Link to={`/inventario?estado=${group.filter}`}><span className="sl-legend-dot" style={{ background: group.color }} /><span>{group.name}</span><strong>{integer(group.count)}</strong></Link></li>)}</ul>
@@ -132,20 +169,12 @@ export function DashboardPage() {
       <PageHeader
         eyebrow={`${shortDate(now.toISOString())} · REPÚBLICA DOMINICANA`}
         title="Resumen"
-        description={
-          commerce
-            ? 'Tu negocio de un vistazo. Esto es lo que necesita tu atención hoy.'
-            : purchasing
-              ? 'Existencias, compras y entregas disponibles para tu rol.'
-              : 'Consulta las existencias y el estado del inventario.'
-        }
-        actions={<button type="button" className="button secondary sl-dashboard-search" onClick={() => window.dispatchEvent(new Event('smartliving:search'))}><Search size={18} /> Buscar cualquier cosa <kbd>⌘ / Ctrl K</kbd></button>}
+        actions={<>
+          <button type="button" className="button secondary sl-dashboard-search" onClick={() => window.dispatchEvent(new Event('smartliving:search'))}><Search size={18} /> Buscar cualquier cosa <kbd>⌘ / Ctrl K</kbd></button>
+          {data.permissions.sell ? <Link className="button primary" to="/ventas?nuevo=1"><Plus size={18} /> Nueva venta</Link> : purchasing ? <Link className="button primary" to="/compras?nuevo=1"><Plus size={18} /> Nueva compra</Link> : null}
+        </>}
       />
-      <section className="sl-attention-banner" aria-label="Prioridades del negocio">
-        <span className="sl-attention-icon"><Bell size={22} /></span>
-        <div><span className="eyebrow">HOY EN TU TIENDA</span><h2>{tasks.length ? `Tienes ${tasks.length} asuntos por atender.` : 'Tu operación está al día.'}</h2><p>Hola, {data.profile.display_name.trim().split(' ')[0] || 'equipo'}. {tasks.some((task) => task.level === 'urgent') ? 'Empieza por las tareas que necesitan atención.' : 'Todo listo para continuar con tu próxima operación.'}</p></div>
-        {data.permissions.sell ? <Link className="button primary" to="/ventas?nuevo=1"><Plus size={18} /> Nueva venta</Link> : purchasing ? <Link className="button primary" to="/compras?nuevo=1"><Plus size={18} /> Nueva compra</Link> : null}
-      </section>
+      <PriorityBanner tasks={tasks} />
       <div className="stats-grid sl-dashboard-kpis">
         {commerce && (
           <StatCard
@@ -169,18 +198,21 @@ export function DashboardPage() {
         {purchasing ? (
           <StatCard
             label="Compras pendientes"
+            tone={commerce ? 'sl-kpi-summary' : ''}
             value={integer(pending.length)}
             hint="Órdenes con mercancía por recibir"
           />
         ) : deliveryAccess ? (
           <StatCard
             label="Entregas por atender"
+            tone="sl-kpi-summary"
             value={integer(deliveries.length)}
             hint="Programadas para hoy o antes"
           />
         ) : (
           <StatCard
             label="Productos activos"
+            tone="sl-kpi-summary"
             value={integer(data.products.filter((product) => product.active).length)}
             hint="Catálogo disponible para consulta"
           />
@@ -198,7 +230,7 @@ export function DashboardPage() {
         <StockHealth data={data} />
       </section>
       {financials && <section className="panel sl-inventory-financials" aria-label="Resumen financiero del inventario">
-        <div className="section-heading"><div><span className="eyebrow">CAPITAL Y POTENCIAL</span><h2>Valor del inventario</h2><p>Existencias disponibles · estimaciones, no ventas realizadas.</p></div><Link className="text-link" to="/inventario">Ver inventario <ArrowRight size={16}/></Link></div>
+        <div className="section-heading"><div><h2>Valor del inventario</h2><p>Existencias disponibles · estimaciones, no ventas realizadas.</p></div><Link className="text-link" to="/inventario">Ver inventario <ArrowRight size={16}/></Link></div>
         <div className="sl-financial-grid">
           <StatCard label="Valor del inventario" value={money(financials.value)} hint="Existencias disponibles a costo"/>
           <StatCard label="Ingreso potencial" value={money(financials.revenue)} hint="Precio final con ITBIS × unidades disponibles"/>
@@ -221,7 +253,7 @@ export function DashboardPage() {
             <div className="sl-work-list">
               {tasks.slice(0, 6).map((task) => (
                 <div className="sl-work-item" key={task.id}>
-                  <span className={`sl-work-status ${task.level}`}>{task.kind === 'stock' ? <PackageCheck size={19} /> : task.kind === 'purchase' ? <ClipboardList size={19} /> : <Truck size={19} />}</span>
+                  <span className={`sl-work-status ${task.level}`}><TaskIcon kind={task.kind} /></span>
                   <div><span>{task.title}</span><strong>{task.detail}</strong><small>{task.context}</small></div>
                   <Link className="text-link" to={task.to}>Revisar <ArrowRight size={14} /></Link>
                 </div>
@@ -291,8 +323,19 @@ export function DashboardPage() {
         </div>
       </section>
       <section className="panel sl-recent-activity">
-        <div className="section-heading"><div><span className="eyebrow">LO QUE HA PASADO</span><h2>Actividad reciente</h2></div>{data.permissions.view_audit && <Link className="text-link" to="/auditoria">Ver actividad <ArrowRight size={15} /></Link>}</div>
-        {activity.length ? <ul>{activity.map((item) => <li key={item.id}><Link to={item.to}><span><strong>{item.title}</strong><small>{item.detail} · {dateTime(item.at)}</small></span>{item.amount !== null ? <b>{money(item.amount)}</b> : item.quantity !== null ? <b>{item.quantity > 0 ? '+' : ''}{integer(item.quantity)} un.</b> : <ArrowRight size={15} />}</Link></li>)}</ul> : <EmptyState title="Sin actividad registrada" description="Las operaciones y ajustes autorizados para tu rol aparecerán aquí." />}
+        <div className="section-heading"><h2>Actividad reciente</h2>{data.permissions.view_audit && <Link className="text-link" to="/auditoria">Ver actividad <ArrowRight size={15} /></Link>}</div>
+        {activity.length ? (
+          <ul>{activity.map((item) => (
+            <li key={item.id}>
+              <Link to={item.to}>
+                <strong>{item.title}</strong>
+                {item.amount !== null ? <b>{money(item.amount)}</b> : item.quantity !== null ? <b>{item.quantity > 0 ? '+' : ''}{integer(item.quantity)} un.</b> : <ArrowRight size={15} aria-hidden="true" />}
+                <small>{item.detail && `${item.detail} · `}<time dateTime={item.at}>{shortDate(item.at)}</time></small>
+                <small className="sl-activity-time"><time dateTime={item.at}>{activityTime.format(new Date(item.at))}</time></small>
+              </Link>
+            </li>
+          ))}</ul>
+        ) : <EmptyState title="Sin actividad registrada" description="Las operaciones y ajustes autorizados para tu rol aparecerán aquí." />}
       </section>
       {(commerce || purchasing) && (
         <section className="panel">
