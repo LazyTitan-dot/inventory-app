@@ -38,14 +38,19 @@ jobs:
       - run: npm run check
       - if: steps.browser.outputs.required == 'true'
         run: npm run test:shell:types
+      - name: Comprobar los archivos que Playwright ejecutará
+        if: steps.browser.outputs.required == 'true'
+        shell: bash
+        run: |
+          list="$RUNNER_TEMP/browser-specs.txt"
+          npx playwright test --test-list "$list" --list --reporter=json > "$RUNNER_TEMP/browser-plan.json"
+          jq -er '.suites[].file' "$RUNNER_TEMP/browser-plan.json" | LC_ALL=C sort -u > "$RUNNER_TEMP/browser-collected.txt"
+          LC_ALL=C sort -u "$list" | diff -u - "$RUNNER_TEMP/browser-collected.txt"
       - if: steps.browser.outputs.required == 'true'
         run: npx playwright install --with-deps chromium
       - name: Ejecutar las pruebas de navegador seleccionadas
         if: steps.browser.outputs.required == 'true'
-        shell: bash
-        run: |
-          mapfile -d '' -t specs < "$RUNNER_TEMP/browser-specs"
-          npx playwright test -- "${specs[@]}"
+        run: npx playwright test --test-list "$RUNNER_TEMP/browser-specs.txt"
       - uses: actions/upload-artifact@v4
         if: always() && steps.browser.outputs.required == 'true'
         with:

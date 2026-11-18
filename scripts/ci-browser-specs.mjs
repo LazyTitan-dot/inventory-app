@@ -77,8 +77,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const changes = changedFiles(JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')));
   const specs = changes === null ? available : selectSpecs(changes, available);
   console.log('Suites de navegador seleccionadas (' + specs.length + '):', ...specs);
-  // Playwright interpreta sus argumentos como patrones; escapar los nombres reales.
-  const filters = specs.map(spec => spec.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$');
-  writeFileSync(join(process.env.RUNNER_TEMP, 'browser-specs'), filters.map(filter => filter + '\0').join(''));
+  // --test-list usa rutas relativas al testDir configurado en playwright.config.ts.
+  const files = specs.map(spec => spec.slice('tests/shell/'.length));
+  writeFileSync(join(process.env.RUNNER_TEMP, 'browser-specs.txt'), files.map(file => file + '\n').join(''));
   appendFileSync(process.env.GITHUB_OUTPUT, 'required=' + Boolean(specs.length) + '\n');
 }

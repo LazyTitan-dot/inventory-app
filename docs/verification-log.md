@@ -155,6 +155,8 @@ La revisión partió de `27bd5b24018f695705d9765defb6899d7787172f`. El dominio d
 
 En el push de referencia las 16 tareas visuales dependían de nombres de ramas históricas. El flujo `Calidad de SmartLiving` conserva `npm run check` y selecciona las suites de navegador existentes según el cambio completo de Git. Un cambio exclusivo del estilo de Proveedores selecciona su suite. Un cambio en `Contacts.tsx` comprueba también Clientes y su escáner. Los cambios en `Commerce.tsx` incluyen Ventas, Compras, Recepción, series e impresión. Los componentes compartidos sin regla específica activan todas las suites. La impresión conserva además su flujo dedicado. El registro de Actions identifica los archivos de prueba seleccionados para cada commit.
 
+La primera ejecución del ajuste (`44374106605`) seleccionó dos archivos, pero Playwright ejecutó 247 casos. La corrección utiliza una lista explícita de Playwright y compara los archivos que recoge el ejecutor con los esperados antes de instalar Chromium. La lista de este cambio comprende 28 casos de navegación y 7 de Proveedores.
+
 ### Historial de Supabase
 
 Se leyeron las 19 entradas de `supabase_migrations.schema_migrations` y se compararon con los 15 archivos de `supabase/migrations`. Las consultas leyeron únicamente el historial y los catálogos de PostgreSQL.
