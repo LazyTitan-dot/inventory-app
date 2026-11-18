@@ -1,4 +1,4 @@
-import { test, expect, deliveryId } from './adaptation-fixtures';
+import { test, expect } from './adaptation-fixtures';
 
 /** Visual-only disclosure control, aligned with the supplied Apple Settings reference.
  * Isolated fixtures: no access to production data or business mutations.
