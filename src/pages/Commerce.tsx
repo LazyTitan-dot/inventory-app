@@ -661,6 +661,48 @@ function CreateDocument({
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
+  const ticketRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const panel = ticketRef.current;
+    const lines = panel?.querySelector<HTMLElement>('.commerce-cart-lines');
+    if (kind !== 'sale' || !inline || compact || !panel || !lines) return;
+
+    const desktop = window.matchMedia('screen and (min-width: 801px) and (min-height: 620px)');
+    let frame = 0;
+    const clearSizing = () => {
+      panel.style.removeProperty('max-height');
+      lines.style.removeProperty('max-height');
+    };
+    const resize = () => {
+      frame = 0;
+      if (!desktop.matches) {
+        clearSizing();
+        return;
+      }
+      lines.style.maxHeight = 'none';
+      const lineHeight = lines.querySelector('.commerce-cart-line') ? lines.offsetHeight : 0;
+      const available = window.innerHeight - Math.max(0, panel.getBoundingClientRect().top) - 12;
+      // Reserve room for the order controls and grow with the rendered product rows.
+      panel.style.maxHeight = `${Math.max(160, Math.min(480 + lineHeight, available))}px`;
+    };
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(resize);
+    };
+    const observer = new ResizeObserver(schedule);
+    observer.observe(lines);
+    resize();
+    desktop.addEventListener('change', schedule);
+    window.addEventListener('resize', schedule);
+    document.addEventListener('scroll', schedule, true);
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+      desktop.removeEventListener('change', schedule);
+      window.removeEventListener('resize', schedule);
+      document.removeEventListener('scroll', schedule, true);
+      clearSizing();
+    };
+  }, [compact, inline, kind]);
   const [prefill] = useState(() => cashierPrefill(data, kind, initialVariantId, initialQuantity));
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
@@ -1672,7 +1714,7 @@ function CreateDocument({
               </Modal>
             )
           ) : (
-            <section className="commerce-cart" aria-label="Documento actual">
+            <section ref={ticketRef} className="commerce-cart" aria-label="Documento actual">
               {kind === 'sale' ? <div className="sale-ticket-body">{cartContent}</div> : cartContent}
               {kind === 'sale' && <div className="sales-desktop-actions"><ErrorNotice message={validation || error} />{regularActions}</div>}
             </section>
