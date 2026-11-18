@@ -49,21 +49,22 @@ export function PurchaseOrdersList({ documents, items, isLate, onOpen }: { docum
   return <>
     <div className="table-wrap purchase-desktop-list">
       <table className="data-table purchase-table">
-        <colgroup><col style={{width:'27%'}}/><col style={{width:'19%'}}/><col style={{width:'18%'}}/><col style={{width:'17%'}}/><col style={{width:'19%'}}/></colgroup>
-        <thead><tr><th scope="col">Orden / proveedor</th><th scope="col">Fechas</th><th scope="col">Recepción</th><th scope="col">Estado</th><th scope="col" className="number">Total RD$</th></tr></thead>
+        <colgroup><col style={{width:'26%'}}/><col style={{width:'19%'}}/><col style={{width:'19%'}}/><col style={{width:'15%'}}/><col style={{width:'14%'}}/><col style={{width:'7%'}}/></colgroup>
+        <thead><tr><th scope="col">Orden / proveedor</th><th scope="col">Fechas</th><th scope="col">Recepción</th><th scope="col">Estado</th><th scope="col" className="number">Total RD$</th><th scope="col"><span className="sr-only">Acciones</span></th></tr></thead>
         <tbody>{documents.map(doc => <tr key={doc.id}>
           <td><button type="button" className="purchase-order-link" aria-label={`Ver ${documentNumber(doc)}`} onClick={() => onOpen(doc.id)}><strong>{documentNumber(doc)}</strong><small>{supplier(doc)}</small></button></td>
           <td><span>{shortDate(doc.created_at)}</span><small className={isLate(doc) ? 'purchase-late' : ''}>Esperada: {expected(doc)}{isLate(doc) ? ' · Atrasada' : ''}</small></td>
           <td><Progress doc={doc} items={byOrder.get(doc.id) ?? []}/></td>
           <td><StatusBadge status={doc.status}/></td>
-          <td className="number"><strong>{money(doc.total)}</strong><button type="button" className="button ghost purchase-detail-link" aria-label={`Detalle de ${documentNumber(doc)}`} onClick={() => onOpen(doc.id)}>Ver detalle <ChevronRight size={14} aria-hidden="true"/></button></td>
+          <td className="number"><strong>{money(doc.total)}</strong></td>
+          <td className="purchase-disclosure-cell"><button type="button" className="purchase-disclosure" aria-label={`Detalle de ${documentNumber(doc)}`} aria-haspopup="dialog" title="Abrir orden" onClick={() => onOpen(doc.id)}><ChevronRight size={23} strokeWidth={2.7} aria-hidden="true"/></button></td>
         </tr>)}</tbody>
       </table>
     </div>
-    <div className="purchase-mobile-list">{documents.map(doc => <button type="button" className="purchase-order-card" key={doc.id} aria-label={`Ver ${documentNumber(doc)}`} onClick={() => onOpen(doc.id)}>
+    <div className="purchase-mobile-list">{documents.map(doc => <button type="button" className="purchase-order-card" key={doc.id} aria-label={`Ver ${documentNumber(doc)}`} aria-haspopup="dialog" onClick={() => onOpen(doc.id)}>
       <span className="purchase-card-top"><span><strong>{documentNumber(doc)}</strong><small>{supplier(doc)}</small></span><StatusBadge status={doc.status}/></span>
       <span className="purchase-card-meta"><span className={isLate(doc) ? 'purchase-late' : ''}>{expected(doc)}{isLate(doc) ? ' · Atrasada' : ''}</span><strong>{money(doc.total)}</strong></span>
-      <Progress doc={doc} items={byOrder.get(doc.id) ?? []}/><span className="purchase-card-open">Ver detalle <ChevronRight size={16} aria-hidden="true"/></span>
+      <Progress doc={doc} items={byOrder.get(doc.id) ?? []}/><span className="purchase-card-open" aria-hidden="true"><ChevronRight size={23} strokeWidth={2.7}/></span>
     </button>)}</div>
   </>;
 }
