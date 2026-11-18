@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, CalendarCheck, CalendarDays, Check, CheckCircle2, Clock3, Copy, List, MapPin, MessageCircle, Pencil, Phone, Plus, SlidersHorizontal, Tag, Truck, UserRoundPlus, XCircle } from 'lucide-react';
+import { AlertCircle, CalendarCheck, CalendarDays, Check, CheckCircle2, ChevronRight, Clock3, Copy, List, MapPin, MessageCircle, Pencil, Phone, Plus, SlidersHorizontal, Tag, Truck, UserRoundPlus, XCircle } from 'lucide-react';
 import {
   EmptyState,
   ErrorNotice,
@@ -374,13 +374,16 @@ export function DeliveriesPage() {
                             <StatusBadge status={delivery.status} />
                           </td>
                           <td><span className={delivery.assignee ? 'delivery-assignee' : 'delivery-assignee unassigned'}>{delivery.assignee || 'Sin asignar'}</span></td>
-                          <td>
+                          <td className="delivery-disclosure-cell">
                             <button
-                              className="button ghost"
+                              type="button"
+                              className="delivery-disclosure"
                               onClick={() => setSelectedId(delivery.id)}
                               aria-label={`Ver entrega a ${delivery.contact_name}`}
+                              aria-haspopup="dialog"
+                              title="Ver entrega"
                             >
-                              Ver entrega
+                              <ChevronRight size={23} strokeWidth={2.7} aria-hidden="true" />
                             </button>
                           </td>
                         </tr>
