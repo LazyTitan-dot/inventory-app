@@ -127,6 +127,24 @@
     transition: none;
   }
 }
+/* Same Apple-style cyan disclosure on iPhone, without adding a nested button:
+ * the existing entire delivery card remains the 44px+ interactive target. */
+.delivery-visual-v1 .delivery-list-card .delivery-card-bottom > .delivery-mobile-disclosure {
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: auto;
+  color: var(--sl-refined-accent);
+}
+.delivery-visual-v1 .delivery-list-card .delivery-mobile-disclosure svg {
+  display: block;
+  flex: none;
+}
 .delivery-visual-v1 .delivery-desktop-table tbody tr:focus-within {
   background: var(--sl-refined-soft);
 }
