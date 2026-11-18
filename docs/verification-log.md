@@ -146,3 +146,45 @@ Recorridos comprobados con sesión real:
 La limpieza del producto de prueba se ensayó con ROLLBACK y se confirmó con COMMIT tras verificar identidad, hashes, cero existencias y ausencia de dependencias. Se retiraron únicamente su producto, variante y saldo; una lectura posterior confirmó cero filas restantes de esos identificadores. Se conservaron sus dos operaciones y entradas de auditoría, se añadió un registro de limpieza y se verificó que el resto del catálogo, correlativos y archivo original no cambió durante la transacción. Los datos reales creados por el usuario desde el corte anterior se conservaron.
 
 La emulación de tamaño móvil de la herramienta de navegador no aplicó el ancho solicitado en esta ronda (continuó reportando el ancho de escritorio). Por tanto, no se presenta ese intento como una nueva prueba visual móvil aprobada; se revisaron los estilos adaptables y se conserva la evidencia móvil de la versión base. La integración WhatsApp es click-to-chat: requiere pulsar Enviar en WhatsApp y no dispone de envío desatendido, Cloud API ni seguimiento de entrega dentro de SmartLiving.
+
+## Fase 0 del 18 de noviembre de 2026 · Publicación desde master
+
+La revisión partió de `27bd5b24018f695705d9765defb6899d7787172f`. El dominio de producción de Vercel apuntaba a ese commit en el despliegue `dpl_12hNW8iJGVQZ3DyTxdR6KZqawbhg`, con estado `READY`. Es la referencia de aplicación anterior al ajuste de CI.
+
+### Selección de pruebas
+
+En el push de referencia las 16 tareas visuales dependían de nombres de ramas históricas. El flujo `Calidad de SmartLiving` conserva `npm run check` y selecciona las suites de navegador existentes según el cambio completo de Git. Un cambio exclusivo del estilo de Proveedores selecciona su suite. Un cambio en `Contacts.tsx` comprueba también Clientes y su escáner. Los cambios en `Commerce.tsx` incluyen Ventas, Compras, Recepción, series e impresión. Los componentes compartidos sin regla específica activan todas las suites. La impresión conserva además su flujo dedicado. El registro de Actions identifica los archivos de prueba seleccionados para cada commit.
+
+### Historial de Supabase
+
+Se leyeron las 19 entradas de `supabase_migrations.schema_migrations` y se compararon con los 15 archivos de `supabase/migrations`. Las consultas leyeron únicamente el historial y los catálogos de PostgreSQL.
+
+| Comparación de los 15 archivos | Resultado |
+| --- | --- |
+| SHA-256 idéntico, 5 archivos | `customer_initial_home_address`, `delivery_logistics_items`, `delivery_assign_responsible`, `serial_barcode_management_v1`, `serial_sales_v2`. |
+| Coinciden al normalizar finales de línea y espacios extremos, 6 archivos | `retail_core`, `retail_commands`, `retail_read_api`, `retail_legacy_archive_import`, `retail_document_lifecycle`, `retail_master_versions`. |
+| Mismas dos sentencias según el analizador PostgreSQL, 1 archivo | `retail_deferred_constraint_security`. El archivo incorpora comentarios. |
+| Dos sentencias adicionales en el historial, 3 archivos | `customer_addresses_receipts_tracking`, `catalog_tax_rate_guard` y `product_barcode_aliases`. El registro antepone `SET LOCAL lock_timeout` de 5 s y `SET LOCAL statement_timeout` de 90 s. El resto de las sentencias coincide al comparar su estructura. |
+
+Cinco pares conservan el mismo nombre y tienen distinta versión.
+
+| Migración | Archivo en master | Versión registrada en producción |
+| --- | --- | --- |
+| customer_addresses_receipts_tracking | 20261111080543 | 20261111140211 |
+| catalog_tax_rate_guard | 20261111151930 | 20261111153613 |
+| product_barcode_aliases | 20261112223533 | 20261113002748 |
+| serial_barcode_management_v1 | 20261117042300 | 20261117035040 |
+| serial_sales_v2 | 20261117051000 | 20261117051323 |
+
+Las cuatro entradas de abril están fuera del directorio vigente de migraciones de Supabase.
+
+| Versión remota | Nombre | Evidencia en master |
+| --- | --- | --- |
+| 20260406023803 | create_stores_table | Las ocho sentencias coinciden con `setup.sql` al analizarlas. |
+| 20260407072524 | normalize_per_entity_tables | Diez sentencias en el registro remoto. Falta un archivo equivalente en el directorio de migraciones. |
+| 20260407072537 | enable_realtime_per_entity | Una sentencia de publicación en el registro remoto. Falta un archivo equivalente en el directorio de migraciones. |
+| 20260408054738 | shared_inventory | Las 23 sentencias coinciden con `migrations/002_shared_inventory.sql`. El archivo local las encierra entre `BEGIN` y `COMMIT`. |
+
+**Definiciones desplegadas.** Se siguieron las creaciones, sustituciones y cambios de nombre de funciones en orden de migración. Los cuerpos de las 66 funciones en `retail_private` y `public.retail_*` coincidieron por SHA-256 con `pg_proc.prosrc` tras eliminar espacios extremos. Ocho tablas consultadas de direcciones, recepción, códigos y series tienen RLS habilitado. El catálogo mostró válidos y únicos los cuatro índices revisados para dirección preferida, serie activa, evento por operación y venta abierta por serie.
+
+**Pendiente.** La conciliación documenta las diferencias de historial. Reparar las versiones, incorporar las entradas antiguas o ensayar una restauración requiere una decisión independiente. La comparación de cuerpos, tablas e índices tiene el alcance indicado y no certifica una restauración.
