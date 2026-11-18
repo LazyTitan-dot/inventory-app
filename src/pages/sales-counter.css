@@ -15,6 +15,11 @@
   .app-layout .sales-visual-v1 .sales-desktop-actions .modal-footer { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
   .app-layout .sales-visual-v1 .sales-desktop-actions { border-top:1px solid var(--sl-refined-edge); padding-top:10px; }
 }
+@media screen and (min-width: 1280px) {
+  .app-layout .sales-visual-v1 .commerce-cashier .commerce-workbench {
+    grid-template-columns: minmax(0, 54fr) minmax(0, 46fr);
+  }
+}
 @media screen and (max-width:800px) {
   .app-layout .sales-visual-v1 .sales-search-actions { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; }
   .app-layout .sales-visual-v1 .sales-search-actions .commerce-scan-button { width:100%; max-width:none; min-height:48px; }
