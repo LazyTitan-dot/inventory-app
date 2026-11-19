@@ -109,6 +109,7 @@ export const productSnapshotSchema = z.object({
   barcode: optionalText,
   warranty_months: z.number().nullable(),
   warranty_unknown: z.boolean().optional(),
+  catalog_unit_rounding: z.boolean().optional(),
 });
 export const documentItemSchema = z.object({
   id,

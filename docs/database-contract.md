@@ -23,6 +23,11 @@ Moneda DOP; importes decimales RD$ (sin conversión de datos existentes). Todos 
 
 `documents.number` es string prefijado (`VEN-0000001`, `COM-0000001`, `COT-0000001`, `DEV-0000001`). `audit.id` es bigint SQL, número JSON. Todos los importes se serializan como números JSON; cálculo autoritativo decimal ocurre en PostgreSQL. Constraints diferidos exigen documento con al menos un renglón y sumas exactas de subtotal, descuento, impuesto y total al commit.
 
+Las ventas y cotizaciones nuevas y las cotizaciones guardadas tras edición o renovación llevan `product_snapshot.catalog_unit_rounding=true`. El precio final de catálogo se redondea por unidad antes de multiplicar por la cantidad. El descuento se distribuye sobre las bases elegibles, en orden de variante. Cada importe final de línea es el bruto previo multiplicado por la fracción de base que queda tras el descuento, redondeado al centavo. El ITBIS es la diferencia frente a la base descontada. La conversión copia los importes y la regla de la cotización. Una devolución parcial reparte el importe realmente cobrado y concilia al completar la cantidad. Las líneas anteriores conservan su prorrateo histórico.
+
+Caja, Cotizaciones y Posventa envían `expected_total` en altas, ediciones, conversiones y devoluciones. El servidor compara ese importe con su cálculo o con la cotización guardada antes de confirmar la operación.
+
+
 `retail_revision` solo contiene `{id:true,version,updated_at}`, publicada por Supabase Realtime y legible únicamente por miembros activos. Cada comando nuevo incrementa versión; reintento idéntico no incrementa. Ninguna tabla operativa con costos o datos personales se publica.
 
 ## Payloads

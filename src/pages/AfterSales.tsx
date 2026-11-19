@@ -22,6 +22,7 @@ import {
   paymentLabels,
   shortDate,
 } from '../lib/format';
+import { estimatedRefund } from '../lib/pricing';
 import { useRetail } from '../state/useRetail';
 import { useOperation } from '../state/useOperation';
 import {
@@ -46,7 +47,6 @@ type Warranty = {
   remaining: number;
 };
 type ReturnLine = { quantity: string; condition: 'available' | 'quarantine' };
-const round = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const itemTitle = (item: DocumentItem) =>
   `${item.product_snapshot.brand} ${item.product_snapshot.model}`.trim();
 const customerName = (doc: RetailDocument) =>
@@ -427,22 +427,8 @@ function CreateReturn({
   const hasReturnableItems = items.some(
     (item) => item.variant_id && item.quantity > item.returned_quantity,
   );
-  function estimatedRefund(item: DocumentItem, quantity: number) {
-    if (quantity <= 0 || !Number.isFinite(quantity)) return 0;
-    const discount =
-      round((item.discount * (item.returned_quantity + quantity)) / item.quantity) -
-      round((item.discount * item.returned_quantity) / item.quantity);
-    const tax =
-      round((item.tax * (item.returned_quantity + quantity)) / item.quantity) -
-      round((item.tax * item.returned_quantity) / item.quantity);
-    return Math.max(0, round(item.unit_price * quantity - discount + tax));
-  }
-  const total = round(
-    items.reduce(
-      (sum, item) => sum + estimatedRefund(item, Number(lines[item.id]?.quantity || 0)),
-      0,
-    ),
-  );
+  const total = items.reduce((sum, item) =>
+    sum + Math.round(estimatedRefund(item, Number(lines[item.id]?.quantity || 0)) * 100), 0) / 100;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearError();
@@ -505,6 +491,7 @@ function CreateReturn({
     try {
       const result = await run('return_sale', {
         id: saleId,
+        expected_total: total,
         items: selected,
         reason: reason.trim(),
         payment_method: payment,

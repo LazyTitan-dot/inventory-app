@@ -218,6 +218,91 @@ test('document lifecycle: stale edits, authoritative pricing, historical reconci
     await as();
     check(Number(await scalar("select count(*) from public.retail_document_items i left join public.retail_documents d on d.id=i.document_id where d.id is null"))===0,'No orphaned document items');
     check(Number(await scalar('select count(*) from public.retail_stocks where available<0 or quarantine<0'))===0,'No negative inventory');
+    // Create real legacy snapshots through the pre-migration command before testing the upgrade.
+    await as('owner');
+    async function pricedVariant(sku, price) {
+      const product = await command('save_product', { category:'Prueba', brand:'Prueba', model:sku,
+        variants:[{name:'Unidad',sku,price,cost:0,opening_quantity:20}] });
+      return (await state()).variants.find(row => row.product_id === product.entity_id);
+    }
+    const ac = await pricedVariant('ROUND-AC',14830.51);
+    const grill = await pricedVariant('ROUND-GRILL',2457.63);
+    const tiny = await pricedVariant('ROUND-TINY',0.03);
+    const twoLines = [ac,grill].map(v => ({ variant_id:v.id, quantity:1, expected_price:v.price }));
+    const quote = { items:twoLines, discount:0, tax_rate:18, expires_at:future() };
+    const three = { items:[{variant_id:grill.id,quantity:3}], discount:100, tax_rate:18, payment_method:'card' };
+    const originalQuote = await command('create_quote',quote);
+    const toRenew = await command('create_quote',quote);
+    const legacySale = await command('create_sale',three);
+    equal(originalQuote.result.total,20400.01,'Original quote has historical penny');
+    equal(legacySale.result.total,8582.01,'Original sale has historical penny');
+    async function refundRequest(id, quantity = 1) {
+      return {id,reason:'Revisar centavos',payment_method:'card',
+        items:[{item_id:(await item(id)).id,quantity,condition:'quarantine'}]};
+    }
+    const oldRefund = await refundRequest(legacySale.entity_id);
+    equal((await command('return_sale',oldRefund)).result.total,2860.67,'First historical refund');
+    const stored = await document(originalQuote.entity_id);
+    const originalLines = (await state()).document_items.filter(row => row.document_id === stored.id);
+    const stocksAtUpgrade = (await state()).stocks;
+    await as();
+    await db.exec(await readFile(migrations + '/20261119014111_catalog_document_rounding.sql','utf8'));
+    await as('owner');
+    equal(await document(stored.id),stored,'Upgrade leaves historical document intact');
+    equal((await state()).document_items.filter(row => row.document_id === stored.id),originalLines,'Upgrade leaves original lines intact');
+    equal((await state()).stocks,stocksAtUpgrade,'Upgrade preserves every stock balance');
+    equal((await command('return_sale',{...oldRefund,expected_total:2860.67})).result.total,2860.67,'Mid-return legacy sale continues its old schedule');
+    await reject('convert_quote',{id:stored.id,payment_method:'card',expected_total:20400},/total.*cambió/);
+    const oldConversion = await command('convert_quote',{id:stored.id,payment_method:'card',expected_total:20400.01});
+    equal(oldConversion.result.total,20400.01,'An untouched quote converts at its stored price');
+    check(!(await item(oldConversion.entity_id)).product_snapshot.catalog_unit_rounding,'Historical conversion keeps its refund schedule');
+
+    const previous = await document(toRenew.entity_id);
+    const renewal = {...quote,...await version(previous.id),expected_total:20400};
+    const renewed = await command('update_quote',renewal);
+    equal(renewed.entity_id,previous.id,'A renewed quote keeps its identity');
+    equal((await document(previous.id)).number,previous.number,'Renewal preserves the quote number');
+    equal(renewed.result.total,20400,'Renewal uses current catalog unit totals');
+    const renewedSale = await command('convert_quote',{id:renewed.entity_id,payment_method:'cash',tendered:20500,expected_total:20400});
+    equal((await document(renewedSale.entity_id)).change_amount,100,'Cash payment uses the renewed amount');
+    check((await item(renewedSale.entity_id)).product_snapshot.catalog_unit_rounding,'Renewed conversion carries the new rule');
+    await reject('create_quote',quote,/Actualiza la aplicación/);
+    await reject('create_quote',{...quote,expected_total:20400.01},/total cambió/);
+    const freshQuote = await command('create_quote',{...quote,expected_total:20400});
+    equal(freshQuote.result.total,20400,'New quote uses catalog totals');
+    await command('save_promotion',{name:'Cupón de prueba',code:'ROUND10',kind:'percent',value:10,
+      starts_at:new Date(Date.now()-60000).toISOString(),ends_at:future(),product_ids:[grill.product_id]});
+    for (const ordered of [twoLines,[...twoLines].reverse()]) {
+      const scoped = await command('create_quote',{...quote,items:ordered,promotion_code:'ROUND10',expected_total:20110});
+      const lines = (await state()).document_items.filter(row => row.document_id === scoped.entity_id);
+      equal(lines.find(row => row.variant_id === ac.id).discount,0,'Excluded variant has no coupon discount');
+      equal(lines.find(row => row.variant_id === grill.id).line_total,2610,'Eligible variant alone receives the coupon');
+    }
+    const newSale = await command('create_sale',{...three,expected_total:8582});
+    equal((await item(newSale.entity_id)).tax,1309.11,'Discounted line tax reconciles');
+    const refund = await refundRequest(newSale.entity_id);
+    await reject('return_sale',{...refund,expected_total:2860.66},/reembolso cambió/);
+    const firstOp = randomUUID();
+    const first = await command('return_sale',{...refund,expected_total:2860.67},firstOp);
+    equal((await command('return_sale',{...refund,expected_total:2860.67},firstOp)).entity_id,first.entity_id,'Retry does not refund twice');
+    for (const amount of [2860.66,2860.67]) {
+      const response = await command('return_sale',{...refund,expected_total:amount});
+      equal(response.result.total,amount,'Partial refund uses the gross amount actually charged');
+      equal((await item(response.entity_id)).tax,436.37,'Each partial refund carries its exact tax');
+    }
+    equal((await document(newSale.entity_id)).status,'returned','All three returns settle the sale');
+    await reject('return_sale',refund,/no admite/);
+
+    const tinySale = await command('create_sale',{items:[{variant_id:tiny.id,quantity:3}],discount:0.05,
+      payment_method:'card',expected_total:0.05});
+    const tinyRequest = await refundRequest(tinySale.entity_id);
+    for (const amount of [0.02,0.01,0.02]) {
+      const response = await command('return_sale',{...tinyRequest,expected_total:amount});
+      equal(response.result.total,amount,'Small-cent refund preserves nonnegative tax and reconciles');
+    }
+    await as('sales');
+    await reject('create_sale',{...three,discount:4000,expected_total:0},/límite autorizado/);
+    await as();
     console.log(`Document lifecycle: ${checks} assertions passed; synthetic database only.`);
   } finally {await db.close();}
 });

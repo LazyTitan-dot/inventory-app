@@ -61,6 +61,7 @@ import {
   PurchaseReceiptHistory,
 } from '../components/PurchaseReceiving';
 import { cashierPrefill, exactCashierMatches } from '../lib/cashier';
+import { calculateUnitPrice, percentageAmount, priceDocument } from '../lib/pricing';
 import { getVariantBarcodes } from '../lib/barcode';
 import { PurchaseOrdersList, PurchaseOrderProgress } from './PurchaseVisual';
 import { SalesHistory } from './SalesVisual';
@@ -773,13 +774,6 @@ function CreateDocument({
     (contact) => contact.active && contact.kind === (kind === 'purchase' ? 'supplier' : 'customer'),
   );
   const units = cart.reduce((sum, line) => sum + line.quantity, 0);
-  const subtotal = round(
-    cart.reduce(
-      (sum, line) =>
-        sum + line.quantity * (kind === 'purchase' ? line.unitCost : line.expectedPrice),
-      0,
-    ),
-  );
   const promotion = coupon.trim()
     ? data.promotions.find(
         (promo) =>
@@ -789,38 +783,26 @@ function CreateDocument({
           new Date(promo.ends_at).getTime() > now,
       )
     : undefined;
-  const eligible = promotion
-    ? round(
-        cart.reduce((sum, line) => {
-          const variant = data.variants.find((v) => v.id === line.variantId);
-          const product = variant && products.get(variant.product_id);
-          return product &&
-            (!promotion.category || promotion.category === product.category) &&
-            (!promotion.product_ids.length || promotion.product_ids.includes(product.id))
-            ? sum + line.expectedPrice * line.quantity
-            : sum;
-        }, 0),
-      )
-    : 0;
-  const manualDiscount =
-    discountMode === 'percent' ? round((subtotal * Number(discount)) / 100) : Number(discount);
-  const discountAmount =
-    kind === 'purchase'
-      ? 0
-      : promotion
-        ? round(
-            promotion.kind === 'percent'
-              ? (eligible * promotion.value) / 100
-              : Math.min(eligible, promotion.value),
-          )
-        : Math.min(subtotal, Math.max(0, manualDiscount || 0));
-  const tax =
-    kind === 'purchase' ? 0 : round((Math.max(0, subtotal - discountAmount) * taxRate) / 100);
-  const total = round(subtotal - discountAmount + tax);
+  const pricingLines = cart.map((line) => {
+    const variant = data.variants.find((entry) => entry.id === line.variantId);
+    const product = variant && products.get(variant.product_id);
+    const eligible = !promotion || Boolean(product &&
+      (!promotion.category || promotion.category === product.category) &&
+      (!promotion.product_ids.length || promotion.product_ids.includes(product.id)));
+    return { variantId: line.variantId, unitPrice: kind === 'purchase' ? line.unitCost : line.expectedPrice,
+      quantity: line.quantity, eligible };
+  });
+  const { subtotal, eligible, discount: discountAmount, tax, total } = priceDocument(
+    pricingLines, kind === 'purchase' ? 0 : taxRate,
+    kind === 'purchase' ? { kind: 'amount', value: 0 } :
+      promotion ? { kind: promotion.kind === 'percent' ? 'percent' : 'amount', value: promotion.value } :
+        { kind: discountMode, value: Number(discount) },
+  );
+  const manualDiscount = discountMode === 'percent' ? percentageAmount(subtotal, Number(discount)) : Number(discount);
   const change = payment === 'cash' ? Math.max(0, round(Number(tendered) - total)) : 0;
   const maxDiscount = data.permissions.manage_business
     ? subtotal
-    : round((subtotal * data.settings.max_sale_discount_percent) / 100);
+    : percentageAmount(subtotal, data.settings.max_sale_discount_percent);
   const changedPrices =
     kind !== 'purchase' &&
     cart.some(
@@ -980,6 +962,7 @@ function CreateDocument({
         (line) =>
           !Number.isSafeInteger(line.quantity) ||
           line.quantity < 1 ||
+          line.quantity > 999999 ||
           !variants.some((v) => v.id === line.variantId),
       )
     ) {
@@ -1019,6 +1002,7 @@ function CreateDocument({
       !coupon.trim() &&
       (!Number.isFinite(Number(discount)) ||
         Number(discount) < 0 ||
+        Number(Number(discount).toFixed(2)) !== Number(discount) ||
         manualDiscount > maxDiscount ||
         (discountMode === 'percent' && Number(discount) > 100))
     ) {
@@ -1064,6 +1048,7 @@ function CreateDocument({
       Object.assign(payload, {
         discount: coupon.trim() ? 0 : discountAmount,
         tax_rate: taxRate,
+        expected_total: total,
         ...(coupon.trim() ? { promotion_code: coupon.trim() } : {}),
       });
     if (kind === 'sale')
@@ -1175,6 +1160,7 @@ function CreateDocument({
         {cart.map((line) => {
           const variant = data.variants.find((v) => v.id === line.variantId);
           const product = variant && products.get(variant.product_id);
+          const unitGross = calculateUnitPrice(line.expectedPrice, taxRate)?.total ?? 0;
           return (
             <div key={line.variantId} className="commerce-cart-line">
               <div className="commerce-line-name">
@@ -1263,14 +1249,14 @@ function CreateDocument({
                   </label>
                 ) : kind === 'sale' ? (
                   <div className="sales-line-price">
-                    <strong>{money(round(line.expectedPrice * (1 + taxRate / 100)))}</strong>
+                    <strong>{money(unitGross)}</strong>
                     <small>Precio final / ud.</small>
-                    {line.quantity > 1 && <span className="sales-line-extended">{money(round(line.quantity * line.expectedPrice * (1 + taxRate / 100)))}<small>Importe antes de descuentos</small></span>}
+                    {line.quantity > 1 && <span className="sales-line-extended">{money(line.quantity * unitGross)}<small>Importe antes de descuentos</small></span>}
                   </div>
                 ) : (
-                  <span className="muted">× {money(line.expectedPrice)}</span>
+                  <span className="muted">× {money(unitGross)} con ITBIS</span>
                 )}
-                {kind !== 'sale' && <strong>{money(line.quantity * (kind === 'purchase' ? line.unitCost : line.expectedPrice))}</strong>}
+                {kind !== 'sale' && <strong>{money(line.quantity * (kind === 'purchase' ? line.unitCost : unitGross))}</strong>}
               </div>
               {salesSerialEnabled && <details className="sale-serial-details"><summary>Identificar unidades · {selectedSerials[line.variantId]?.length ?? 0} de {line.quantity} · Opcional</summary><SaleSerialPicker key={line.variantId}
                 variantId={line.variantId} quantity={line.quantity}
@@ -1536,6 +1522,9 @@ function CreateDocument({
           Revisa las cantidades, la vigencia y el total antes de guardar. Se aplicarán los precios
           del catálogo y las promociones vigentes que confirmes aquí. Se conserva el número de
           cotización.
+          {editingDocument.total !== total && (
+            <> Total guardado {money(editingDocument.total)}. Total revisado {money(total)}.</>
+          )}
         </p>
       )}
       {changedDocument && (
@@ -1667,7 +1656,7 @@ function CreateDocument({
                           : money(
                               kind === 'purchase'
                                 ? (variant.cost ?? 0)
-                                : round(variant.price * (1 + taxRate / 100)),
+                                : (calculateUnitPrice(variant.price, taxRate)?.total ?? 0),
                             )}
                       </b>
                       <span className={available ? 'muted' : 'commerce-out'}>
@@ -2471,6 +2460,7 @@ function ConvertQuote({
     try {
       const result = await run('convert_quote', {
         id: doc.id,
+        expected_total: doc.total,
         ...(salesSerialEnabled ? {serial_assignments:items.filter(item=>item.variant_id&&selectedSerials[item.variant_id]?.length)
           .map(item=>({variant_id:item.variant_id,serial_ids:selectedSerials[item.variant_id!]}))} : {}),
         payment_method: payment,

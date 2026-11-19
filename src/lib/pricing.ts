@@ -40,7 +40,7 @@ export function calculatePriceFromTotal(totalPrice: number, taxRate: number): Fi
   let best: { base: bigint; tax: bigint; total: bigint; difference: bigint } | null = null;
   for (const base of [estimate - 1n, estimate, estimate + 1n]) {
     if (base <= 0n || base > maximum) continue;
-    const tax = (base * rate + 5_000n) / 10_000n;
+    const tax = share(base, rate, 10_000n);
     const candidate = base + tax;
     const difference = candidate >= total ? candidate - total : total - candidate;
     if (!best || difference < best.difference || (difference === best.difference && candidate < best.total))
@@ -76,20 +76,86 @@ export function potentialUnitProfit(basePrice: number, cost: number, taxRate: nu
 }
 
 /** One unit without a discount: PostgreSQL round(base * rate / 100, 2), half up.
- * Document totals can round differently when several units/discounts are combined.
  * Zero remains a pending catalog price, not an offer of a free product.
  */
 export function calculateUnitPrice(basePrice: number, taxRate: number): UnitPrice | null {
   const base = cents(basePrice, MAX_CATALOG_PRICE);
   const rate = cents(taxRate, 100);
   if (base === null || rate === null || base === 0n) return null;
-  const tax = (base * rate + 5_000n) / 10_000n;
+  const tax = share(base, rate, 10_000n);
   return {
     base: Number(base) / 100,
     tax: Number(tax) / 100,
     total: Number(base + tax) / 100,
     taxRate,
   };
+}
+
+// All weights and money are integers here. A cumulative share gives the same
+// result for a reversal or partial refund regardless of how it was split.
+function share(value: bigint, part: bigint, whole: bigint): bigint {
+  return whole === 0n ? 0n : (2n * value * part + whole) / (2n * whole);
+}
+
+const asMoney = (value: bigint) => Number(value) / 100;
+const moneyCents = (value: number) => cents(value, 100_000_000_000_000) ?? 0n;
+
+export function percentageAmount(amount: number, percent: number): number {
+  return asMoney(share(moneyCents(amount), cents(percent, 100) ?? 0n, 10_000n));
+}
+
+type PriceLine = { variantId: string; unitPrice: number; quantity: number; eligible: boolean };
+type Discount = { kind: 'percent' | 'amount'; value: number };
+
+export function priceDocument(lines: PriceLine[], taxRate: number, requested: Discount) {
+  const rate = cents(taxRate, 100) ?? 0n;
+  const ordered = lines.map((line) => {
+    const quantity = Number.isSafeInteger(line.quantity) && line.quantity > 0
+      && line.quantity <= 999_999 ? BigInt(line.quantity) : 0n;
+    const unit = cents(line.unitPrice, MAX_CATALOG_PRICE) ?? 0n;
+    const base = unit * quantity;
+    const gross = (unit + share(unit, rate, 10_000n)) * quantity;
+    return { id: line.variantId, base, gross, weight: line.eligible ? base : 0n };
+  }).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const subtotal = ordered.reduce((sum, line) => sum + line.base, 0n);
+  const eligible = ordered.reduce((sum, line) => sum + line.weight, 0n);
+  const requestedCents = requested.kind === 'percent'
+    ? share(eligible, cents(requested.value, 100) ?? 0n, 10_000n)
+    : moneyCents(requested.value);
+  const discount = requestedCents < eligible ? requestedCents : eligible;
+  let weightThrough = 0n;
+  let discountThrough = 0n;
+  let total = 0n;
+  for (const line of ordered) {
+    weightThrough += line.weight;
+    const nextDiscount = share(discount, weightThrough, eligible);
+    const net = line.base - (nextDiscount - discountThrough);
+    total += share(line.gross, net, line.base);
+    discountThrough = nextDiscount;
+  }
+  return {
+    subtotal: asMoney(subtotal), eligible: asMoney(eligible), discount: asMoney(discount),
+    tax: asMoney(total - (subtotal - discount)), total: asMoney(total),
+  };
+}
+
+type RefundLine = {
+  quantity: number; returned_quantity: number; unit_price: number; discount: number; tax: number;
+  line_total: number; product_snapshot: { catalog_unit_rounding?: boolean };
+};
+
+export function estimatedRefund(item: RefundLine, quantity: number): number {
+  if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > item.quantity - item.returned_quantity) return 0;
+  const count = BigInt(item.quantity);
+  const before = BigInt(item.returned_quantity);
+  const after = before + BigInt(quantity);
+  function allocated(amount: number) {
+    const value = moneyCents(amount);
+    return share(value, after, count) - share(value, before, count);
+  }
+  if (item.product_snapshot.catalog_unit_rounding) return asMoney(allocated(item.line_total));
+  const gross = moneyCents(item.unit_price) * BigInt(quantity) - allocated(item.discount) + allocated(item.tax);
+  return asMoney(gross);
 }
 
 /** Catalog and dashboard share the same estimate, including the existing gross-price margin convention. */

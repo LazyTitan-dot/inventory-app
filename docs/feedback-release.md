@@ -38,8 +38,8 @@ Implemented, verified on staging and released to
 The server still stores a two-decimal net catalog price. The editor derives that
 value and shows the actual base, tax and total to be saved. A nonrepresentable
 final cent selects the nearest supported total, at most RD$0.01 away, choosing
-lower on a tie. The adjustment is explicit. Existing document-level rounding
-continues to apply to invoice subtotals.
+lower on a tie. The adjustment is explicit. New sales and new or renewed quotes use the displayed
+unit total. Earlier documents retain their recorded amounts.
 
 `save_product` optionally accepts `expected_tax_rate`. Migration
 `20261111151930_catalog_tax_rate_guard.sql` validates the reviewed rate against

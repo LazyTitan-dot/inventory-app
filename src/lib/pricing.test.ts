@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculatePriceFromTotal, calculateUnitPrice, inventoryFinancialSummary, isValidCatalogAmount, MAX_CATALOG_PRICE, potentialUnitProfit, suggestFinalPrice } from './pricing';
+import { priceDocument, estimatedRefund, calculatePriceFromTotal, calculateUnitPrice, inventoryFinancialSummary, isValidCatalogAmount, MAX_CATALOG_PRICE, potentialUnitProfit, suggestFinalPrice } from './pricing';
 
 describe('precio unitario con ITBIS', () => {
   it('muestra base, ITBIS y total sin convertir el precio almacenado en precio incluido', () => {
@@ -37,7 +37,7 @@ describe('precio unitario con ITBIS', () => {
     expect(isValidCatalogAmount(0.29)).toBe(true);
     expect(isValidCatalogAmount(0.001)).toBe(false);
   });
-  it('distingue el total unitario del redondeo de una factura con varias unidades', () => {
+  it('redondea cada precio unitario antes de aplicarlo a una cantidad', () => {
     expect(calculateUnitPrice(0.05, 10)?.total).toBe(0.06);
     expect(calculateUnitPrice(0.1, 10)?.total).toBe(0.11);
   });
@@ -88,5 +88,45 @@ describe('resumen financiero compartido', () => {
       { available: 0, variant: { price: 500, cost: 100 } },
     ], 18);
     expect(totals).toEqual({value: 17000, revenue: 28320, potentialProfit: 13320});
+  });
+});
+
+describe('importes comerciales por precio final de catálogo', () => {
+  const ac = { variantId: 'b', unitPrice: 14830.51, quantity: 1, eligible: true };
+  const grill = { variantId: 'a', unitPrice: 2457.63, quantity: 1, eligible: true };
+  const fixed = (value: number) => ({ kind: 'amount' as const, value });
+
+  it('concilia el catálogo, las dos líneas y el total del documento', () => {
+    expect(priceDocument([ac, grill], 18, fixed(0))).toEqual({
+      subtotal: 17288.14, eligible: 17288.14, discount: 0, tax: 3111.86, total: 20400,
+    });
+    expect(priceDocument([{ ...grill, quantity: 3 }], 18, fixed(100))).toMatchObject({
+      subtotal: 7372.89, discount: 100, tax: 1309.11, total: 8582,
+    });
+  });
+
+  it('respeta elegibilidad, orden de adición, porcentaje, exención y descuento completo', () => {
+    const scoped = [{ ...ac, eligible: false }, grill];
+    const percent = { kind: 'percent' as const, value: 10 };
+    expect(priceDocument(scoped, 18, percent)).toEqual({
+      subtotal: 17288.14, eligible: 2457.63, discount: 245.76, tax: 3067.62, total: 20110,
+    });
+    expect(priceDocument(scoped, 18, percent)).toEqual(priceDocument([...scoped].reverse(), 18, percent));
+    expect(priceDocument([ac], 0, fixed(100)).total).toBe(14730.51);
+    expect(priceDocument([grill], 18, fixed(2457.63))).toMatchObject({ total: 0, tax: 0 });
+    expect(priceDocument([{ ...grill, quantity: 0 }], 18, fixed(100)).total).toBe(0);
+    expect(priceDocument([{ ...grill, unitPrice: 0.02, quantity: 999999 }], 18, fixed(0)).total).toBe(19999.98);
+  });
+
+  it('reparte el total cobrado sin superar el saldo, independientemente de la agrupación', () => {
+    const item = { product_snapshot: { catalog_unit_rounding: true }, unit_price: 2457.63,
+      quantity: 3, returned_quantity: 0, discount: 100, tax: 1309.11, line_total: 8582 };
+    expect([0, 1, 2].map(n => estimatedRefund({ ...item, returned_quantity: n }, 1)))
+      .toEqual([2860.67, 2860.66, 2860.67]);
+    expect(estimatedRefund(item, 2)).toBe(5721.33);
+    expect(estimatedRefund(item, 3)).toBe(8582);
+    expect(estimatedRefund({ ...item, returned_quantity: 2 }, 2)).toBe(0);
+    expect(estimatedRefund({ ...item, product_snapshot: {}, tax: 1309.12, line_total: 8582.01,
+      returned_quantity: 1 }, 1)).toBe(2860.67);
   });
 });
