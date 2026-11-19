@@ -1,0 +1,84 @@
+@media screen {
+  .app-layout .after-sales .commerce-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 17rem);
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+  }
+  .after-sales .commerce-toolbar > :only-child { grid-column: 1 / -1; }
+  .after-sales .commerce-toolbar > * { min-width: 0; width: 100%; }
+  .app-layout .after-sales .warranty-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+  .after-sales .warranty-table th:last-child { width: 64px; }
+  .after-sales .warranty-table :is(td, th) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    padding: 12px 8px;
+  }
+  .after-sales .warranty-table :is(td, th):first-child { padding-left: 16px; }
+  .after-sales .warranty-table .badge { max-width: 100%; white-space: normal; }
+  .after-sales .warranty-open {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    color: var(--sl-refined-accent, var(--primary));
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .after-sales .warranty-open:focus-visible { outline: 2px solid currentColor; }
+  .after-sales-dialog .commerce-return-fields { align-items: start; }
+  .after-sales-dialog .return-destination {
+    display: block;
+    margin-top: 4px;
+    font-weight: 600;
+  }
+  .after-sales-dialog :is(.commerce-return-item, .commerce-warranty-detail) { overflow-wrap: anywhere; }
+}
+@media screen and (max-width: 800px) {
+  .app-layout .after-sales .commerce-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .app-layout .after-sales .warranty-table,
+  .after-sales .warranty-table tbody { display: block; }
+  .after-sales .warranty-table thead { position: absolute; clip-path: inset(50%); height: 1px; width: 1px; overflow: hidden; }
+  .after-sales .warranty-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 5px 12px;
+    align-items: center;
+    margin: 0 12px 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .app-layout .after-sales .warranty-table tbody td {
+    display: block;
+    grid-column: 1;
+    padding: 0;
+    border: 0;
+    text-align: start;
+  }
+  .after-sales .warranty-table td:nth-child(3)::before { content: 'Vencimiento · '; }
+  .app-layout .after-sales .warranty-table tbody td:last-child {
+    grid-column: 2;
+    grid-row: 1 / 5;
+  }
+  .app-layout dialog.after-sales-dialog[open] {
+    inset: 0;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    box-sizing: border-box;
+  }
+  .after-sales-dialog .modal-body { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+  .after-sales-dialog .commerce-return-fields { grid-template-columns: minmax(0, 1fr); }
+  .after-sales-dialog .modal-footer { flex-wrap: wrap; }
+}
