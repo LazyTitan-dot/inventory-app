@@ -82,3 +82,29 @@
   .after-sales-dialog .commerce-return-fields { grid-template-columns: minmax(0, 1fr); }
   .after-sales-dialog .modal-footer { flex-wrap: wrap; }
 }
+
+@media screen {
+  .after-sales-dialog .return-quantity { display: grid; gap: 7px; }
+  .after-sales-dialog .return-stepper { display: flex; align-items: center; }
+  .after-sales-dialog .return-stepper input { min-width: 0; width: 100%; }
+  .after-sales-dialog .return-stepper button, .return-footer-total { display: none; }
+}
+@media screen and (max-width: 800px) {
+  .after-sales-dialog .return-stepper { gap: 8px; }
+  .after-sales-dialog .return-stepper input { width: 5rem; text-align: center; }
+  .after-sales-dialog .return-stepper button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+  }
+  .after-sales-dialog .return-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    background: var(--surface, Canvas);
+  }
+  .after-sales-dialog .return-footer-total { display: block; width: 100%; }
+}
