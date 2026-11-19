@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  ChevronRight,
   ArrowUpRight,
   CalendarDays,
   Check,
@@ -34,6 +35,7 @@ import {
   StatusBadge,
 } from '../components/ui';
 import './commerce.css';
+import './after-sales.css';
 import { ReturnSerialPicker, useSaleSerials } from '../components/SerialSalePicker';
 
 type Warranty = {
@@ -193,7 +195,7 @@ export function AfterSalesPage() {
           hint="Renglones que vencen en 30 días"
         />
       </div>
-      <section className="panel">
+      <section className="panel after-sales">
         <div className="commerce-tabs" role="tablist" aria-label="Secciones de posventa">
           <button
             type="button"
@@ -303,12 +305,11 @@ export function AfterSalesPage() {
           />
         ) : (
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table warranty-table">
               <thead>
                 <tr>
                   <th>Producto / variante</th>
                   <th>Cliente / venta</th>
-                  <th>Cobertura</th>
                   <th>Vencimiento</th>
                   <th>Estado</th>
                   <th>
@@ -322,20 +323,12 @@ export function AfterSalesPage() {
                     <td>
                       <strong>{itemTitle(row.item)}</strong>
                       <small className="commerce-table-meta">
-                        {row.item.product_snapshot.name} · {row.item.product_snapshot.sku}
+                        {row.item.product_snapshot.name}
                       </small>
                     </td>
                     <td>
                       {customerName(row.sale)}
                       <small className="commerce-table-meta">{documentNumber(row.sale)}</small>
-                    </td>
-                    <td>
-                      {warrantyUnknown(row.item)
-                        ? 'Sin dato histórico'
-                        : row.item.product_snapshot.warranty_months + ' meses'}
-                      <small className="commerce-table-meta">
-                        {row.remaining} {row.remaining === 1 ? 'unidad' : 'unidades'} sin devolver
-                      </small>
                     </td>
                     <td>
                       {row.expires
@@ -350,8 +343,9 @@ export function AfterSalesPage() {
                       </span>
                     </td>
                     <td>
-                      <button className="button ghost" onClick={() => setWarrantyId(row.item.id)}>
-                        Consultar
+                      <button type="button" className="warranty-open" onClick={() => setWarrantyId(row.item.id)}
+                        aria-label={`Consultar garantía de ${itemTitle(row.item)}, ${documentNumber(row.sale)}`}>
+                        <ChevronRight size={21} aria-hidden="true" />
                       </button>
                     </td>
                   </tr>
@@ -528,7 +522,7 @@ function CreateReturn({
     }
   }
   return (
-    <Modal title="Nueva devolución" onClose={busy ? () => undefined : onClose} wide>
+    <Modal className="after-sales-dialog" title="Nueva devolución" onClose={busy ? () => undefined : onClose} wide>
       {!sale ? (
         <div className="stack">
           {saleId && (
@@ -678,6 +672,11 @@ function CreateReturn({
                           <option value="quarantine">Dañada / requiere revisión</option>
                           <option value="available">Apta para vender</option>
                         </select>
+                        {item.variant_id && remaining > 0 && (
+                          <small className="return-destination" aria-live="polite">
+                            {line.condition === 'available' ? 'Destino: disponible para vender' : 'Destino: cuarentena'}
+                          </small>
+                        )}
                       </Field>
                       <div className="commerce-return-estimate">
                         <span>Importe estimado</span>
@@ -870,7 +869,7 @@ function WarrantyDetail({ warranty, onClose }: { warranty: Warranty; onClose: ()
   const serialEnabled=data.features?.includes('serial_sales_v2')??false;
   const {rows:serialLinks,loading:serialLoading,error:serialError}=useSaleSerials(sale.id,serialEnabled);
   return (
-    <Modal title="Garantía de la compra" onClose={onClose}>
+    <Modal className="after-sales-dialog" title="Garantía de la compra" onClose={onClose}>
       <article className="retail-print commerce-warranty-detail">
         <div className="commerce-warranty-icon">
           <ShieldCheck size={36} />
