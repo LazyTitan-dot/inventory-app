@@ -614,6 +614,10 @@ function CreateReturn({
               {items.map((item) => {
                 const remaining = item.quantity - item.returned_quantity;
                 const line = lines[item.id] || { quantity: '0', condition: 'quarantine' as const };
+                const setQuantity = (quantity: string) => setLines((current) => ({
+                  ...current, [item.id]: { ...line, quantity },
+                }));
+                const quantity = Number(line.quantity) || 0;
                 return (
                   <div
                     className={`commerce-return-line ${remaining <= 0 ? 'is-complete' : ''}`}
@@ -638,7 +642,10 @@ function CreateReturn({
                       </div>
                     </div>
                     <div className="form-grid commerce-return-fields">
-                      <Field label="Cantidad a devolver">
+                      <div className="return-quantity">
+                        <label htmlFor={`return-qty-${item.id}`}>Cantidad a devolver</label>
+                        <div className="return-stepper">
+                        <button type="button" className="button secondary" disabled={!item.variant_id || quantity <= 0} aria-label={`Reducir cantidad de ${itemTitle(item)}`} onClick={() => setQuantity(String(Math.max(0, quantity - 1)))}>−</button>
                         <input
                           type="number"
                           min="0"
@@ -646,15 +653,13 @@ function CreateReturn({
                           step="1"
                           value={line.quantity}
                           disabled={!remaining || !item.variant_id}
+                          id={`return-qty-${item.id}`}
                           aria-label={`Cantidad a devolver de ${itemTitle(item)} ${item.product_snapshot.name}`}
-                          onChange={(event) =>
-                            setLines((current) => ({
-                              ...current,
-                              [item.id]: { ...line, quantity: event.target.value },
-                            }))
-                          }
+                          onChange={(event) => setQuantity(event.target.value)}
                         />
-                      </Field>
+                        <button type="button" className="button secondary" disabled={!item.variant_id || quantity >= remaining} aria-label={`Aumentar cantidad de ${itemTitle(item)}`} onClick={() => setQuantity(String(Math.min(remaining, quantity + 1)))}>+</button>
+                        </div>
+                      </div>
                       <Field label="Condición de la mercancía">
                         <select
                           value={line.condition}
@@ -732,7 +737,8 @@ function CreateReturn({
             cuarentena. El registro no mueve dinero en una terminal ni cuenta bancaria.
           </p>
           <ErrorNotice message={validation || error} />
-          <div className="modal-footer">
+          <div className="modal-footer return-footer">
+            <strong className="return-footer-total">Reembolso estimado · {money(total)}</strong>
             <button type="button" className="button secondary" disabled={busy} onClick={onClose}>
               Cancelar
             </button>
