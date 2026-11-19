@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   X,
   ChevronLeft,
+  ChevronRight,
   Banknote,
   CreditCard,
   Landmark,
@@ -66,6 +67,7 @@ import { SalesHistory } from './SalesVisual';
 import { SalePrintAction, ReceiptBrand } from './SalePrintAction';
 import { SaleSerialPicker, useSaleSerials } from '../components/SerialSalePicker';
 import './commerce.css';
+import './quotes.css';
 import './sales-visual-v1.css';
 import './purchase-visual-v1.css';
 import './inventory-sales-glass-v2.css';
@@ -565,11 +567,11 @@ export function CommercePage({ kind }: { kind: Kind }) {
                     <td className="number">{money(doc.total)}</td>
                     <td>
                       <button
-                        className="button ghost"
+                        className="button ghost quote-open"
                         onClick={() => setSelectedId(doc.id)}
                         aria-label={`Ver ${documentNumber(doc)}`}
                       >
-                        Ver detalle
+                        <ChevronRight size={20} aria-hidden="true" />
                       </button>
                     </td>
                   </tr>
@@ -618,7 +620,7 @@ export function CommercePage({ kind }: { kind: Kind }) {
       )}
     </>
   );
-  return kind === 'purchase' ? <div className="purchase-visual-v1 sl-refined-theme">{content}</div> : kind === 'sale' ? <div className="sales-visual-v1 sl-refined-theme">{content}</div> : content;
+  return kind === 'purchase' ? <div className="purchase-visual-v1 sl-refined-theme">{content}</div> : kind === 'sale' ? <div className="sales-visual-v1 sl-refined-theme">{content}</div> : <div className="quotes-page sl-refined-theme">{content}</div>;
 }
 
 function CreateDocument({
@@ -646,6 +648,7 @@ function CreateDocument({
   const formId = useId();
   const searchInput = useRef<HTMLInputElement>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [quoteReview, setQuoteReview] = useState(Boolean(editingDocument));
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [clearRequested, setClearRequested] = useState(false);
   const [scanMessage, setScanMessage] = useState('');
@@ -939,6 +942,10 @@ function CreateDocument({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (kind === 'quote' && compact && !quoteReview) {
+      setQuoteReview(true);
+      return;
+    }
     clearError();
     setValidation('');
     if (refreshing) return;
@@ -1101,7 +1108,7 @@ function CreateDocument({
     }
   }
 
-  const Adjustments = kind === 'sale' ? 'details' : Fragment;
+  const Adjustments = kind === 'purchase' ? Fragment : 'details';
   const cartContent = (
     <>
       {changedPrices && (
@@ -1285,8 +1292,20 @@ function CreateDocument({
           </div>
         )}
       </div>
+      {kind === 'quote' && (
+        <Field label="Válida hasta">
+          <input
+            type="date"
+            min={businessDate(new Date(now))}
+            max={businessDate(new Date(now + 365 * 86400000))}
+            required
+            value={expires}
+            onChange={(event) => setExpires(event.target.value)}
+          />
+        </Field>
+      )}
       <Adjustments>
-        {kind === 'sale' && <summary className="sales-section-label">Descuentos, cupón y nota{(Number(discount) > 0 || coupon.trim() || notes.trim()) && ' · Aplicados'}</summary>}
+        {kind !== 'purchase' && <summary className="sales-section-label">Descuentos, cupón y nota{(Number(discount) > 0 || coupon.trim() || notes.trim()) && ' · Aplicados'}</summary>}
       {kind !== 'purchase' && (
         <div className="form-grid commerce-small-grid">
           <div className="commerce-discount-mode" role="group" aria-label="Tipo de descuento">
@@ -1353,18 +1372,6 @@ function CreateDocument({
             />
           </Field>
         </div>
-      )}
-      {kind === 'quote' && (
-        <Field label="Válida hasta">
-          <input
-            type="date"
-            min={businessDate(new Date(now))}
-            max={businessDate(new Date(now + 365 * 86400000))}
-            required
-            value={expires}
-            onChange={(event) => setExpires(event.target.value)}
-          />
-        </Field>
       )}
       {kind === 'purchase' && purchaseEnhanced && (
         <Field
@@ -1498,7 +1505,7 @@ function CreateDocument({
     <form
       id={formId}
       onSubmit={submit}
-      className={`commerce-editor ${inline ? 'commerce-cashier-editor' : ''}`}
+      className={`commerce-editor ${inline ? 'commerce-cashier-editor' : ''} ${kind === 'quote' ? (quoteReview ? 'quote-review' : 'quote-catalog') : ''}`}
     >
       {inline && (
         <div className="commerce-cashier-status">
@@ -1518,6 +1525,11 @@ function CreateDocument({
             Nueva venta
           </button>
         </div>
+      )}
+      {kind === 'quote' && compact && quoteReview && (
+        <button type="button" className="button ghost" onClick={() => setQuoteReview(false)}>
+          <ChevronLeft size={18} /> Volver al catálogo
+        </button>
       )}
       {editingDocument && (
         <p className="commerce-inline-note">
@@ -1737,7 +1749,16 @@ function CreateDocument({
           </button>
         </div>
       )}
-      {kind !== 'sale' && !(inline && compact) && regularActions}
+      {kind === 'quote' ? (
+        <div className="quote-actions">
+          <strong>Total · {money(total)}</strong>
+          {compact && !quoteReview ? (
+            <button type="button" className="button primary" onClick={() => setQuoteReview(true)}>
+              Ver propuesta · {units} {units === 1 ? 'ud.' : 'uds.'}
+            </button>
+          ) : regularActions}
+        </div>
+      ) : kind === 'purchase' && !(inline && compact) && regularActions}
     </form>
   );
   const content: ReactNode = inline ? (
@@ -1750,7 +1771,7 @@ function CreateDocument({
       onClose={busy ? () => undefined : onClose}
       wide
       backLabel={kind === 'purchase' ? 'Volver a Compras' : undefined}
-      className={kind === 'purchase' ? 'purchase-create-v1 sl-refined-theme' : kind === 'sale' ? 'sales-create-v1 sl-refined-theme' : '' }
+      className={kind === 'purchase' ? 'purchase-create-v1 sl-refined-theme' : kind === 'sale' ? 'sales-create-v1 sl-refined-theme' : 'quote-editor sl-refined-theme' }
     >
       {editor}
     </Modal>
@@ -1942,7 +1963,7 @@ function DocumentDetail({
     );
   }
   return (
-    <Modal title={documentNumber(doc)} onClose={operation.busy ? () => undefined : onClose} wide variant={doc.type === 'purchase' || doc.type === 'sale' ? 'drawer' : 'dialog'} backLabel={doc.type === 'purchase' ? 'Volver a Compras' : undefined} className={doc.type === 'purchase' ? 'purchase-detail-v1 sl-refined-theme' : doc.type === 'sale' ? 'sales-detail-v1 sl-refined-theme' : ''}>
+    <Modal title={documentNumber(doc)} onClose={operation.busy ? () => undefined : onClose} wide variant={doc.type === 'purchase' || doc.type === 'sale' ? 'drawer' : 'dialog'} backLabel={doc.type === 'purchase' ? 'Volver a Compras' : undefined} className={doc.type === 'purchase' ? 'purchase-detail-v1 sl-refined-theme' : doc.type === 'sale' ? 'sales-detail-v1 sl-refined-theme' : 'quote-detail sl-refined-theme'}>
       {mode !== 'detail' && (
         <button
           className="button ghost commerce-back"
@@ -2193,7 +2214,7 @@ function DocumentDetail({
             <div className="commerce-linked-note">
               <Check size={18} />
               <span>Convertida en {documentNumber(linkedSale)}</span>
-              <button className="button ghost" onClick={() => onSelect(linkedSale.id)}>
+              <button className="button primary" onClick={() => onSelect(linkedSale.id)}>
                 Ver venta
               </button>
             </div>
@@ -2266,7 +2287,7 @@ function DocumentDetail({
               <button className="button ghost danger" onClick={() => setMode('cancel_quote')}>
                 Cancelar cotización
               </button>
-              <button className="button secondary" disabled={!canRestoreAll} onClick={onEdit}>
+              <button className={`button ${quoteExpired(doc, now) ? 'primary' : 'secondary'}`} disabled={!canRestoreAll} onClick={onEdit}>
                 <Pencil size={17} />
                 {quoteExpired(doc, now) ? 'Revisar y renovar' : 'Editar cotización'}
               </button>
