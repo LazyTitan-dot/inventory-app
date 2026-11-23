@@ -78,6 +78,7 @@ export const paymentLabels: Record<string, string> = {
 };
 export const categoryLabels: Record<string, string> = {
   tv: 'Televisores',
+  phone: 'Celulares',
   refrigerator: 'Neveras',
   washing_machine: 'Lavadoras',
   blender: 'Licuadoras',
