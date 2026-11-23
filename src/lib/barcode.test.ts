@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barcodeMatches, barcodeSvg, code128Symbols, generateInternalBarcode, getVariantBarcodes, validateBarcodes } from './barcode';
+import { barcodeMatches, barcodeSvg, code128Symbols, generateInternalBarcode, getVariantBarcodes, isGeneratedInternalBarcode, manufacturerBarcodeFirst, validateBarcodes } from './barcode';
 
 describe('Code 128B labels', () => {
   it('encodes start, printable character symbols, weighted checksum and stop', () => {
@@ -58,5 +58,38 @@ describe('catalog barcode identity', () => {
     expect(validateBarcodes([{ barcode: 'abc' }, { barcode: ' ABC ' }], [])).toContain('se repite');
     expect(validateBarcodes([{ barcode: '' }, { barcode: null }], [])).toBeNull();
     expect(validateBarcodes([{ barcode: 'abc\ndef' }], [])).not.toBeNull();
+  });
+});
+
+describe('manufacturer code priority in product editing', () => {
+  it('uses manufacturer barcode as main on a fresh product', () => {
+    expect(manufacturerBarcodeFirst({ barcode: '', barcode_aliases: [] }, ' 0123456789012 '))
+      .toEqual({ barcode: '0123456789012', barcode_aliases: [] });
+  });
+  it('promotes a scanned manufacturer code and keeps the previous internal code searchable', () => {
+    const prior = { barcode: 'SL' + 'A'.repeat(32), barcode_aliases: [] };
+    const actual = manufacturerBarcodeFirst(prior, '7501031311309');
+    expect(actual).toEqual({ barcode: '7501031311309', barcode_aliases: [prior.barcode] });
+    expect(barcodeMatches(actual, prior.barcode)).toBe(true);
+    expect(isGeneratedInternalBarcode(prior.barcode)).toBe(true);
+    expect(isGeneratedInternalBarcode(actual.barcode)).toBe(false);
+  });
+  it('promotes an existing alias without duplicating it and preserves other aliases', () => {
+    expect(manufacturerBarcodeFirst({
+      barcode: 'SL' + 'B'.repeat(32), barcode_aliases: ['012345', '789000'],
+    }, '012345')).toEqual({
+      barcode: '012345', barcode_aliases: ['789000', 'SL' + 'B'.repeat(32)],
+    });
+  });
+  it('does not duplicate a repeated scan or lose a code at the alias limit', () => {
+    const aliases = Array.from({length: 10}, (_, i) => `ALIAS-${i}`);
+    expect(manufacturerBarcodeFirst({ barcode: '6946087393113', barcode_aliases: aliases }, '6946087393113'))
+      .toEqual({ barcode: '6946087393113', barcode_aliases: aliases });
+    expect(() => manufacturerBarcodeFirst({barcode:'SL123',barcode_aliases:aliases},'NEW'))
+      .toThrow('No hay espacio');
+  });
+  it('never accepts empty or invalid control characters as manufacturer codes', () => {
+    expect(() => manufacturerBarcodeFirst({barcode: ''}, ' ')).toThrow();
+    expect(() => manufacturerBarcodeFirst({barcode: ''}, 'CODE\n2')).toThrow();
   });
 });

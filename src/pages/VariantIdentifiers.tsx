@@ -123,7 +123,7 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
      await run('manage_variant_barcode',{
        variant_id:variant.id,mode,code:clean(code),kind:codeKind,
        ...(previousCode?{previous_code:previousCode}:{}),
-       ...(mode==='add'?{make_primary:makePrimary}:{})
+       ...(mode==='add'?{make_primary:codeKind==='manufacturer'||makePrimary}:{})
      });
      setNewCode('');setReplacing(null);setConfirmRemove(null);setMakePrimary(false);
      notify('Códigos actualizados. Las existencias y las operaciones anteriores no cambian.');
@@ -252,7 +252,7 @@ export function VariantIdentifiers({ variant, onClose }: { variant: Variant; onC
       <Field label="Tipo de código"><select value={kind} onChange={e=>setKind(e.target.value as CodeKind)}>
        <option value="manufacturer">Código del fabricante</option><option value="internal">Código interno</option>
       </select></Field>
-      {!replacing&&<label className="sl-identifiers-checkbox"><input type="checkbox" checked={makePrimary} onChange={e=>setMakePrimary(e.target.checked)}/> Establecer como código principal</label>}
+      {!replacing&&(kind==='manufacturer' ? <p className="sl-identifiers-help">El código del fabricante se guardará como principal.</p> : <label className="sl-identifiers-checkbox"><input type="checkbox" checked={makePrimary} onChange={e=>setMakePrimary(e.target.checked)}/> Establecer como código principal</label>)}
       <div className="sl-identifiers-actions">
        {replacing&&<button type="button" className="button secondary" onClick={()=>{setReplacing(null);setNewCode('');}}>Cancelar reemplazo</button>}
        <button type="button" className="button primary" disabled={busy||!clean(newCode)} onClick={()=>void manageCode(replacing?'replace':'add',newCode,replacing||undefined)}>{busy?'Guardando…':replacing?'Confirmar reemplazo':'Añadir código'}</button>
