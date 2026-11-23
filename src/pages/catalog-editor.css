@@ -26,6 +26,9 @@
 .catalog-editor-aliases { display:grid; gap:10px; min-width:0; }
 .catalog-editor-aliases > span { font-size:12px; font-weight:650; }
 .catalog-editor-aliases > small { color:var(--muted); font-size:11px; line-height:1.5; }
+.catalog-editor-alias-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.catalog-editor-alias-actions .button { min-height:44px; }
+.catalog-editor-alias-actions .button.secondary { flex:1 1 190px; }
 .catalog-editor-alias { display:flex; gap:8px; min-width:0; align-items:center; }
 .catalog-editor-alias input { min-width:0; flex:1; }
 .catalog-editor-alias .icon-button { flex-shrink:0; width:44px; height:44px; }

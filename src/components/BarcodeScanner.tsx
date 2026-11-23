@@ -23,6 +23,7 @@ export function BarcodeScanner({
   summary,
   referenceDetails,
   onActivate,
+  autoStartCamera = false,
 }: {
   title?: string;
   onDetected: (value: string, at: number) => void | boolean;
@@ -32,6 +33,7 @@ export function BarcodeScanner({
   summary?: ReactNode;
   referenceDetails?: ReactNode;
   onActivate?: () => void;
+  autoStartCamera?: boolean;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -100,7 +102,7 @@ export function BarcodeScanner({
     },
     [continuous, complete, stop],
   );
-  async function start() {
+  const start = useCallback(async () => {
     if (active.current || complete) return;
     onActivate?.();
     setError('');
@@ -221,7 +223,13 @@ export function BarcodeScanner({
       stop();
       setError(cameraFailureMessage(cause));
     }
-  }
+  }, [complete, onActivate, continuous, accept, release, stop]);
+  const autoStartRequested = useRef(false);
+  useEffect(() => {
+    if (!autoStartCamera || autoStartRequested.current) return;
+    autoStartRequested.current = true;
+    void start();
+  }, [autoStartCamera, start]);
   function submit(event: FormEvent) {
     event.preventDefault();
     onActivate?.();

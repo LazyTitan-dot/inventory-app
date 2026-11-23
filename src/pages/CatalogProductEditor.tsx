@@ -78,11 +78,12 @@ export function ProductEditor({
   const [warranty, setWarranty] = useState(product?.warranty_months ?? 12);
   const [images, setImages] = useState<string[]>(() => product?.images ?? []);
   const [uploading, setUploading] = useState(false);
-  const [scannerIndex, setScannerIndex] = useState<number | null>(null);
+  const [scannerTarget, setScannerTarget] = useState<{ index: number; camera: boolean } | null>(null);
   const [openLabel, setOpenLabel] = useState(false);
   const [captureIndex, setCaptureIndex] = useState<number | null>(null);
   const [pendingExisting, setPendingExisting] = useState<string | null>(null);
   const [scanNotice, setScanNotice] = useState('');
+  const [scanNoticeIndex, setScanNoticeIndex] = useState<number | null>(null);
   const form = useRef<HTMLFormElement>(null);
   const [openedVersion] = useState(product?.updated_at);
   const [catalogVariants] = useState(() => data.variants);
@@ -289,15 +290,24 @@ export function ProductEditor({
       setPendingExisting(known.id);
       return false;
     }
-    if (barcodeMatches(row, code)) return true;
-    if (row.barcode_aliases.length >= MAX_BARCODE_ALIASES) {
+    if (barcodeMatches(row, code)) {
+      setScanNoticeIndex(index);
+      setScanNotice('Este código ya está registrado en esta variante. No se duplicó.');
+      return true;
+    }
+    const emptyAliasIndex = row.barcode_aliases.findIndex((alias) => !alias.trim());
+    if (row.barcode_aliases.length >= MAX_BARCODE_ALIASES && emptyAliasIndex === -1) {
       setValidation(`Esta variante ya tiene ${MAX_BARCODE_ALIASES} códigos adicionales. Revisa su identificación antes de agregar otro.`);
       revealSection('[data-identification]');
       return false;
     }
-    setVariant(index, { barcode_aliases: [...row.barcode_aliases, code] });
+    const aliases = [...row.barcode_aliases];
+    if (emptyAliasIndex === -1) aliases.push(code);
+    else aliases[emptyAliasIndex] = code;
+    setVariant(index, { barcode_aliases: aliases });
     setValidation('');
-    setScanNotice('Código del fabricante agregado. El código interno se conserva.');
+    setScanNoticeIndex(index);
+    setScanNotice('Código del fabricante capturado. Pulsa «Guardar producto» para confirmarlo. El código principal se conserva.');
     return true;
   }
   function applyLabel(index: number, suggestions: ProductLabelSuggestions) {
@@ -313,6 +323,7 @@ export function ProductEditor({
       const next = { ...row, name: suggestions.variantName! };
       return next.autoSku ? { ...next, sku: suggestedSku(next, rows, nextBrand, nextModel) } : next;
     }));
+    setScanNoticeIndex(null);
     setScanNotice('Datos revisados aplicados al borrador. Guarda el producto para confirmarlos.');
     setCaptureIndex(null);
   }
@@ -326,7 +337,7 @@ export function ProductEditor({
           <p>Revisa los datos antes de aplicarlos.</p>
           <button type="button" className="button secondary" disabled={blocked} onClick={() => setCaptureIndex(0)}><Camera size={17} /> Escanear etiqueta</button>
         </section>
-        {scanNotice && <p className="catalog-editor-notice" role="status">{scanNotice}</p>}
+        {scanNotice && scanNoticeIndex === null && <p className="catalog-editor-notice" role="status">{scanNotice}</p>}
         {taxRateChanged && <div className="warning-notice" role="alert">
           <p>La tasa de ITBIS cambió de {taxRateLabel(editorTaxRate)} a {taxRateLabel(data.settings.tax_rate)}. Revisa los precios finales antes de guardar.</p>
           <button type="button" className="button secondary" disabled={blocked} onClick={() => {
@@ -370,12 +381,16 @@ export function ProductEditor({
           <details className="catalog-editor-disclosure" data-identification>
             <summary>Identificación y códigos <span>{variant.barcode_aliases.length ? `${variant.barcode_aliases.length + (variant.barcode ? 1 : 0)} códigos` : 'SKU y etiqueta'}</span></summary>
             <div className="catalog-editor-disclosure-body">
-              <div className="catalog-editor-code-actions"><button type="button" className="button secondary" onClick={() => setCaptureIndex(index)}><Camera size={15} /> Leer etiqueta de esta variante</button><button type="button" className="button secondary" aria-label={`Escanear código para la variante ${index + 1}`} onClick={() => setScannerIndex(index)}><ScanLine size={15} /> Escanear código</button></div>
+              <div className="catalog-editor-code-actions"><button type="button" className="button secondary" onClick={() => setCaptureIndex(index)}><Camera size={15} /> Leer etiqueta de esta variante</button><button type="button" className="button secondary" aria-label={`Escanear código para la variante ${index + 1}`} onClick={() => setScannerTarget({ index, camera: false })}><ScanLine size={15} /> Escanear código</button></div>
               <div className="catalog-sku-control"><Field label="SKU" hint={variant.autoSku ? 'Automático según marca, modelo y variante.' : 'SKU manual; se conserva al cambiar el producto.'}><input required maxLength={MAX_SKU_LENGTH} value={variant.sku} onChange={(event) => setVariant(index, { sku: event.target.value, autoSku: false })} /></Field><button type="button" className="button secondary" aria-label={`Generar SKU para la variante ${index + 1}`} onClick={() => setVariant(index, { sku: suggestedSku(variant, variants), autoSku: !variant.id })}><RefreshCw size={14} /> Generar SKU</button></div>
               <div className="catalog-barcode-control"><Field label="Código de barras" hint="Código principal para búsquedas y etiquetas."><input autoComplete="off" autoCapitalize="off" spellCheck={false} maxLength={80} value={variant.barcode} onChange={(event) => setVariant(index, { barcode: event.target.value })} /></Field><button type="button" className="button secondary" aria-label={`Generar código para la variante ${index + 1}`} onClick={() => setVariant(index, { barcode: generateInternalBarcode(variant.draftId, [...catalogVariants.filter((row) => row.id !== variant.id).flatMap(getVariantBarcodes), ...variants.filter((row) => row.draftId !== variant.draftId).flatMap(getVariantBarcodes)]) })}><Barcode size={14} /> Generar código interno</button></div>
               <div className="catalog-editor-aliases"><span>Códigos adicionales</span><small>Pueden ser internos o del fabricante; cambia su tipo desde «Gestionar series y códigos» en la ficha. No incluyas series individuales.</small>
                 {variant.barcode_aliases.map((code, aliasIndex) => <div className="catalog-editor-alias" key={aliasIndex}><input aria-label={`Código adicional ${aliasIndex + 1} de la variante ${index + 1}`} required autoComplete="off" autoCapitalize="off" spellCheck={false} maxLength={80} value={code} onChange={(event) => setVariant(index, { barcode_aliases: variant.barcode_aliases.map((item, i) => i === aliasIndex ? event.target.value : item) })} /><button className="icon-button" type="button" aria-label={`Quitar código adicional ${aliasIndex + 1} de la variante ${index + 1}`} onClick={() => setVariant(index, { barcode_aliases: variant.barcode_aliases.filter((_, i) => i !== aliasIndex) })}><X size={16} /></button></div>)}
-                <button type="button" className="button ghost" disabled={variant.barcode_aliases.length >= MAX_BARCODE_ALIASES} onClick={() => setVariant(index, { barcode_aliases: [...variant.barcode_aliases, ''] })}><Plus size={14} /> Añadir código del fabricante</button>
+                <div className="catalog-editor-alias-actions">
+                  <button type="button" className="button secondary" aria-label={`Escanear código del fabricante con cámara para la variante ${index + 1}`} disabled={!aliasesEnabled || (variant.barcode_aliases.length >= MAX_BARCODE_ALIASES && variant.barcode_aliases.every((code) => code.trim()))} onClick={() => { setScanNotice(''); setScannerTarget({ index, camera: true }); }}><Camera size={16} /> Escanear con cámara</button>
+                  <button type="button" className="button ghost" disabled={variant.barcode_aliases.length >= MAX_BARCODE_ALIASES} onClick={() => setVariant(index, { barcode_aliases: [...variant.barcode_aliases, ''] })}><Plus size={14} /> Añadir manualmente</button>
+                </div>
+                {scanNoticeIndex === index && scanNotice && <p className="catalog-editor-notice" role="status">{scanNotice}</p>}
               </div>
             </div>
           </details>
@@ -398,7 +413,7 @@ export function ProductEditor({
         {(validation || error).includes('ITBIS') && <button type="button" className="button secondary" disabled={busy || refreshing} onClick={() => { void refresh().then(() => { setValidation(''); clearError(); }).catch(() => setValidation('No pudimos actualizar los datos. Vuelve a intentar.')); }}>Actualizar tasa y datos</button>}
         <div className="modal-footer catalog-editor-footer"><button className="button secondary" type="button" disabled={busy || uploading} onClick={onClose}>Cancelar</button><button className="button primary" disabled={blocked || taxRateChanged}>{busy ? 'Guardando…' : 'Guardar producto'}</button></div>
       </form>
-      {scannerIndex !== null && <BarcodeScanner title="Código de la variante" onDetected={(value) => { addScannedBarcode(scannerIndex, value); }} onClose={() => setScannerIndex(null)} />}
+      {scannerTarget && <BarcodeScanner title={scannerTarget.camera ? 'Escanear código del fabricante' : 'Código de la variante'} autoStartCamera={scannerTarget.camera} onDetected={(value) => { addScannedBarcode(scannerTarget.index, value); }} onClose={() => setScannerTarget(null)} />}
       {captureIndex !== null && <ProductLabelCapture currentVariantId={variants[captureIndex]?.id} products={data.products} variants={data.variants} onClose={() => setCaptureIndex(null)} onApply={(suggestions) => applyLabel(captureIndex, suggestions)} onExisting={(variantId) => { setCaptureIndex(null); setPendingExisting(variantId); }} />}
       {pendingExisting && <Modal title="Producto reconocido" onClose={() => setPendingExisting(null)}><p>Este código ya corresponde a <strong>{knownProduct ? `${knownProduct.brand} ${knownProduct.model}` : 'un producto del inventario'}</strong>{knownVariant ? ` · ${knownVariant.name}` : ''}.</p><p>Tu borrador no se ha guardado. Puedes conservarlo o abrir la ficha existente.</p><div className="modal-footer"><button className="button secondary" type="button" onClick={() => setPendingExisting(null)}>Conservar borrador</button>{onOpenExisting && <button type="button" className="button primary" onClick={() => { const id = pendingExisting; setPendingExisting(null); onOpenExisting(id); }}>Abrir producto existente</button>}</div></Modal>}
     </Modal>
