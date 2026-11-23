@@ -180,17 +180,34 @@ export function ProductEditor({
       return;
     }
     const urls = images;
-    const prepared = variants.map((row) =>
-      !row.id && !row.barcode.trim()
-        ? {
-            ...row,
-            barcode: generateInternalBarcode(row.draftId, [
-              ...catalogVariants.flatMap(getVariantBarcodes),
-              ...variants.flatMap(getVariantBarcodes),
-            ]),
-          }
-        : row,
-    );
+    let prepared: VariantDraft[];
+    try {
+      prepared = variants.map((row) => {
+        const originalAliases = catalogVariants.find((item) => item.id === row.id)?.barcode_aliases ?? [];
+        // Manually entered manufacturer codes also become primary, not secondary.
+        // Do not reinterpret saved aliases or generated internal backup codes.
+        const freshManufacturerCodes = row.barcode_aliases.filter((code) =>
+          Boolean(code.trim()) &&
+          !isGeneratedInternalBarcode(code) &&
+          !originalAliases.some((known) => barcodeMatches({ barcode: known }, code))
+        );
+        const selected = freshManufacturerCodes.at(-1);
+        const preferred = selected ? { ...row, ...manufacturerBarcodeFirst(row, selected) } : row;
+        return !preferred.id && !preferred.barcode.trim()
+          ? {
+              ...preferred,
+              barcode: generateInternalBarcode(preferred.draftId, [
+                ...catalogVariants.flatMap(getVariantBarcodes),
+                ...variants.flatMap(getVariantBarcodes),
+              ]),
+            }
+          : preferred;
+      });
+    } catch (cause) {
+      setValidation(cause instanceof Error ? cause.message : 'Revisa los códigos del fabricante.');
+      revealSection('[data-identification]');
+      return;
+    }
     const skuError =
       validateSkus(prepared, catalogVariants) || validateBarcodes(prepared, catalogVariants);
     if (skuError) {
@@ -394,7 +411,7 @@ export function ProductEditor({
                   setValidation(cause instanceof Error ? cause.message : 'No se pudo generar el código interno.');
                 }
               }}><Barcode size={14} /> Generar código interno</button></div>
-              <div className="catalog-editor-aliases"><span>Códigos adicionales</span><small>El código de fabricante escaneado será el principal. Los anteriores permanecen aquí como respaldo. No incluyas series individuales.</small>
+              <div className="catalog-editor-aliases"><span>Códigos adicionales</span><small>El código del fabricante escaneado o introducido manualmente se convertirá en principal al guardar. Los códigos anteriores se conservarán. No incluyas series individuales.</small>
                 {variant.barcode_aliases.map((code, aliasIndex) => <div className="catalog-editor-alias" key={aliasIndex}><input aria-label={`Código adicional ${aliasIndex + 1} de la variante ${index + 1}`} required autoComplete="off" autoCapitalize="off" spellCheck={false} maxLength={80} value={code} onChange={(event) => setVariant(index, { barcode_aliases: variant.barcode_aliases.map((item, i) => i === aliasIndex ? event.target.value : item) })} /><button className="icon-button" type="button" aria-label={`Quitar código adicional ${aliasIndex + 1} de la variante ${index + 1}`} onClick={() => setVariant(index, { barcode_aliases: variant.barcode_aliases.filter((_, i) => i !== aliasIndex) })}><X size={16} /></button></div>)}
                 <div className="catalog-editor-alias-actions">
                   <button type="button" className="button secondary" aria-label={`Escanear código del fabricante con cámara para la variante ${index + 1}`} disabled={!aliasesEnabled || (variant.barcode_aliases.length >= MAX_BARCODE_ALIASES && variant.barcode_aliases.every((code) => code.trim()))} onClick={() => { setScanNotice(''); setScannerTarget({ index, camera: true }); }}><Camera size={16} /> Escanear con cámara</button>
