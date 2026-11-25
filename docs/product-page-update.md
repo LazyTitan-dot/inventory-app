@@ -88,26 +88,40 @@ This does **not** establish that the project was deleted. No staging credentials
 were sent or business fixtures created for this batch. The isolated database and
 browser checks above are separate evidence, not a claimed live staging pass.
 
-The user has authorized direct production updates in this conversation and
-approved this product-page scope. Read-only production preflight passed (27 variants; no invalid or conflicting
-primary codes), and all 15 retail tables were snapshotted before the proposed
-migration. The migration tool's in-app confirmation expired twice without
-execution. A fresh schema read confirms both alias column and registry remain
-absent and the previous save_product body is unchanged. This is a connector
-confirmation blocker, not a missing user approval in the conversation.
+The authorized production migration is **applied**; its connector confirmation
+is resolved. Fresh before/after counts and hashes match across all **15 public
+retail tables**, excluding the newly added empty alias column: **15 products,
+27 variants and 37 documents** are preserved. The private registry contains
+**14 rows**, matching the 14 non-null primary codes, with **0 aliases**. RLS is
+enabled and direct anonymous/authenticated access is denied. Bootstrap advertises
+`barcode_aliases_v1` and returns an alias array for all 27 variants.
 
-Source commit `1c0433d1f3b31acd0dd73a535538726243169d44` is pushed and
-[CI run 15](https://github.com/LazyTitan-dot/inventory-app/actions/runs/43324828088)
-passed. Its automatic Vercel Preview build failed because the branch's public
-Supabase environment values are no longer configured; the production-scoped
-public values remain present. No environment values were copied between targets.
-The new migration and UI have not been released to production. PR #1 remains
-unmerged.
+Source commit `4dccd20904d1cd668ad280bf59b9e07470749f05` is pushed and
+[CI run 16](https://github.com/LazyTitan-dot/inventory-app/actions/runs/43336769110)
+passed. Production deployment `dpl_EFGj9vLDgRJH1m3kpkki3aJrAPUa` is **READY**,
+targets that exact commit and uses the production environment. The canonical
+[production URL](https://inventory-app-nine-navy.vercel.app) resolves to it.
+PR #1 remains draft and unmerged.
 
-To resume, refresh the production state/preflight, obtain the connector's own
-migration confirmation for the exact reviewed SQL (SHA-256
-`6cba6abf768ade72f5c0140948d9dec31840bc234b08c645d980f25bb5feb595`), apply it
-with bounded timeouts, verify data preservation/capability/registry grants, and
-release the exact source commit to the existing production Vercel project.
-Production Auth credentials and persistent synthetic production records are not
-needed for that release verification.
+The served root, six referenced JS/CSS resources, catalog/scanner chunks, OCR
+entry, asset manifest, worker and core JavaScript returned HTTP 200. The deployed
+catalog contains the compact layout, label review and alias handling. The main
+bundle and CSP identify production Supabase only; the configured public key was
+matched to an enabled production publishable key. CSP permits same-origin
+workers and WASM compilation while retaining the JavaScript evaluation
+restriction. The deployed nine-file OCR manifest matches the locally tested
+worker, core, language and license files, including their SHA-256 hashes.
+
+Direct binary-body reads closed the verification connector's transport, so
+binary availability was not independently established by those reads. Actual
+OCR, barcode decoding and cancellation were tested locally under the production
+CSP. Production verification covers served application resources and a read-only
+authorized bootstrap, rather than a claimed production credential login or
+synthetic business write. No production test records or outgoing messages were
+created. Temporary verification sharing was revoked after the checks; no error
+or fatal function logs appeared in the deployment's 15-minute scan.
+
+The branch's automatic Preview build failed because its public Supabase
+environment values are no longer configured; production-scoped public values
+remain present. No environment values were copied between targets. Preview and
+staging limitations remain distinct from the production migration checks above.
