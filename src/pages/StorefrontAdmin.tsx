@@ -31,7 +31,21 @@ export default function StorefrontAdmin({ theme }: { theme: 'light' | 'dark' }) 
         promotions: data.promotions,
       });
     }
-    return { read: () => request(), command: request };
+    return {
+      read: () => request(), command: request,
+      async prepareMedia(productId, indices) {
+        if (!supabase) throw Error('Conexión comercial no disponible.');
+        let prepared = 0, failed = 0;
+        for (const index of indices) {
+          try {
+            const result = await supabase.functions.invoke('storefront-prepare-media-v1', { body: { productId, index } });
+            if (result.error || result.data?.ready !== true) failed++;
+            else prepared++;
+          } catch { failed++; }
+        }
+        return {state: await request(), prepared, failed};
+      },
+    };
   }, [data.products, data.promotions]);
   return (
     <>
