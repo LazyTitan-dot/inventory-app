@@ -26,6 +26,7 @@ const product = z.object({
   slug: text,
   variants: z.array(variant),
   media: z.array(media),
+  pendingMedia: z.array(z.number().int().min(0).max(7)).max(8).optional(),
   published: z.boolean(),
   featured: z.boolean(),
   showOut: z.boolean(),
