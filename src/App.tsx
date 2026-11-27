@@ -11,6 +11,7 @@ import {
 import {
   Activity,
   BadgePercent,
+  Store,
   Building2,
   ChevronRight,
   ClipboardList,
@@ -59,6 +60,7 @@ const Deliveries = lazy(() =>
 const Promotions = lazy(() =>
   import('./pages/Operations').then((m) => ({ default: m.PromotionsPage })),
 );
+const StorefrontAdmin = lazy(() => import('./pages/StorefrontAdmin'));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
 const Audit = lazy(() => import('./pages/Settings').then((m) => ({ default: m.AuditPage })));
 
@@ -108,6 +110,7 @@ export function Shell() {
   const location = useLocation();
   const p = data.permissions;
   const viewCommerce = p.sell || p.manage_business;
+  const canManageStorefront = data.profile.role === 'owner' || data.profile.role === 'admin';
   const nav = [
     { to: '/', label: 'Resumen', icon: LayoutDashboard, show: true },
     { to: '/inventario', label: 'Inventario', icon: Package, show: true },
@@ -119,6 +122,7 @@ export function Shell() {
     { to: '/posventa', label: 'Posventa', icon: Wrench, show: viewCommerce },
     { to: '/entregas', label: 'Entregas', icon: Truck, show: viewCommerce || p.purchase },
     { to: '/promociones', label: 'Promociones', icon: BadgePercent, show: viewCommerce },
+    { to: '/tienda-online', label: 'Tienda online', icon: Store, show: canManageStorefront },
     { to: '/reportes', label: 'Reportes', icon: FileBarChart2, show: p.manage_business },
     { to: '/auditoria', label: 'Auditoría', icon: Activity, show: p.view_audit },
     { to: '/configuracion', label: 'Configuración', icon: Settings2, show: p.manage_business },
@@ -281,6 +285,10 @@ export function Shell() {
           >
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route
+                path="/tienda-online"
+                element={canManageStorefront ? <StorefrontAdmin theme={theme} /> : <Navigate to="/inventario" replace />}
+              />
               <Route path="/inventario" element={<Catalog />} />
               <Route
                 path="/ventas"

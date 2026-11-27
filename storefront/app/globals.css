@@ -1,0 +1,15 @@
+* { box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #071c35;
+  background: #f0f5fa;
+}
+button { font: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 3px solid #21bee7; outline-offset: 2px; }
+#frames { flex: 1; min-height: 0; }
+#home, #shop { width: 100%; height: 100%; min-height: 0; }
+#home[hidden], #shop[hidden] { display: none !important; }

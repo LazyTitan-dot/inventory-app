@@ -36,6 +36,9 @@
     padding: 24px;
     border-radius: 24px;
   }
+  .app-layout[data-theme="light"] .page-content .sales-visual-v1 > .page-header.sl-glass-header {
+    background-image: var(--sl-header-material);
+  }
 }
 @media screen and (max-width: 800px) {
   .app-layout .page-content :is(.sl-dashboard-v1,.sales-visual-v1) > .page-header.sl-glass-header {
