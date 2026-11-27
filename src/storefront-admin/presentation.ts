@@ -32,6 +32,7 @@ export interface Product {
   slug: string;
   variants: Variant[];
   media: Media[];
+  pendingMedia?: number[];
   published: boolean;
   featured: boolean;
   showOut: boolean;
