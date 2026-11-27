@@ -35,6 +35,10 @@ for (const width of [320, 390, 430, 1440]) {
       await expect(quick.getByRole('heading', { name: 'Accesos rápidos', exact: true })).toBeVisible();
       await expect(quick.getByRole('heading')).toHaveCSS('font-size', '20px');
       await expect(quick.getByRole('link', { name: /Registrar compra/ })).toHaveAttribute('href', '/compras?nuevo=1');
+      for (const action of await quick.locator('.sl-quick-grid > :is(a, button)').all()) {
+        await expect(action.locator('[data-navigation-chevron="forward"]:visible')).toHaveCount(1);
+      }
+      await expect(page.locator('.sl-dashboard-v1 svg.lucide-arrow-right')).toHaveCount(0);
       const activity = page.locator('.sl-recent-activity');
       const row = activity.getByRole('link', { name: /Compra registrada/ });
       await expect(row).toContainText('Distribuidora Nacional');
@@ -54,7 +58,8 @@ for (const width of [320, 390, 430, 1440]) {
         await expect(audit.getByText('Ver actividad', { exact: true })).toBeHidden();
       } else {
         await expect(audit.getByText('Ver actividad', { exact: true })).toBeVisible();
-        await expect(row.locator('.sl-activity-chevron')).toBeHidden();
+        await expect(row.locator('.sl-activity-chevron')).toBeVisible();
+        await expect(audit.locator('.sl-activity-chevron')).toBeVisible();
       }
       const bounds = await row.evaluate(node => {
         const panel = node.closest('.sl-recent-activity')!.getBoundingClientRect();

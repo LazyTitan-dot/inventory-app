@@ -1,4 +1,4 @@
-import { ArrowRight, ChevronRight, CircleCheck, ClipboardList, PackageCheck, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
+import { ChevronRight, CircleCheck, ClipboardList, PackageCheck, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useId, useState } from 'react';
 import { useRetail } from '../state/useRetail';
@@ -16,6 +16,7 @@ import { reportForPeriod, stockOverview } from '../lib/reports';
 import { dashboardActivity, dashboardTasks, salesTrend, type DashboardTask } from '../lib/dashboard';
 import type { RetailData } from '../lib/contracts';
 import './dashboard.css';
+import { NavigationChevron } from '../components/NavigationChevron';
 import {
   EmptyState,
   PageHeader,
@@ -100,7 +101,7 @@ function SalesTrendChart({ data, today }: { data: RetailData; today: string }) {
           <summary><ChevronRight size={15} aria-hidden="true" /> Ver importes diarios</summary>
           <div className="table-wrap"><table className="data-table"><thead><tr><th>Fecha</th><th>Ventas netas RD$</th></tr></thead><tbody>{points.map((point) => <tr key={point.day}><td>{shortDate(`${point.day}T12:00:00-04:00`)}</td><td className="numeric">{money(point.amount)}</td></tr>)}</tbody></table></div>
         </details>
-        {data.permissions.manage_business && <Link className="text-link" to="/reportes">Ver reportes <ArrowRight size={14} /></Link>}
+        {data.permissions.manage_business && <Link className="text-link" to="/reportes">Ver reportes <NavigationChevron size={14} /></Link>}
       </div>
     </article>
   );
@@ -131,7 +132,7 @@ function StockHealth({ data }: { data: RetailData }) {
         <ul className="sl-stock-legend">{groups.map((group) => <li key={group.name}><Link to={`/inventario?estado=${group.filter}`}><span className="sl-legend-dot" style={{ background: group.color }} /><span>{group.name}</span><strong>{integer(group.count)}</strong></Link></li>)}</ul>
       </div>
       <div className="sl-stock-summary"><strong>{integer(low + out)} requieren atención</strong><span>{out} agotadas · {low} por reponer</span></div>
-      <div className="sl-insight-footer"><span>Existencias actuales del negocio</span><Link className="text-link" to="/inventario">Ver inventario <ArrowRight size={14} /></Link></div>
+      <div className="sl-insight-footer"><span>Existencias actuales del negocio</span><Link className="text-link" to="/inventario">Ver inventario <NavigationChevron size={14} /></Link></div>
     </article>
   );
 }
@@ -230,7 +231,7 @@ export function DashboardPage() {
         <StockHealth data={data} />
       </section>
       {financials && <section className="panel sl-inventory-financials" aria-label="Resumen financiero del inventario">
-        <div className="section-heading"><div><h2>Valor del inventario</h2><p>Existencias disponibles · estimaciones, no ventas realizadas.</p></div><Link className="text-link" to="/inventario">Ver inventario <ArrowRight size={16}/></Link></div>
+        <div className="section-heading"><div><h2>Valor del inventario</h2><p>Existencias disponibles · estimaciones, no ventas realizadas.</p></div><Link className="text-link" to="/inventario">Ver inventario <NavigationChevron size={16} /></Link></div>
         <div className="sl-financial-grid">
           <StatCard label="Valor del inventario" value={money(financials.value)} hint="Existencias disponibles a costo"/>
           <StatCard label="Ingreso potencial" value={money(financials.revenue)} hint="Precio final con ITBIS × unidades disponibles"/>
@@ -246,7 +247,7 @@ export function DashboardPage() {
               <h2>Prioridades operativas</h2>
             </div>
             <Link className="text-link" to="/inventario?estado=low">
-              Ver reposición <ArrowRight size={15} />
+              Ver reposición <NavigationChevron size={15} />
             </Link>
           </div>
           {tasks.length ? (
@@ -271,7 +272,7 @@ export function DashboardPage() {
           )}
           {purchasing && low.some((row) => row.suggested > 0) && (
             <Link className="panel-footer-link" to="/compras?nuevo=1">
-              Preparar reposición <ArrowRight size={16} />
+              Preparar reposición <NavigationChevron size={16} />
             </Link>
           )}
         </section>
@@ -294,7 +295,7 @@ export function DashboardPage() {
             </div>
             <p>Organiza las salidas y mantén al equipo informado en cada paso.</p>
             <Link className="button light" to="/entregas">
-              Gestionar entregas <ArrowRight size={16} />
+              Gestionar entregas <NavigationChevron size={16} />
             </Link>
             <div className="delivery-note">
               Una entrega confirmada conserva su historial y receptor.
@@ -314,7 +315,7 @@ export function DashboardPage() {
               disponibles.
             </p>
             <Link className="button light" to="/inventario">
-              Consultar inventario <ArrowRight size={16} />
+              Consultar inventario <NavigationChevron size={16} />
             </Link>
           </section>
         )}
@@ -322,10 +323,10 @@ export function DashboardPage() {
       <section className="panel sl-quick-actions" aria-label="Accesos rápidos">
         <div className="section-heading"><h2>Accesos rápidos</h2></div>
         <div className="sl-quick-grid">
-          {data.permissions.sell && <Link to="/ventas?nuevo=1"><ShoppingBag size={21} /><span><strong>Registrar una venta</strong><small>Cliente, productos y medio de pago</small></span><ArrowRight size={16} /></Link>}
-          {data.permissions.manage_catalog && <Link to="/inventario?nuevo=1"><Plus size={21} /><span><strong>Agregar producto</strong><small>Crear producto y variantes</small></span><ArrowRight size={16} /></Link>}
-          {purchasing && <Link to="/compras?nuevo=1"><ClipboardList size={21} /><span><strong>Registrar compra</strong><small>Ordenar y recibir productos</small></span><ArrowRight size={16} /></Link>}
-          <button type="button" onClick={() => window.dispatchEvent(new Event('smartliving:search'))}><Search size={21} /><span><strong>Encontrar algo</strong><small>Productos, contactos y operaciones</small></span><ArrowRight size={16} /></button>
+          {data.permissions.sell && <Link to="/ventas?nuevo=1"><ShoppingBag size={21} /><span><strong>Registrar una venta</strong><small>Cliente, productos y medio de pago</small></span><NavigationChevron size={16} /></Link>}
+          {data.permissions.manage_catalog && <Link to="/inventario?nuevo=1"><Plus size={21} /><span><strong>Agregar producto</strong><small>Crear producto y variantes</small></span><NavigationChevron size={16} /></Link>}
+          {purchasing && <Link to="/compras?nuevo=1"><ClipboardList size={21} /><span><strong>Registrar compra</strong><small>Ordenar y recibir productos</small></span><NavigationChevron size={16} /></Link>}
+          <button type="button" onClick={() => window.dispatchEvent(new Event('smartliving:search'))}><Search size={21} /><span><strong>Encontrar algo</strong><small>Productos, contactos y operaciones</small></span><NavigationChevron size={16} /></button>
         </div>
       </section>
       <section className="panel sl-recent-activity">
@@ -339,8 +340,7 @@ export function DashboardPage() {
               title="Ver actividad en Auditoría"
             >
               <span>Ver actividad</span>
-              <ArrowRight className="sl-activity-arrow" size={15} aria-hidden="true" />
-              <ChevronRight className="sl-activity-chevron" size={23} strokeWidth={2.7} aria-hidden="true" />
+              <NavigationChevron className="sl-activity-chevron" size={23} strokeWidth={2.7} />
             </Link>
           )}
         </div>
@@ -353,12 +353,10 @@ export function DashboardPage() {
                   <b>{money(item.amount)}</b>
                 ) : item.quantity !== null ? (
                   <b>{item.quantity > 0 ? '+' : ''}{integer(item.quantity)} un.</b>
-                ) : (
-                  <ArrowRight className="sl-activity-arrow" size={15} aria-hidden="true" />
-                )}
+                ) : null}
                 <small>{item.detail && `${item.detail} · `}<time dateTime={item.at}>{shortDate(item.at)}</time></small>
                 <small className="sl-activity-time"><time dateTime={item.at}>{activityTime.format(new Date(item.at))}</time></small>
-                <ChevronRight className="sl-activity-chevron" size={23} strokeWidth={2.7} aria-hidden="true" />
+                <NavigationChevron className="sl-activity-chevron" size={23} strokeWidth={2.7} />
               </Link>
             </li>
           ))}</ul>
@@ -372,7 +370,7 @@ export function DashboardPage() {
               <h2>{commerce ? 'Ventas recientes' : 'Compras recientes'}</h2>
             </div>
             <Link className="text-link" to={recentRoute}>
-              Ver historial <ArrowRight size={15} />
+              Ver historial <NavigationChevron size={15} />
             </Link>
           </div>
           {recent.length ? (

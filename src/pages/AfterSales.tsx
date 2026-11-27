@@ -1,9 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft,
   ChevronRight,
-  ArrowUpRight,
   CalendarDays,
   Check,
   Package,
@@ -23,6 +21,7 @@ import {
   shortDate,
 } from '../lib/format';
 import { estimatedRefund } from '../lib/pricing';
+import { NavigationChevron } from '../components/NavigationChevron';
 import { useRetail } from '../state/useRetail';
 import { useOperation } from '../state/useOperation';
 import {
@@ -552,7 +551,7 @@ function CreateReturn({
                     </small>
                   </span>
                   <b>{money(doc.total)}</b>
-                  <ArrowUpRight size={18} />
+                  <NavigationChevron size={18} />
                 </button>
               ))}
             </div>
@@ -572,7 +571,7 @@ function CreateReturn({
               clearError();
             }}
           >
-            <ArrowLeft size={16} />
+            <NavigationChevron direction="back" size={16} />
             Elegir otra venta
           </button>
           <div className="commerce-convert-summary">

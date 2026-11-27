@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { ArrowUpRight, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRetail } from '../state/useRetail';
 import { commandResults, type CommandResult } from '../lib/commandSearch';
 import { EmptyState, Modal } from './ui';
+import { NavigationChevron } from './NavigationChevron';
 import './command-palette.css';
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
@@ -57,7 +58,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           <li key={result.id} id={`${listId}-${index}`} role="option" aria-selected={index === selected}>
             <button type="button" onClick={() => open(result)} onFocus={() => setActiveIndex(index)}>
               <span><strong>{result.label}</strong><small>{result.detail}</small></span>
-              <ArrowUpRight size={17} aria-hidden="true" />
+              <NavigationChevron size={17} />
             </button>
           </li>
         ))}

@@ -279,16 +279,6 @@ export function CommercePage({ kind }: { kind: Kind }) {
   if (cashier)
     return (
       <div className="sales-visual-v1 sl-refined-theme">
-        <PageHeader
-          eyebrow="S-Mart Living / CAJA"
-          title="Ventas"
-          actions={
-            <button className="button secondary" onClick={() => setParams({ vista: 'historial' })}>
-              <ClipboardList size={17} />
-              Historial de ventas
-            </button>
-          }
-        />
         <CreateDocument
           key={`cashier-${params.get('variante') ?? ''}-${params.get('cantidad') ?? ''}-${params.get('contacto') ?? ''}`}
           inline
@@ -1487,6 +1477,12 @@ function CreateDocument({
           </button>
         </div>
   );
+  const newSaleAction = (
+    <button type="button" className="button secondary" disabled={busy}
+      onClick={() => cart.length || notes || tendered ? setClearRequested(true) : clearCart()}>
+      <Plus size={16} aria-hidden="true" /> Nueva venta
+    </button>
+  );
   const editor = (
     <form
       id={formId}
@@ -1499,17 +1495,7 @@ function CreateDocument({
             <Barcode size={16} />
             Lector USB/Bluetooth · Enter para agregar
           </span>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={busy}
-            onClick={() =>
-              cart.length || notes || tendered ? setClearRequested(true) : clearCart()
-            }
-          >
-            <Plus size={16} />
-            Nueva venta
-          </button>
+          {compact && newSaleAction}
         </div>
       )}
       {kind === 'quote' && compact && quoteReview && (
@@ -1751,9 +1737,17 @@ function CreateDocument({
     </form>
   );
   const content: ReactNode = inline ? (
-    <section className="commerce-cashier" aria-label="Caja de ventas">
-      {editor}
-    </section>
+    <>
+      <PageHeader eyebrow={compact ? 'CAJA' : 'S-Mart Living / CAJA'} title="Ventas"
+        actions={<>
+          <button type="button" className="button secondary" aria-label="Historial de ventas" onClick={onClose}>
+            <ClipboardList size={17} aria-hidden="true" /> {compact ? 'Historial' : 'Historial de ventas'}
+          </button>
+          {!compact && newSaleAction}
+        </>}
+      />
+      <section className="commerce-cashier" aria-label="Caja de ventas">{editor}</section>
+    </>
   ) : (
     <Modal
       title={editingDocument ? `Editar ${documentNumber(editingDocument)}` : labels[kind].create}

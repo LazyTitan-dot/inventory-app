@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownToLine, ArrowUpRight, Plus, ScanLine } from 'lucide-react';
+import { ArrowDownToLine, Plus, ScanLine } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useRetail } from '../state/useRetail';
 import { useOperation } from '../state/useOperation';
@@ -7,6 +7,7 @@ import type { Product, Variant } from '../lib/contracts';
 import { categoryName, downloadCsv, integer, matches, money } from '../lib/format';
 import { EmptyState, ErrorNotice, Modal, PageHeader, SearchInput, StatCard } from '../components/ui';
 import { ProductImage } from '../components/ProductImage';
+import { NavigationChevron } from '../components/NavigationChevron';
 import { calculateUnitPrice, inventoryFinancialSummary } from '../lib/pricing';
 import { BarcodeScanner } from '../components/BarcodeScanner';
 import { barcodeMatches, getVariantBarcodes } from '../lib/barcode';
@@ -443,7 +444,7 @@ export function CatalogPage() {
                           {variant.name} · {variant.sku}
                         </small>
                       </span>
-                      <ArrowUpRight size={18} />
+                      <NavigationChevron size={18} />
                     </span>
                     <span className="catalog-mobile-bottom">
                       <span>
