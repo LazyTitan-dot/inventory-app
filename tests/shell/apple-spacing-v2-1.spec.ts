@@ -106,7 +106,9 @@ for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light'
   expect(spacing.footer.top).toBeGreaterThanOrEqual(spacing.payment.bottom);
   expect(spacing.rootOverflow).toBe(false);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await modal.locator('summary').filter({hasText:'Descuentos, cupón y nota'}).click();
   const discount=modal.getByRole('group',{name:'Tipo de descuento'});
+  await expect(discount).toBeVisible();
   await discount.getByRole('button',{name:'Porcentaje %'}).click();
   await expect(discount.getByRole('button',{name:'Porcentaje %'})).toHaveAttribute('aria-pressed','true');
   await discount.getByRole('button',{name:'Importe RD$'}).click();

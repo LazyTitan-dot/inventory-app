@@ -7,6 +7,9 @@ test('cashier scans an exact variant and sends the percentage discount as a pret
   await search.fill('TEST0001');
   await search.press('Enter');
   await expect(page.getByRole('spinbutton', { name: 'Cantidad de Nevera de prueba Blanco' })).toHaveValue('1');
+  const adjustments = page.locator('summary').filter({ hasText: 'Descuentos, cupón y nota' });
+  await expect(adjustments).toBeVisible();
+  await adjustments.click();
   await page.getByRole('button', { name: 'Porcentaje %', exact: true }).click();
   await page.getByRole('spinbutton', { name: /^Descuento %/ }).fill('10');
   await page.getByText('Transferencia', { exact: true }).click();

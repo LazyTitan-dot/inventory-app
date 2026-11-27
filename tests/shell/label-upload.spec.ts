@@ -1,6 +1,6 @@
 import { test, expect } from './adaptation-fixtures';
 
-test('a real label photo is read and selectively applied without saving or replacing the internal barcode', async ({ page, featureData }) => {
+test('a real label photo is read and selectively applied without saving, with manufacturer primary and internal backup preserved', async ({ page, featureData }) => {
   test.setTimeout(90_000);
   featureData.features = [...(featureData.features ?? []), 'barcode_aliases_v1'];
   const unexpected: string[] = [];
@@ -21,7 +21,8 @@ test('a real label photo is read and selectively applied without saving or repla
   await editor.getByRole('spinbutton', { name: 'Costo (RD$)', exact: true }).fill('100');
   await editor.getByRole('spinbutton', { name: /^Precio final con ITBIS/ }).fill('150');
   await editor.locator('details[data-identification] summary').click();
-  const internalCode = await editor.getByRole('textbox', { name: /^Código de barras/ }).inputValue();
+  await editor.getByRole('button', { name: 'Generar código interno para la variante 1', exact: true }).click();
+  const internalCode = await editor.getByRole('textbox', { name: /^Código principal/ }).inputValue();
   expect(internalCode).toMatch(/^SL/);
   await editor.locator('details[data-identification] summary').click();
   await editor.getByRole('button', { name: 'Escanear etiqueta', exact: true }).click();
@@ -68,8 +69,8 @@ test('a real label photo is read and selectively applied without saving or repla
   await expect(editor.getByRole('spinbutton', { name: 'Costo (RD$)', exact: true })).toHaveValue('100');
   await expect(editor.getByRole('spinbutton', { name: /^Precio final con ITBIS/ })).toHaveValue('150');
   await editor.locator('details[data-identification] summary').click();
-  await expect(editor.getByRole('textbox', { name: /^Código de barras/ })).toHaveValue(internalCode);
-  await expect(editor.getByRole('textbox', { name: 'Código adicional 1 de la variante 1', exact: true })).toHaveValue('6946087393113');
+  await expect(editor.getByRole('textbox', { name: /^Código principal/ })).toHaveValue('6946087393113');
+  await expect(editor.getByRole('textbox', { name: 'Código adicional 1 de la variante 1', exact: true })).toHaveValue(internalCode);
   expect(commandCount).toBe(0);
   expect(unexpected).toEqual([]);
 });

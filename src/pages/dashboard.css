@@ -18,7 +18,7 @@
 .app-layout .sl-dashboard-v1 .panel.dark-panel{background:var(--sl-refined-hero);color:var(--sl-refined-ink)}
 .app-layout .sl-dashboard-v1 .dark-panel :is(h2,.delivery-highlight>strong){color:var(--sl-refined-ink)}
 .app-layout .sl-dashboard-v1 .dark-panel :is(.eyebrow,p,.delivery-note,.delivery-highlight>span){color:var(--sl-refined-muted)}
-.app-layout .sl-dashboard-v1 .dark-panel .button.light{background:var(--sl-refined-cta);color:#fff;border-radius:999px;min-height:44px}
+.app-layout .sl-dashboard-v1 .dark-panel .button.light{background-color:#075d82;background-image:var(--sl-refined-cta);color:#fff;border-radius:999px;min-height:44px}
 .app-layout .sl-dashboard-v1 .panel.dark-panel{background-color:var(--sl-refined-surface)}
 .sl-dashboard-v1 .sl-quick-actions > .section-heading {padding:20px 20px 16px}
 .sl-dashboard-v1 .sl-quick-actions > .section-heading h2 {margin:0;font-size:20px;line-height:1.3;font-weight:600}

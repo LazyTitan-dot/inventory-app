@@ -69,7 +69,9 @@ for(const theme of ['dark','light'] as const){
   await remove.click();
   await expect(cart.getByText('Agrega productos para comenzar.')).toBeVisible();
   await expect(cart.getByRole('spinbutton',{name:'Cantidad de Nevera de prueba Blanco'})).toHaveCount(0);
-  await expect(cart.getByText('RD$0.00').first()).toBeVisible();
+  const total = cart.locator('.commerce-grand-total');
+  await expect(total.getByText('Total a cobrar', {exact:true})).toBeVisible();
+  await expect(total.getByText('RD$0.00', {exact:true})).toBeVisible();
  });
 }
 test('iPhone dark uses approved navy logo and red cart remove without print changes',async({page})=>{

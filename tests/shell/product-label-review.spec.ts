@@ -14,6 +14,11 @@ test('label review applies selected essential fields without saving or changing 
   await editor.getByRole('textbox', { name: 'Marca', exact: true }).fill('Marca conservada');
   await editor.getByRole('spinbutton', { name: 'Costo (RD$)', exact: true }).fill('100');
   await editor.getByRole('spinbutton', { name: /^Precio final con ITBIS/ }).fill('150');
+  await editor.locator('details[data-identification] summary').click();
+  await editor.getByRole('button', { name: 'Generar código interno para la variante 1', exact: true }).click();
+  const internalCode = await editor.getByRole('textbox', { name: /^Código principal/ }).inputValue();
+  expect(internalCode).toMatch(/^SL[A-F0-9]{32}(?:-[2-9][0-9]*)?$/);
+  await editor.locator('details[data-identification] summary').click();
   await editor.getByRole('button', { name: 'Escanear etiqueta', exact: true }).click();
   const capture = page.getByRole('dialog', { name: 'Escanear etiqueta', exact: true });
   await expect(capture).toContainText('no se envía ni se guarda');
@@ -32,8 +37,8 @@ test('label review applies selected essential fields without saving or changing 
   await expect(editor.getByRole('spinbutton', { name: 'Costo (RD$)', exact: true })).toHaveValue('100');
   await expect(editor.getByRole('spinbutton', { name: /^Precio final con ITBIS/ })).toHaveValue('150');
   await editor.locator('details[data-identification] summary').click();
-  await expect(editor.getByRole('textbox', { name: /^Código de barras/ })).toHaveValue(/^SL/);
-  await expect(editor.getByRole('textbox', { name: 'Código adicional 1 de la variante 1', exact: true })).toHaveValue('6946087393113');
+  await expect(editor.getByRole('textbox', { name: /^Código principal/ })).toHaveValue('6946087393113');
+  await expect(editor.getByRole('textbox', { name: 'Código adicional 1 de la variante 1', exact: true })).toHaveValue(internalCode);
   expect(commands).toBe(0);
   expect(ocrRequests).toEqual([]);
 });

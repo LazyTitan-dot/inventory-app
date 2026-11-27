@@ -63,7 +63,10 @@ for(const [width,theme] of [[320,'light'],[375,'dark'],[390,'dark'],[430,'light'
   await page.screenshot({path:testInfo.outputPath('mobile-cart-trash-'+width+'-'+theme+'.png'),fullPage:true});
   await remove.click();
   await expect(modal.getByText('Agrega productos para comenzar.')).toBeVisible();
-  await expect(modal.getByText('RD$0.00').first()).toBeVisible();
+  const total = modal.locator('.commerce-grand-total');
+  await expect(total.getByText('Total a cobrar', {exact:true})).toBeVisible();
+  await expect(total.getByText('RD$0.00', {exact:true})).toBeVisible();
+  await expect(modal.getByRole('spinbutton', {name:'Cantidad de Nevera de prueba Blanco'})).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  });
 }

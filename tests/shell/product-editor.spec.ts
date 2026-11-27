@@ -25,7 +25,7 @@ test('compact editor keeps identity and final price visible and opens a hidden i
   await expect(sku).toBeFocused();
 });
 
-test('manufacturer code is saved alongside the internal code and failed save preserves the draft', async ({ page, featureData }) => {
+test('manufacturer code becomes primary, retains the internal alias and failed save preserves the draft', async ({ page, featureData }) => {
   featureData.features = [...(featureData.features ?? []), 'barcode_aliases_v1'];
   await page.goto('/inventario');
   await page.getByRole('button', { name: 'Agregar producto', exact: true }).click();
@@ -34,8 +34,10 @@ test('manufacturer code is saved alongside the internal code and failed save pre
   await editor.getByRole('textbox', { name: 'Modelo', exact: true }).fill('AC122CE');
   await editor.getByRole('spinbutton', { name: 'Costo (RD$)', exact: true }).fill('100');
   await editor.locator('details[data-identification] summary').click();
-  const internal = await editor.getByRole('textbox', { name: /^Código de barras/ }).inputValue();
-  await editor.getByRole('button', { name: 'Añadir código del fabricante', exact: true }).click();
+  await editor.getByRole('button', { name: 'Generar código interno para la variante 1', exact: true }).click();
+  const internal = await editor.getByRole('textbox', { name: /^Código principal/ }).inputValue();
+  expect(internal).toMatch(/^SL[A-F0-9]{32}(?:-[2-9][0-9]*)?$/);
+  await editor.getByRole('button', { name: 'Añadir manualmente', exact: true }).click();
   await editor.getByRole('textbox', { name: 'Código adicional 1 de la variante 1', exact: true }).fill('6946087393113');
   let payload: Record<string, unknown> | undefined;
   await page.route('https://phase5-fixture.supabase.co/rest/v1/rpc/retail_command', async (route) => {
@@ -44,9 +46,14 @@ test('manufacturer code is saved alongside the internal code and failed save pre
   });
   await editor.getByRole('button', { name: 'Guardar producto', exact: true }).click();
   await expect(editor.getByRole('alert')).toContainText('conservación del borrador');
-  expect((payload?.p_payload as { variants: { barcode: string; barcode_aliases: string[]; cost: number; price: number }[] }).variants[0]).toMatchObject({ barcode: internal, barcode_aliases: ['6946087393113'], cost: 100, price: 105.93 });
-  await expect(editor.getByRole('textbox', { name: /^Código de barras/ })).toHaveValue(internal);
+  expect((payload?.p_payload as { variants: { barcode: string; barcode_aliases: string[]; cost: number; price: number }[] }).variants[0]).toMatchObject({ barcode: '6946087393113', barcode_aliases: [internal], cost: 100, price: 105.93 });
+  await expect(editor.getByRole('textbox', { name: /^Código principal/ })).toHaveValue(internal);
   await expect(editor.getByRole('textbox', { name: 'Código adicional 1 de la variante 1', exact: true })).toHaveValue('6946087393113');
+  const readPayload = () => payload;
+  payload = undefined;
+  await editor.getByRole('button', { name: 'Guardar producto', exact: true }).click();
+  await expect.poll(() => readPayload()?.p_action).toBe('save_product');
+  expect((readPayload()?.p_payload as { variants: { barcode: string; barcode_aliases: string[] }[] }).variants[0]).toMatchObject({ barcode: '6946087393113', barcode_aliases: [internal] });
 });
 
 test('known scanned product offers an explicit choice without discarding the new draft', async ({ page }) => {
@@ -69,4 +76,27 @@ test('known scanned product offers an explicit choice without discarding the new
   await recognized.getByRole('button', { name: 'Abrir producto existente', exact: true }).click();
   await expect(editor).not.toBeVisible();
   await expect(page).toHaveURL(/variante=10000000-0000-4000-8000-000000000003/);
+});
+
+
+test('new product without a manufacturer code generates a stable internal code on save', async ({ page }) => {
+  const commands: Record<string, unknown>[] = [];
+  await page.route('https://phase5-fixture.supabase.co/rest/v1/rpc/retail_command', async route => {
+    commands.push(route.request().postDataJSON());
+    await route.fulfill({ status: 400, headers: { 'access-control-allow-origin': '*' }, json: { code: 'P0001', message: 'Prueba de generación interna.' } });
+  });
+  await page.goto('/inventario');
+  await page.getByRole('button', { name: 'Agregar producto', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: 'Agregar producto', exact: true });
+  await editor.getByRole('textbox', { name: 'Marca', exact: true }).fill('Prueba interna');
+  await editor.getByRole('textbox', { name: 'Modelo', exact: true }).fill('Sin código de fabricante');
+  await editor.getByRole('button', { name: 'Guardar producto', exact: true }).click();
+  await expect(editor.getByRole('alert')).toContainText('generación interna');
+  expect(commands).toHaveLength(1);
+  const first = (commands[0]!.p_payload as { variants: { barcode: string; barcode_aliases: string[] }[] }).variants[0]!;
+  expect(first.barcode).toMatch(/^SL[A-F0-9]{32}(?:-[2-9][0-9]*)?$/);
+  expect(first.barcode_aliases).toEqual([]);
+  await editor.getByRole('button', { name: 'Guardar producto', exact: true }).click();
+  await expect.poll(() => commands.length).toBe(2);
+  expect((commands[1]!.p_payload as { variants: { barcode: string; barcode_aliases: string[] }[] }).variants[0]).toMatchObject({ barcode: first.barcode, barcode_aliases: [] });
 });

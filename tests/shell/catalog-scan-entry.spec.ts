@@ -16,7 +16,7 @@ test('a manufacturer code opens its existing product while preserving the intern
   await expect(details).toContainText('6946087393113');
 });
 
-test('an unknown code starts an unsaved product draft without replacing its internal code', async ({ page }) => {
+test('an unknown code starts an unsaved product draft and makes the manufacturer code primary', async ({ page }) => {
   let command: Record<string, unknown> | undefined;
   await page.route('https://phase5-fixture.supabase.co/rest/v1/rpc/retail_command', async (route) => {
     command = route.request().postDataJSON();
@@ -38,8 +38,10 @@ test('an unknown code starts an unsaved product draft without replacing its inte
   await expect(editor.getByRole('alert')).toContainText('sin guardar');
   expect(command?.p_action).toBe('save_product');
   const variant = (command?.p_payload as { variants: { barcode: string; barcode_aliases: string[] }[] }).variants[0]!;
-  expect(variant.barcode).toMatch(/^SL/);
-  expect(variant.barcode_aliases).toContain('6946087393113');
+  expect(variant.barcode).toBe('6946087393113');
+  expect(variant.barcode_aliases).toEqual([]);
+  await editor.locator('details[data-identification] summary').click();
+  await expect(editor.getByRole('textbox', { name: /^Código principal/ })).toHaveValue('6946087393113');
 });
 
 test.describe('read-only staff', () => {

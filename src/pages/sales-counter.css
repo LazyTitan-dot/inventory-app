@@ -24,7 +24,7 @@
   .app-layout .sales-visual-v1 .sales-search-actions { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; }
   .app-layout .sales-visual-v1 .sales-search-actions .commerce-scan-button { width:100%; max-width:none; min-height:48px; }
   .app-layout .sales-checkout-v1 .sales-payment-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,126px),1fr)); }
-  .app-layout dialog.sales-checkout-v1 .sales-payment-option .sales-payment-tile { display:grid; justify-items:center; gap:4px; padding:8px 4px; }
+  .app-layout dialog.sales-checkout-v1 .sales-payment-option .sales-payment-tile { display:grid; justify-items:center; gap:4px; padding:8px 14px; min-height:76px; }
   .app-layout dialog.sales-checkout-v1 .sales-payment-option .sales-payment-tile > span { overflow-wrap:normal; word-break:normal; }
   .app-layout .sales-visual-v1 .commerce-catalog-search input { width:0; min-width:0; flex:1; }
 }
