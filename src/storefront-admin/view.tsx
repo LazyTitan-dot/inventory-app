@@ -19,6 +19,7 @@ export interface ViewState {
   draft: Product | Banner | Promotion | null;
   kind: string;
   error: string;
+  busy?: boolean;
 }
 const icons = {
   menu: 'M4 6h16M4 12h16M4 18h16',
@@ -512,7 +513,7 @@ export function AdminView({
                     {badge(s, c)} {p.featured && visible(p) ? badge('Destacado', 'good') : ''}
                   </td>
                   <td className="hide-mid num">
-                    {approved(p).length}/{p.media.length}
+                    {approved(p).length}/{p.media.length}{!!p.pendingMedia?.length && <div className="small muted">{p.pendingMedia.length} por preparar</div>}
                   </td>
                   <td className="chevcell">
                     {iconbtn('Gestionar ' + p.brand + ' ' + p.model, 'edit', 'right', { id: p.id })}
@@ -668,6 +669,14 @@ export function AdminView({
                 'La primera fotografía aprobada será la portada web.',
               )}
               <div className="formbody">
+                {!!draft.pendingMedia?.length && (
+                  <div style={{display:'grid',gap:10,marginBottom:14}}>
+                    {note(draft.pendingMedia.length+' fotografía(s) del inventario requieren una copia privada antes de la autorización web.')}
+                    <button type="button" className="primary" data-action="prepare-media" disabled={ctx.busy} onClick={()=>action('prepare-media','','')}>
+                      {I('image')}{ctx.busy?'Preparando fotografías…':'Preparar fotos existentes'}
+                    </button>
+                  </div>
+                )}
                 {draft.media.length ? (
                   draft.media.map((m, i) => (
                     <Fragment key={m.id}>
@@ -698,7 +707,7 @@ export function AdminView({
                     </Fragment>
                   ))
                 ) : (
-                  <p className="muted">No hay fotografías para autorizar.</p>
+                  <p className="muted">{draft.pendingMedia?.length ? 'Prepara las fotografías existentes para autorizarlas aquí.' : 'No hay fotografías para autorizar.'}</p>
                 )}
                 {note(
                   'La aprobación web no elimina ni altera la galería privada de Inventory Manager.',
