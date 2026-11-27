@@ -12,6 +12,7 @@ import { AdminView, tabs, type ViewState } from './view';
 export interface AdminRepository {
   read(): AdminState | Promise<AdminState>;
   command(command: Command): AdminState | Promise<AdminState>;
+  prepareMedia?(id: string, indices: number[]): Promise<{state: AdminState; prepared: number; failed: number}>;
 }
 const initialView = {
   tab: 'products',
@@ -104,7 +105,7 @@ export function AdminPage({
     }
   };
   const action = (a: string, k: string, id: string) => {
-    if (!snapshot) return;
+    if (!snapshot || busy) return;
     const state = snapshot.data,
       d = ui.draft;
     if (a === 'refresh') {
@@ -150,6 +151,28 @@ export function AdminPage({
     }
     if (a === 'back') {
       ask('Descartar cambios', 'Regresar sin guardar los cambios de esta pantalla.', close);
+      return;
+    }
+    if (a === 'prepare-media' && d && ui.kind === 'product' && repo.prepareMedia) {
+      const product = d as Product;
+      const indices = product.pendingMedia ?? [];
+      if (busy || !indices.length) return;
+      ask('Preparar fotografías existentes', 'Se guardará una copia privada de las imágenes del inventario. No se autorizará ni publicará ninguna fotografía automáticamente. El formulario se recargará antes de editar la publicación.', () => {
+        setBusy(true);
+        void (async () => {
+          try {
+            const result = await repo.prepareMedia!(product.id, indices);
+            const fresh = result.state.data.products.find(p => p.id === product.id);
+            setSnapshot(result.state);
+            draftRevision.current = result.state.revision;
+            if (fresh) patch({draft:clone(fresh),error:result.failed ? result.failed+' fotografía(s) no pudieron copiarse. Intenta de nuevo o sube una copia desde Inventario.' : ''});
+            else close();
+            notify(result.prepared+' fotografía(s) preparadas. Autorízalas manualmente.');
+          } catch (e) {
+            patch({error:e instanceof Error ? e.message : 'No se pudieron preparar las fotografías.'});
+          } finally { setBusy(false); }
+        })();
+      });
       return;
     }
     if (a === 'save' && d) {
@@ -274,7 +297,7 @@ export function AdminPage({
   const h = { action, field, keydown };
   const content = snapshot ? (
     <AdminView
-      ctx={{ ...ui, state: snapshot.data }}
+      ctx={{ ...ui, state: snapshot.data, busy }}
       handlers={h}
       taxBasisPoints={snapshot.taxBasisPoints!}
       day={snapshot.asOf!}
