@@ -1,3 +1,4 @@
+import { categoryCards } from '../data/editorial';
 import * as React from 'react';
 import type { ShellNode } from './ApprovedShell';
 import { selectProducts, brandsFor, type NativeAction } from '../integration/shop-actions';
@@ -49,11 +50,7 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
   const cartCount = lines.reduce((a, l) => a + l.n, 0),
     subtotal = commercialSubtotal(lines);
   const favorites = [...sessionState.favorites];
-  const cards = [...new Set(products.map((p) => p.cat))].map((name) => ({
-    name,
-    label: name,
-    image: products.find((p) => p.cat === name)?.img || '',
-  }));
+  const cards = categoryCards(products);
   const active: [string, string][] = [];
   if (state.cat !== 'Todos') active.push([state.cat, 'cat']);
   state.brands.forEach((b) => active.push([b, 'brand:' + b]));
@@ -97,6 +94,7 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
           {c}
         </button>
       ));
+    if (p.className === 'desktop-nav') children.push(...cards.map(c=><button type="button" key={c.name} onClick={()=>shell.category(c.name)}>{c.label}<span aria-hidden="true">›</span></button>));
     if (id === 'categoryToggle' || 'data-disclose' in p) {
       const key = id || String(p['data-disclose']);
       props['aria-expanded'] = actions.submenu === key;

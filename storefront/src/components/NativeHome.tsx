@@ -2,6 +2,8 @@ import * as React from 'react';
 import { HomeCards, Icon, type HomeProduct } from './NativeCatalog';
 import { NativeEvents } from './NativeEvents';
 import { BrandCarousel } from './BrandCarousel';
+import { categoryCards, featuredBrands } from '../data/editorial';
+import { UtilityBar, EditorialHero, EditorialPromos, EditorialDelivery, EditorialFooter } from './HomeEditorial';
 import { ManagedHero, ManagedStrip } from './ManagedCampaign';
 import { CampaignContext, type Campaign } from '../data/commercial/campaigns';
 import type { Product } from '../data/contracts';
@@ -23,8 +25,9 @@ export function NativeHome({ tree, products, catalog, root, mode, session, onRou
   const [term, setTerm] = React.useState('');
   const [expanded, setExpanded] = React.useState(false);
   const campaigns = React.useContext(CampaignContext);
-  const categories = [...new Set(catalog.map((p) => p.cat))];
-  const brands = [...new Set(catalog.map((p) => p.brand).filter(Boolean))];
+  const cards = categoryCards(catalog);
+  const categories = cards.map(c => c.name);
+  const brands = featuredBrands(catalog);
   const route = (r: Route, value?: string) => {
     setExpanded(false);
     onRoute(r, value);
@@ -77,6 +80,9 @@ export function NativeHome({ tree, products, catalog, root, mode, session, onRou
         </button>
       ));
     }
+    if (cls === 'editorial-utility') return <UtilityBar key={i} />;
+    if (cls === 'editorial-promo-slot') return <EditorialPromos key={i} route={route} />;
+    if (cls === 'mobile-category') return <div className="mobile-category" key={i}>{cards.map(c=><button type="button" key={c.name} onClick={()=>route('category',c.name)}><span className="cat-icon"><img src={c.image} alt="" /></span>{c.label}</button>)}</div>;
     if (cls === 'desktop-nav')
       children.push(
         ...categories.map((c) => (
@@ -89,20 +95,7 @@ export function NativeHome({ tree, products, catalog, root, mode, session, onRou
     if ('data-count' in p) children = [String(session.count)];
     if (id === 'desktopHero' || id === 'mobileHero') {
       const main = campaigns?.banners.find((b) => b.slot === 'Principal' && live(b));
-      const editorial = {
-        id: 'home',
-        title: 'Tecnología y hogar, a tu alcance.',
-        subtitle: 'Explora el catálogo de S-mart Living.',
-        target: null,
-      };
-      children = [
-        <ManagedHero
-          key="hero"
-          campaign={main ?? editorial}
-          mobile={id === 'mobileHero'}
-          open={() => (main ? open(main) : route('category', 'Todos'))}
-        />,
-      ];
+      children = [main ? <ManagedHero key="hero" campaign={main} mobile={id === 'mobileHero'} open={()=>open(main)} /> : <EditorialHero key="hero" mobile={id === 'mobileHero'} route={route} />];
     }
     if (id === 'desktopGrid' || id === 'mobileGrid')
       children = [
@@ -130,6 +123,7 @@ export function NativeHome({ tree, products, catalog, root, mode, session, onRou
       children = strips.map((item) => (
         <ManagedStrip key={item.id} campaign={item} open={() => open(item)} />
       ));
+      children.push(<EditorialDelivery key="delivery" route={route} />);
       if (brands.length)
         children.push(
           <BrandCarousel
@@ -139,7 +133,7 @@ export function NativeHome({ tree, products, catalog, root, mode, session, onRou
           />,
         );
     }
-    if (cls === 'store-footer') children = [<p key="brand">S-mart Living</p>];
+    if (cls === 'store-footer') children = [<EditorialFooter key="footer" route={route} mobile={mode === 'iphone'} />];
     return React.createElement(n.tag, props, ...children);
   }
   return <>{tree.map(render)}</>;
