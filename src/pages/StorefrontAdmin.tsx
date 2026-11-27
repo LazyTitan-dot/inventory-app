@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { WebOrdersPanel } from './WebOrdersPanel';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { useRetail } from '../state/useRetail';
@@ -10,6 +11,7 @@ import approvedStyles from '../storefront-admin/embedded.css?inline';
 
 export default function StorefrontAdmin({ theme }: { theme: 'light' | 'dark' }) {
   const { data } = useRetail();
+  const [orders, setOrders] = useState(false);
   const [surface, setSurface] = useState<ShadowRoot | null>(null);
   const mount = useMemo(
     () => (element: HTMLDivElement | null) => {
@@ -32,7 +34,15 @@ export default function StorefrontAdmin({ theme }: { theme: 'light' | 'dark' }) 
     return { read: () => request(), command: request };
   }, [data.products, data.promotions]);
   return (
-    <div ref={mount}>
+    <>
+      {(data.profile.role === 'owner' || data.profile.role === 'admin') && (
+        <div aria-label="Gestión comercial" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          <button type="button" className={'button ' + (!orders ? 'primary' : 'secondary')} aria-pressed={!orders} onClick={() => setOrders(false)}>Tienda online</button>
+          <button type="button" className={'button ' + (orders ? 'primary' : 'secondary')} aria-pressed={orders} onClick={() => setOrders(true)}>Pedidos web</button>
+        </div>
+      )}
+      {orders && (data.profile.role === 'owner' || data.profile.role === 'admin') && <WebOrdersPanel />}
+      <div ref={mount} hidden={orders}>
       {surface &&
         createPortal(
           <>
@@ -49,6 +59,7 @@ export default function StorefrontAdmin({ theme }: { theme: 'light' | 'dark' }) 
           </>,
           surface,
         )}
-    </div>
+      </div>
+    </>
   );
 }

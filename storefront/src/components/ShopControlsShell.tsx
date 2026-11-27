@@ -19,6 +19,7 @@ import { useShopActions, type ShopActionOptions } from '../integration/use-shop-
 import { useShopBrowserEffects } from './useShopBrowserEffects';
 export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode[] }) {
   const { tree, store, products, session, root } = options;
+  const [orderReceipt, setOrderReceipt] = React.useState<string | undefined>();
   const actions = useShopActions(options);
   const { dispatch, shell } = actions;
   const { state, flow } = React.useSyncExternalStore(store.subscribe, store.getSnapshot);
@@ -271,7 +272,7 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
     if (id === 'desktopCommerce' || id === 'mobileCommerce') {
       props.hidden = !flow.commerceActive;
       children = flow.commerceActive
-        ? [<Commerce key="commerce" lines={lines} subtotal={subtotal} />]
+        ? [<Commerce key="commerce" lines={lines} subtotal={subtotal} receipt={orderReceipt} onReceipt={(id) => { setOrderReceipt(id); session.dispatch({ type: "cart-clear" }); }} onDismissReceipt={() => setOrderReceipt(undefined)} />]
         : [];
     }
     if (id === 'desktopCatalogPage' || id === 'mobileCatalogPage')

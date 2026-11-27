@@ -1,0 +1,12 @@
+/* Scoped to the new checkout form; no changes to accepted catalog geometry. */
+.web-order-form{display:grid;gap:12px;margin-top:16px;min-width:0;color:inherit}
+.web-order-form fieldset{border:0;padding:0;margin:0;display:grid;gap:12px;min-width:0}
+.web-order-form label{display:grid;gap:6px;font-size:14px;text-align:left;min-width:0}
+.web-order-form input:not([type=checkbox]),.web-order-form textarea{font:inherit;box-sizing:border-box;width:100%;min-width:0;border:1px solid #abbfd0;background:#fff;color:#13283e;border-radius:10px;padding:11px;min-height:44px}
+.web-order-form textarea{resize:vertical}
+.web-order-form input:focus-visible,.web-order-form textarea:focus-visible,.web-order-submit:focus-visible{outline:3px solid #21bee7;outline-offset:2px}
+.web-order-form .web-order-consent{display:flex;gap:8px;align-items:flex-start}
+.web-order-consent input{flex:none;margin-top:3px;width:18px;height:18px}
+.web-order-submit{width:100%;min-height:44px;background:#0a64bb;color:#fff;border:0;border-radius:12px;padding:12px;font:inherit;font-weight:600;cursor:pointer}
+.web-order-submit:disabled{opacity:.6;cursor:wait}
+.web-order-error{color:#b52d42;overflow-wrap:anywhere}

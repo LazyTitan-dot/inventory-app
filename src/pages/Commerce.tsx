@@ -736,7 +736,7 @@ function CreateDocument({
     businessDate(new Date(editingDocument?.expires_at ?? Date.now() + 15 * 86400000)),
   );
   const [validation, setValidation] = useState(prefill.message);
-  const stock = new Map(data.stocks.map((item) => [item.variant_id, item.available]));
+  const stock = new Map(data.stocks.map((item) => [item.variant_id, kind === 'purchase' ? item.available : Math.max(0, item.available - (item.reserved_web ?? 0))]));
   const products = new Map(data.products.map((product) => [product.id, product]));
   const variants = data.variants.filter(
     (variant) => variant.active && products.get(variant.product_id)?.active,
@@ -2424,7 +2424,7 @@ function ConvertQuote({
   const shortages = items.filter(
     (item) =>
       item.quantity >
-      (data.stocks.find((stock) => stock.variant_id === item.variant_id)?.available || 0),
+      Math.max(0, (data.stocks.find((stock) => stock.variant_id === item.variant_id)?.available ?? 0) - (data.stocks.find((stock) => stock.variant_id === item.variant_id)?.reserved_web ?? 0)),
   );
   const unavailable = items.filter((item) => {
     const variant = data.variants.find((value) => value.id === item.variant_id);

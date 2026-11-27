@@ -39,6 +39,7 @@ export const variantSchema = z.object({
 export const stockSchema = z.object({
   variant_id: id,
   available: z.number(),
+  reserved_web: z.number().int().nonnegative().optional(),
   quarantine: z.number(),
   updated_at: timestamp,
 });
