@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import type { Product } from '../data/contracts';
-import './web-order.css';
+const styles="/* Scoped to the new checkout form; no changes to accepted catalog geometry. */\n.web-order-form{display:grid;gap:12px;margin-top:16px;min-width:0;color:inherit}\n.web-order-form fieldset{border:0;padding:0;margin:0;display:grid;gap:12px;min-width:0}\n.web-order-form label{display:grid;gap:6px;font-size:14px;text-align:left;min-width:0}\n.web-order-form input:not([type=checkbox]),.web-order-form textarea{font:inherit;box-sizing:border-box;width:100%;min-width:0;border:1px solid #abbfd0;background:#fff;color:#13283e;border-radius:10px;padding:11px;min-height:44px}\n.web-order-form textarea{resize:vertical}\n.web-order-form input:focus-visible,.web-order-form textarea:focus-visible,.web-order-submit:focus-visible{outline:3px solid #21bee7;outline-offset:2px}\n.web-order-form .web-order-consent{display:flex;gap:8px;align-items:flex-start}\n.web-order-consent input{flex:none;margin-top:3px;width:18px;height:18px}\n.web-order-submit{width:100%;min-height:44px;background:#0a64bb;color:#fff;border:0;border-radius:12px;padding:12px;font:inherit;font-weight:600;cursor:pointer}\n.web-order-submit:disabled{opacity:.6;cursor:wait}\n.web-order-error{color:#b52d42;overflow-wrap:anywhere}\n";
 
 type Line = {p: Product; n: number};
 export function WebOrderForm({lines,onReceipt}:{lines:Line[];onReceipt:(id:string)=>void}) {
@@ -30,8 +30,8 @@ export function WebOrderForm({lines,onReceipt}:{lines:Line[];onReceipt:(id:strin
     finally{running.current=false;setBusy(false);}
   }
   if(!valid)return <p role="status">Revisa los artículos y cantidades antes de solicitar un pedido.</p>;
-  if(!open)return <button type="button" className="commerce-primary web-order-submit" onClick={()=>setOpen(true)}>Solicitar pedido</button>;
-  return <form className="web-order-form" onSubmit={(e)=>void submit(e)}>
+  if(!open)return <><style>{styles}</style><button type="button" className="commerce-primary web-order-submit" onClick={()=>setOpen(true)}>Solicitar pedido</button></>;
+  return <><style>{styles}</style><form className="web-order-form" onSubmit={(e)=>void submit(e)}>
     <h3>Contacto y entrega</h3>
     <fieldset disabled={busy}>
       <label>Nombre completo<input name="name" autoComplete="name" required minLength={2} maxLength={160}/></label>
@@ -44,5 +44,5 @@ export function WebOrderForm({lines,onReceipt}:{lines:Line[];onReceipt:(id:strin
       <button type="button" className="commerce-secondary" onClick={()=>setOpen(false)}>Volver</button>
     </fieldset>
     {error&&<p role="alert" className="web-order-error">{error}</p>}
-  </form>;
+  </form></>;
 }
