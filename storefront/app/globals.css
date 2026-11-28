@@ -13,3 +13,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid #21bee7; outline-offs
 #frames { flex: 1; min-height: 0; }
 #home, #shop { width: 100%; height: 100%; min-height: 0; }
 #home[hidden], #shop[hidden] { display: none !important; }
+
+/* Mobile document scroll allows Safari/Chrome iOS to collapse native browser chrome. */
+@media (max-width: 830px) {
+  html, body { height: auto; min-height: 100%; overflow: visible; }
+  body { display: block; min-height: 100vh; min-height: 100dvh; }
+  #frames, #home, #shop { height: auto; min-height: 0; }
+  html { scroll-padding-top: 104px; scroll-padding-bottom: 96px; }
+  html[data-mobile-store-modal] { overflow: hidden; }
+}

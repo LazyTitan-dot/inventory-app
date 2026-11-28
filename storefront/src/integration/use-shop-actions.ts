@@ -34,9 +34,14 @@ export function useShopActions(o: ShopActionOptions) {
   const patch = (p: Partial<ReturnType<typeof flow>>) => send({ type: 'flow-patch', patch: p });
   const commit = (fn: () => void) => flushSync(fn);
   const focus = (sel: string) => q(sel)?.focus({ preventScroll: true });
+  const nativeMobile = () => state().mode === 'iphone' && window.matchMedia('(max-width: 830px)').matches;
+  const readPhoneScroll = () => nativeMobile() ? window.scrollY : q('#phoneContent')?.scrollTop ?? 0;
+  const scrollPhone = (top: number, behavior: ScrollBehavior = 'auto') => {
+    if (nativeMobile()) window.scrollTo({ top, behavior });
+    else q('#phoneContent')?.scrollTo({ top, behavior });
+  };
   const scrollTop = () => {
-    const phone = q('#phoneContent');
-    if (phone) phone.scrollTop = 0;
+    scrollPhone(0);
     viewport.scrollTo(0, 0);
   };
   const toast = (message: string) => {
@@ -56,8 +61,7 @@ export function useShopActions(o: ShopActionOptions) {
     if (!before.currentProduct) return;
     commit(() => send({ type: 'detail-close' }));
     if (restore) {
-      const phone = q('#phoneContent');
-      if (phone) phone.scrollTop = before.savedPhoneScroll;
+      scrollPhone(before.savedPhoneScroll);
       const target = q(`[data-product="${before.currentProduct.id}"]`);
       const scope = q(
         before.detailOrigin === 'mobile' ? '#mobileCatalogPage' : '#desktopCatalogPage',
@@ -76,7 +80,7 @@ export function useShopActions(o: ShopActionOptions) {
     if (!product) return;
     if (flow().commerceActive) exitCommerce();
     commit(() =>
-      send({ type: 'detail-open', product, origin, scroll: q('#phoneContent')?.scrollTop ?? 0 }),
+      send({ type: 'detail-open', product, origin, scroll: readPhoneScroll() }),
     );
     scrollTop();
   };
@@ -334,7 +338,7 @@ export function useShopActions(o: ShopActionOptions) {
       back(false);
       if (t === 'ofertas') send({ type: 'filter-patch', patch: { offers: true } });
       filters();
-      q('#phoneContent')?.scrollTo({ top: t === 'ofertas' ? 190 : 0, behavior: 'smooth' });
+      scrollPhone(t === 'ofertas' ? 190 : 0, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
     },
     toggleMenu: (id: string) => setSubmenu((x) => (x === id ? null : id)),
     escape: () => {

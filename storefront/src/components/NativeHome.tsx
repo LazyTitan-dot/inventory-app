@@ -116,9 +116,9 @@ export function NativeHome({ tree, products, catalog, root, mode, session, onRou
     if (p['data-scroll'] === 'top' || p['data-mobiletab'] === 'inicio')
       props.onClick = (e: React.MouseEvent) => {
         e.preventDefault();
-        root
-          .querySelector(mode === 'iphone' ? '#phoneContent' : '.home-viewport')
-          ?.scrollTo({ top: 0, behavior: 'smooth' });
+        const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+        if (mode === 'iphone') window.scrollTo({ top: 0, behavior });
+        else root.querySelector('.home-viewport')?.scrollTo({ top: 0, behavior });
       };
     if (id === 'categoryToggle') {
       props['aria-expanded'] = expanded;

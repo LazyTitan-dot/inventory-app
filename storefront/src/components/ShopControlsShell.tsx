@@ -35,6 +35,25 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
   React.useLayoutEffect(() => {
     root.querySelector('.shop-body')?.classList.toggle('viewer-open', actions.viewer);
   }, [actions.viewer, root]);
+  React.useLayoutEffect(() => {
+    const media = window.matchMedia('(max-width: 830px)');
+    const host = root.host;
+    const sync = () => {
+      const locked = media.matches && !host.hasAttribute('hidden') &&
+        Boolean(state.sheet || flow.dialog || actions.viewer);
+      if (locked) document.documentElement.setAttribute('data-mobile-store-modal', '');
+      else document.documentElement.removeAttribute('data-mobile-store-modal');
+    };
+    const observer = new MutationObserver(sync);
+    observer.observe(host, { attributes: true, attributeFilter: ['hidden'] });
+    media.addEventListener('change', sync);
+    sync();
+    return () => {
+      observer.disconnect();
+      media.removeEventListener('change', sync);
+      document.documentElement.removeAttribute('data-mobile-store-modal');
+    };
+  }, [root, state.sheet, flow.dialog, actions.viewer]);
   const sessionState = React.useSyncExternalStore(session.subscribe, session.read);
   const list = selectProducts(products, state),
     count =

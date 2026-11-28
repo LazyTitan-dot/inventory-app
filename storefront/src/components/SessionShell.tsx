@@ -97,6 +97,10 @@ export function SessionShell(options: ShellOptions) {
       setShopView(null);
     };
   }, []);
+  const inHome = state.route === 'home';
+  useLayoutEffect(() => {
+    if (state.mode === 'iphone') window.scrollTo(0, 0);
+  }, [inHome, state.mode]);
   useLayoutEffect(() => {
     let cancelled = false;
     queueMicrotask(() => {
