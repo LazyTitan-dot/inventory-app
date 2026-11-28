@@ -1,3 +1,4 @@
+import { useMobileHeaderSearch } from './useMobileHeaderSearch';
 import { categoryCards } from '../data/editorial';
 import * as React from 'react';
 import type { ShellNode } from './ApprovedShell';
@@ -24,6 +25,8 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
   const actions = useShopActions(options);
   const { dispatch, shell } = actions;
   const { state, flow } = React.useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const mobileSearch = useMobileHeaderSearch(root, state.mode === 'iphone');
+  const submitMobileSearch = () => { mobileSearch.close(); options.route('search', state.search); };
   const browser = useShopBrowserEffects({
     root,
     viewer: actions.viewer,
@@ -132,7 +135,7 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
       props.className = (flow.commerceActive ? tab === 'carrito' : tab === 'categorias')
         ? 'active'
         : undefined;
-      props.onClick = () => shell.tab(tab);
+      props.onClick = () => { mobileSearch.close(); shell.tab(tab); };
     }
     if (p.className === 'brand') {
       props.onClick = (e: React.MouseEvent) => {
@@ -359,10 +362,21 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
       props.hidden = count === 0;
       children = [String(count)];
     }
+    if (p.className === 'mob-searchwrap') props.hidden = !mobileSearch.open;
+    if ('data-mobile-search-toggle' in p) {
+      props['aria-expanded'] = mobileSearch.open;
+      props['aria-label'] = mobileSearch.open ? 'Cerrar búsqueda' : 'Buscar productos';
+      props.onClick = mobileSearch.toggle;
+    }
+    if ('data-mobile-search-submit' in p) props.onClick = submitMobileSearch;
     if ('data-search' in p) {
       props.value = state.search;
       props.onChange = (e: React.ChangeEvent<HTMLInputElement>) =>
         emit({ type: 'catalog-search', value: e.currentTarget.value }, e);
+      if (p['data-search'] === 'iphone') props.onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') { e.preventDefault(); submitMobileSearch(); }
+        if (e.key === 'Escape') { e.preventDefault(); mobileSearch.close(true); }
+      };
     }
     if ('data-budget' in p) {
       delete props.defaultValue;

@@ -1,3 +1,4 @@
+import { useMobileHeaderSearch } from './useMobileHeaderSearch';
 import * as React from 'react';
 import { HomeCards, Icon, type HomeProduct } from './NativeCatalog';
 import { NativeEvents } from './NativeEvents';
@@ -76,6 +77,7 @@ interface HomeProps {
 }
 export function NativeHome({ tree, products, catalog, root, mode, session, onRoute }: HomeProps) {
   const [term, setTerm] = React.useState('');
+  const mobileSearch = useMobileHeaderSearch(root, mode === 'iphone');
   const [expanded, setExpanded] = React.useState(false);
   const campaigns = React.useContext(CampaignContext);
   const cards = categoryCards(catalog);
@@ -83,6 +85,7 @@ export function NativeHome({ tree, products, catalog, root, mode, session, onRou
   const brands = featuredBrands(catalog);
   const route = (r: Route, value?: string) => {
     setExpanded(false);
+    if (r !== 'favorite') mobileSearch.close();
     onRoute(r, value);
   };
   const dispatch: NativeDispatch = (a) => {
@@ -104,11 +107,19 @@ export function NativeHome({ tree, products, catalog, root, mode, session, onRou
     let children: React.ReactNode[] = n.children.map(render);
     if (id === 'stage')
       props.className = 'stage ' + (mode === 'desktop' ? 'only-desktop' : 'only-phone');
+    if (cls === 'mob-searchwrap') props.hidden = !mobileSearch.open;
+    if ('data-mobile-search-toggle' in p) {
+      props['aria-expanded'] = mobileSearch.open;
+      props['aria-label'] = mobileSearch.open ? 'Cerrar búsqueda' : 'Buscar productos';
+      props.onClick = mobileSearch.toggle;
+    }
+    if ('data-mobile-search-submit' in p) props.onClick = () => route('search', term);
     if ('data-search' in p) {
       props.value = term;
       props.onChange = (e: React.ChangeEvent<HTMLInputElement>) => setTerm(e.currentTarget.value);
       props.onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') route('search', term);
+        if (e.key === 'Enter') { e.preventDefault(); route('search', term); }
+        if (e.key === 'Escape' && p['data-search'] === 'iphone') { e.preventDefault(); mobileSearch.close(true); }
       };
     }
     const dest = homeRoute(p);
