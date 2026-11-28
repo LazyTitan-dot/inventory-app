@@ -39,19 +39,47 @@ function RotatingHero({mobile,main,open,route}:{mobile:boolean;main?:Campaign;op
       const section=controls.current?.parentElement;
       if(!section||document.hidden||section.getClientRects().length===0)return;
       const root=section.getRootNode() as ShadowRoot;
-      if(section.matches(':hover')||section.contains(root.activeElement))return;
+      if(mobile ? section.matches(':focus-within') && Boolean(section.querySelector(':focus-visible')) : section.matches(':hover')||section.contains(root.activeElement))return;
       setIndex(v=>(v+1)%count);
     },6500);
     return ()=>window.clearInterval(timer);
-  },[paused,reduced,index,count]);
+  },[paused,reduced,index,count,mobile]);
+  React.useEffect(()=>{
+    const section=controls.current?.parentElement;
+    if(!mobile||!section)return;
+    let start:{x:number;y:number}|null=null;
+    const begin=(e:TouchEvent)=>{
+      const target=e.target;
+      start=e.touches.length===1 && !(target instanceof Element && target.closest('button,a,input'))
+        ? {x:e.touches[0].clientX,y:e.touches[0].clientY}:null;
+    };
+    const move=(e:TouchEvent)=>{if(e.touches.length!==1)start=null;};
+    const end=(e:TouchEvent)=>{
+      const origin=start;start=null;
+      if(!origin||e.touches.length||!e.changedTouches.length)return;
+      const dx=e.changedTouches[0].clientX-origin.x,dy=e.changedTouches[0].clientY-origin.y;
+      if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.5)setIndex(v=>(v+(dx<0?1:count-1))%count);
+    };
+    const cancel=()=>{start=null;};
+    section.addEventListener('touchstart',begin,{passive:true});
+    section.addEventListener('touchmove',move,{passive:true});
+    section.addEventListener('touchend',end,{passive:true});
+    section.addEventListener('touchcancel',cancel,{passive:true});
+    return ()=>{
+      section.removeEventListener('touchstart',begin);
+      section.removeEventListener('touchmove',move);
+      section.removeEventListener('touchend',end);
+      section.removeEventListener('touchcancel',cancel);
+    };
+  },[mobile,count]);
   const slide=index>0?editorialSlides[index-1]:undefined;
   const art=slide&&<img src={slide.asset} alt="" className={mobile?'hero-image editorial-slide-image':'editorial-slide-image'}/>;
   const current=slide?<><div className={mobile?'mobile-hero-copy':'desktop-hero-copy'}><h2>{slide.title}</h2><p>{slide.subtitle}</p><div className="hero-actions"><button type="button" className="actionprimary" onClick={()=>route('category',slide.category)}>Explorar productos <Icon name="chevron-right"/></button></div></div>{mobile?art:<div className="desktop-hero-art editorial-slide-art">{art}</div>}</>:main?<><ManagedHero campaign={main} mobile={mobile} open={()=>open(main)}/>{!main.asset&&(mobile?<img className="hero-image" src="/editorial/hero.png" alt=""/>:<div className="desktop-hero-art"><img src="/editorial/hero.png" alt=""/></div>)}</>:<EditorialHero mobile={mobile} route={route}/>;
   return <>{current}<div ref={controls} className="commercial-hero-controls" role="group" aria-label="Banners comerciales">
-    <button type="button" aria-label="Banner anterior" onClick={()=>setIndex(v=>(v+count-1)%count)}><span aria-hidden="true" className="commercial-prev"><Icon name="chevron-right"/></span></button>
+    {!mobile&&<button type="button" aria-label="Banner anterior" onClick={()=>setIndex(v=>(v+count-1)%count)}><span aria-hidden="true" className="commercial-prev"><Icon name="chevron-right"/></span></button>}
     {Array.from({length:count},(_,i)=><button key={i} type="button" aria-label={'Banner '+(i+1)+' de '+count} aria-current={i===index?'true':undefined} onClick={()=>setIndex(i)}><span className={'commercial-dot'+(i===index?' active':'')}/></button>)}
-    <button type="button" aria-label="Siguiente banner" onClick={()=>setIndex(v=>(v+1)%count)}><Icon name="chevron-right"/></button>
-    <button type="button" aria-label={paused||reduced?'Carrusel detenido':'Pausar banners'} aria-pressed={paused||reduced} disabled={reduced} onClick={()=>setPaused(v=>!v)}>{paused||reduced?'▶':'Ⅱ'}</button>
+    {!mobile&&<button type="button" aria-label="Siguiente banner" onClick={()=>setIndex(v=>(v+1)%count)}><Icon name="chevron-right"/></button>}
+    <button type="button" className="commercial-play" aria-label={reduced?'Carrusel detenido por preferencia de movimiento':paused?'Reproducir banners':'Pausar banners'} aria-pressed={paused||reduced} disabled={reduced} onClick={()=>setPaused(v=>!v)}>{mobile?<svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">{paused||reduced?<path d="M6 3.5 16 10 6 16.5Z"/>:<><rect x="5" y="4" width="3.5" height="12" rx="1"/><rect x="11.5" y="4" width="3.5" height="12" rx="1"/></>}</svg>:paused||reduced?'▶':'Ⅱ'}</button>
   </div></>;
 }
 const commercialHeroStyles=`
@@ -63,6 +91,15 @@ const commercialHeroStyles=`
 .phone .mobile-hero .editorial-slide-image{object-fit:contain;background:#dcebf9;padding:8px 16px 38px}
 .phone .commercial-hero-controls{bottom:8px;gap:0}.phone .commercial-hero-controls button{width:40px;height:44px}
 @media(max-width:370px){.phone .commercial-hero-controls button{width:34px}}
+.phone .mobile-hero{touch-action:pan-y pinch-zoom}
+.phone .commercial-hero-controls{background:none;border:0;box-shadow:none;padding:0;bottom:5px;gap:0;color:#fff}
+.phone .commercial-hero-controls button{width:44px;height:44px;background:none}
+.phone .commercial-hero-controls button:hover{background:none}
+.phone .commercial-hero-controls button:focus-visible{outline:2px solid #65d8f4;outline-offset:-3px;background:#06173477}
+.phone .commercial-dot{width:8px;height:8px;background:#f4fbff;border:1px solid #0b2749;box-shadow:0 0 4px 1px #06173499}
+.phone .commercial-dot.active{background:#65e5ff;border-color:#087d9c;box-shadow:0 0 0 2px #06274677,0 0 8px 2px #65d8f4aa}
+.phone .commercial-play svg{filter:drop-shadow(0 0 2px #061734) drop-shadow(0 1px 2px #061734)}
+
 .shipping-banner .shipping-fleet{object-fit:contain;align-self:center;height:auto;width:100%;max-width:none}
 `;
 
