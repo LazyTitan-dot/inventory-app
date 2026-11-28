@@ -1,3 +1,4 @@
+import { useMobileViewerZoom } from './useMobileViewerZoom';
 import { useMobileHeaderSearch } from './useMobileHeaderSearch';
 import { categoryCards } from '../data/editorial';
 import * as React from 'react';
@@ -35,6 +36,9 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
     step: shell.stepViewer,
     close: shell.closeViewer,
   });
+  const mobileViewer = state.mode === 'iphone';
+  const mobileZoom = useMobileViewerZoom(root, mobileViewer && actions.viewer,
+    (flow.currentProduct?.id ?? '') + ':' + flow.galleryView, shell.stepViewer);
   React.useLayoutEffect(() => {
     root.querySelector('.shop-body')?.classList.toggle('viewer-open', actions.viewer);
   }, [actions.viewer, root]);
@@ -177,17 +181,18 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
       props.className = String(p.className) + (browser.rails.mobileHidden ? ' no-overflow' : '');
     if (id === 'imageViewer') Object.assign(props, browser.dialogEvents);
     if (id === 'viewerCanvas') {
-      Object.assign(props, browser.viewerEvents);
+      if (!mobileViewer) Object.assign(props, browser.viewerEvents);
       props.className =
         String(p.className) +
-        (flow.viewerZoomed ? ' zoomed' : '') +
-        (browser.dragging ? ' is-mouse-dragging' : '');
+        (mobileViewer ? ' touch-zoom-canvas' : (flow.viewerZoomed ? ' zoomed' : '') +
+        (browser.dragging ? ' is-mouse-dragging' : ''));
     }
     if (id === 'viewerClose') props.onClick = shell.closeViewer;
     if (id === 'viewerZoom') {
-      props.onClick = shell.zoom;
-      props['aria-pressed'] = flow.viewerZoomed;
-      props['aria-label'] = flow.viewerZoomed ? 'Reducir ampliación' : 'Ampliar imagen';
+      const zoomed = mobileViewer ? mobileZoom.zoomed : flow.viewerZoomed;
+      props.onClick = mobileViewer ? mobileZoom.toggle : shell.zoom;
+      props['aria-pressed'] = zoomed;
+      props['aria-label'] = zoomed ? 'Reducir ampliación' : 'Ampliar imagen';
     }
     if (id === 'viewerPrev' || id === 'viewerNext') {
       const images = flow.currentProduct ? galleryImages(flow.currentProduct) : [];
@@ -205,11 +210,11 @@ export function ShopControlsShell(options: ShopActionOptions & { tree: ShellNode
         flow.galleryView + 1 + ' / ' + images.length + (images.length === 1 ? ' · Foto' : ''),
       ];
     }
-    if (id === 'viewerDragHint')
-      props.hidden =
-        !flow.viewerZoomed ||
-        state.mode === 'iphone' ||
-        !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if (id === 'viewerDragHint') {
+      props.hidden = mobileViewer ? false :
+        !flow.viewerZoomed || !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      if (mobileViewer) children = [' · Pellizca para ampliar'];
+    }
     if (id === 'conceptDialog' || id === 'conceptBackdrop') props.hidden = !flow.dialog;
     if (id === 'conceptToast') {
       props.className = String(p.className) + (flow.toast ? ' visible' : '');
